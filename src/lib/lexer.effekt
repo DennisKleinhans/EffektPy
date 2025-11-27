@@ -1,0 +1,89 @@
+module src/lib/lexer
+
+import regex
+
+record Position (line: Int, column: Int, index: Int)
+
+type TokenKind {
+  Number();
+  Identifier();
+  Punctuation();
+  Whitespace();
+}
+
+record Token(kind: TokenKind, lexeme: String, position: Position)
+
+interface Lexer {
+  def peek(): Option[Token]
+  def next(): Token
+}
+
+effect LexerError(msg: String, position: Position): Nothing
+
+record TokenRx(kind: TokenKind, regex: Regex)
+
+val tokenDescriptors = [
+  TokenRx(Number(), "^[0-9]+".regex),
+  TokenRx(Identifier(), "^[a-zA-Z_][a-zA-Z0-9_]*".regex),
+  TokenRx(Punctuation(), "^<=|>=|[:,(){}=+\\-/<>]".regex),
+  TokenRx(Whitespace(), "^[ \\t\\n]+".regex),
+]
+
+def show(tokenKind: TokenKind): String = tokenKind match {
+  case Number() => "number"
+  case Identifier() => "identifier"
+  case Punctuation() => "punctuation"
+  case Whitespace() => "whitespace"
+}
+def show(token: Token): String = token.kind.show
+
+def report { prog: => Unit / LexerError }: Unit =
+  try { prog() } with LexerError { (msg, pos) =>
+    println(pos.line.show ++ ":" ++ pos.column.show ++ " " ++ msg)
+  }
+
+def lexer[R](in: String) { prog: => R / Lexer} : R / LexerError = {
+  var index = 0
+  var column = 1
+  var line = 1
+
+  def position() = Position(line, column, index)
+  def input() = in.substring(index)
+  def consume(text: String): Unit = {
+    with ignore[MissingValue]
+    val lines = text.split("\n")
+    val offset = lines.last.length
+
+    index = index + text.length
+    line = line + lines.size - 1
+    if (lines.size == 1) {
+      column = column + text.length
+    } else {
+      column = offset
+    }
+  }
+  def eos(): Bool = index >= in.length
+  def tryMatch(desc: TokenRx): Option[Token] = {
+    desc.regex.exec(input()).map { m => Token(desc.kind, m.matched, position()) }
+  }
+  def tryMatchAll(descs: List[TokenRx]): Option[Token] = descs match {
+    case Nil() => None()
+    case Cons(desc, descs) =>
+      tryMatch(desc).orElse { tryMatchAll(descs) }
+  }
+
+  try { prog() } with Lexer {
+    def peek() = resume(tryMatchAll(tokenDescriptors))
+    def next() = {
+      if (eos()) {
+        do LexerError("Unexpected end of input", position())
+      } else {
+        val token = tryMatchAll(tokenDescriptors).getOrElse {
+          do LexerError("Cannot tokenize input", position())
+        }
+        consume(token.lexeme)
+        resume(token)
+      }
+    }
+  }
+}

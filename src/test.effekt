@@ -1,10 +1,20 @@
 module src/test
 
 import test
-import src/lib
+import src/lib/lexer
 
 def main() = mainSuite("lib") {
-  test("Hello world") {
-    assertEqual(helloWorld(), "Hello, world!")
+  test("lexer produces tokens") {
+    report {
+      var tokens = lexer[Unit]("foo()") {
+        assertEqual(do next().show, "identifier")
+        assertEqual(do next().show, "punctuation")
+        assertEqual(do next().show, "punctuation")
+      }
+    }
   }
+
+  // test("Hello world") {
+  //   assertEqual(helloWorld(), "Hello, world!")
+  // }
 }
