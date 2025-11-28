@@ -4,12 +4,21 @@ import test
 import src/lib/lexer
 
 def main() = mainSuite("lib") {
-  test("lexer produces tokens") {
-    report {
-      var tokens = lexer[Unit]("foo()") {
-        assertEqual(do next().show, "identifier")
-        assertEqual(do next().show, "punctuation")
-        assertEqual(do next().show, "punctuation")
+  test("lexer produces tokens and skips whitespace") {
+    reportLexerError {
+      lexer[Unit]("foo  (   \n)") {
+        val first = do next()
+        val second = do next()
+        val third = do next()
+        
+        assertEqual(first.show, "identifier")
+        assertEqual(second.show, "punctuation")
+        assertEqual(third.show, "punctuation")
+
+        assertEqual(first.lexeme, "foo")
+        assertEqual(second.lexeme, "(")
+        assertEqual(third.lexeme, ")")
+      
       }
     }
   }

@@ -25,8 +25,8 @@ record TokenRx(kind: TokenKind, regex: Regex)
 val tokenDescriptors = [
   TokenRx(Number(), "^[0-9]+".regex),
   TokenRx(Identifier(), "^[a-zA-Z_][a-zA-Z0-9_]*".regex),
-  TokenRx(Punctuation(), "^<=|>=|[:,(){}=+\\-/<>]".regex),
-  TokenRx(Whitespace(), "^[ \\t\\n]+".regex),
+  TokenRx(Punctuation(), "^(<=|>=|[:,(){}=+\\-/<>])".regex),
+  TokenRx(Whitespace(), "^[ \t\n]+".regex),
 ]
 
 def show(tokenKind: TokenKind): String = tokenKind match {
@@ -37,10 +37,25 @@ def show(tokenKind: TokenKind): String = tokenKind match {
 }
 def show(token: Token): String = token.kind.show
 
-def report { prog: => Unit / LexerError }: Unit =
+def reportLexerError { prog: => Unit / LexerError }: Unit = {
   try { prog() } with LexerError { (msg, pos) =>
-    println(pos.line.show ++ ":" ++ pos.column.show ++ " " ++ msg)
+    println(msg ++ " at line: " ++ pos.line.show ++ " column: " ++ pos.column.show)
   }
+}
+
+def skipSpaces(): Unit / Lexer = do peek() match {
+  case None() => ()
+  case Some(Token(Whitespace(), _, _)) => do next(); skipSpaces()
+  case _ => ()
+}
+
+def skipWhitespace[R] { prog: => R / Lexer }: R / Lexer = {
+  try { prog() } with Lexer {
+    def peek() = { skipSpaces(); resume(do peek()) }
+    def next() = { skipSpaces(); resume(do next()) }
+  }
+}
+
 
 def lexer[R](in: String) { prog: => R / Lexer} : R / LexerError = {
   var index = 0
@@ -62,6 +77,7 @@ def lexer[R](in: String) { prog: => R / Lexer} : R / LexerError = {
       column = offset
     }
   }
+
   def eos(): Bool = index >= in.length
   def tryMatch(desc: TokenRx): Option[Token] = {
     desc.regex.exec(input()).map { m => Token(desc.kind, m.matched, position()) }
@@ -72,8 +88,11 @@ def lexer[R](in: String) { prog: => R / Lexer} : R / LexerError = {
       tryMatch(desc).orElse { tryMatchAll(descs) }
   }
 
-  try { prog() } with Lexer {
-    def peek() = resume(tryMatchAll(tokenDescriptors))
+  try { skipWhitespace { prog() }} with Lexer {
+    def peek() = { 
+      resume(tryMatchAll(tokenDescriptors)) 
+    }
+
     def next() = {
       if (eos()) {
         do LexerError("Unexpected end of input", position())
