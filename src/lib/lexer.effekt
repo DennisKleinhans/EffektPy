@@ -1,108 +1,301 @@
-module src/lib/lexer
+import scanner
+import io/filesystem
+import buffer
+import exception
 
-import regex
-
-record Position (line: Int, column: Int, index: Int)
+effect getPos(): Position
+interface Lexer[R] {
+  def peek(): R
+  def next(): R
+}
 
 type TokenKind {
-  Number();
-  Identifier();
-  Punctuation();
-  Whitespace();
+  // keywords
+  Val();
+  If();
+  Else();
+
+  // identifier and literals
+  Identifier(id: String);
+  Number(n: Int);
+  BoolLiteral(b: Bool);
+
+  // operators
+  Assign();
+  Equal();
+  NotEqual();
+  Less();
+  Greater();
+  LessEqual();
+  GreaterEqual();
+  Plus();
+  Minus();
+  Mult();
+  Div();
+
+  // parentheses
+  LParen();
+  RParen();
+  LBrace();
+  RBrace();
+
+  EOF();
 }
 
-record Token(kind: TokenKind, lexeme: String, position: Position)
+record Token(kind: TokenKind, position: Position)
+record Position (line: Int, column: Int)
+record LexerError()
 
-interface Lexer {
-  def peek(): Option[Token]
-  def next(): Token
-}
 
-effect LexerError(msg: String, position: Position): Nothing
-
-record TokenRx(kind: TokenKind, regex: Regex)
-
-val tokenDescriptors = [
-  TokenRx(Number(), "^[0-9]+".regex),
-  TokenRx(Identifier(), "^[a-zA-Z_][a-zA-Z0-9_]*".regex),
-  TokenRx(Punctuation(), "^(<=|>=|[:,(){}=+\\-/<>])".regex),
-  TokenRx(Whitespace(), "^[ \t\n]+".regex),
-]
-
+def show(pos: Position): String = "line: " ++ pos.line.show ++ " column: " ++ pos.column.show
 def show(tokenKind: TokenKind): String = tokenKind match {
-  case Number() => "number"
-  case Identifier() => "identifier"
-  case Punctuation() => "punctuation"
-  case Whitespace() => "whitespace"
+  case Identifier(id) => "Identifier: " ++ id
+  case Number(n) => "Number: " ++ n.show
+  case BoolLiteral(b) => "Bool: " ++ b.show
+  case Val() => "Keyword: val"
+  case If() => "Keyword: if" 
+  case Else() => "Keyword: else"
+  case Assign() => "Operator: ="
+  case Equal() => "Operator: =="
+  case NotEqual() => "Operator: !="
+  case Less() => "Operator: <"
+  case Greater() => "Operator: >"
+  case LessEqual() => "Operator: <="
+  case GreaterEqual() => "Operator: >="
+  case Plus() => "Operator: +"
+  case Minus() => "Operator: -"
+  case Mult() => "Operator: *"
+  case Div() => "Operator: /"
+  case LParen() => "Punctuation: ("
+  case RParen() => "Punctuation: )"
+  case LBrace() => "Punctuation: {"
+  case RBrace() => "Punctuation: }"
+  case EOF() => "EndOfFile"
 }
 def show(token: Token): String = token.kind.show
 
-def reportLexerError { prog: => Unit / LexerError }: Unit = {
-  try { prog() } with LexerError { (msg, pos) =>
-    println(msg ++ " at line: " ++ pos.line.show ++ " column: " ++ pos.column.show)
-  }
-}
-
-def skipSpaces(): Unit / Lexer = do peek() match {
-  case None() => ()
-  case Some(Token(Whitespace(), _, _)) => do next(); skipSpaces()
-  case _ => ()
-}
-
-def skipWhitespace[R] { prog: => R / Lexer }: R / Lexer = {
-  try { prog() } with Lexer {
-    def peek() = { skipSpaces(); resume(do peek()) }
-    def next() = { skipSpaces(); resume(do next()) }
-  }
-}
-
-
-def lexer[R](in: String) { prog: => R / Lexer} : R / LexerError = {
-  var index = 0
-  var column = 1
+def scanWithPos[R]() {prog: => R / { Scan[Char], getPos } }: R / Scan[Char] = {
+  // track current source position
   var line = 1
+  var col = 1
+  var index = 0
 
-  def position() = Position(line, column, index)
-  def input() = in.substring(index)
-  def consume(text: String): Unit = {
-    with ignore[MissingValue]
-    val lines = text.split("\n")
-    val offset = lines.last.length
+  // Cache for the last character that was peeked but not yet consumed
+  var lastSeen: Option[Char] = None()
 
-    index = index + text.length
-    line = line + lines.size - 1
-    if (lines.size == 1) {
-      column = column + text.length
-    } else {
-      column = offset
+  def position() = Position(line, col)
+
+  // Update source position based on a consumed character
+  def updatePos(c: Char) = {
+    index = index + 1
+    if (c == '\n') { 
+      line = line + 1
+      col = 1 
+    } else { 
+      col = col + 1 
     }
   }
 
-  def eos(): Bool = index >= in.length
-  def tryMatch(desc: TokenRx): Option[Token] = {
-    desc.regex.exec(input()).map { m => Token(desc.kind, m.matched, position()) }
+  try { prog() } with Scan[Char] {
+    def peek() = resume {
+      lastSeen match {
+        // If we already cached a peeked character, return it
+        case Some(c) => return c
+
+        // We rethrow the peek to the *underlying* Scan handler by calling `do peek()`.
+        // This ultimately causes the lower-level scanner to perform `read()`,
+        // which is handled by the filesystem.
+        //
+        // We intercept the returned character and store it in `lastSeen`,
+        // but we do NOT advance the position yet (because peek does not consume)
+        case None() => {
+          val c = do Scan::peek()
+          lastSeen = Some(c)
+          return c
+        }
+      }
+    }
+
+    def skip() = resume {
+      lastSeen match {
+        // Case 1: a previous peek has cached the next character.
+        // That means this skip is *consuming* exactly that character.
+        case Some(c) => {
+          // We rethrow the skip to the underlying handler (`do skip()`).
+          // That underlying skip will not trigger another read, since the lower
+          // scanner already buffered the character during peek.
+          do skip()
+          // Now we know the character was consumed → update position.
+          updatePos(c)
+          // Clear peek cache
+          lastSeen = None()
+          return ()
+        }
+        // Case 2: skip happens without a prior peek.
+        // That means we must read the character now in order to know what is consumed
+        case None() => {
+          // We first rethrow a peek to underlying handler to obtain the character
+          val c = do Scan::peek()
+          // Then we perform the actual skip (again rethrown)
+          updatePos(c)
+          do skip()
+          return ()
+        }
+      }
+    }
+  } with getPos {
+    resume(position())
   }
-  def tryMatchAll(descs: List[TokenRx]): Option[Token] = descs match {
-    case Nil() => None()
-    case Cons(desc, descs) =>
-      tryMatch(desc).orElse { tryMatchAll(descs) }
+}
+
+
+def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], getPos} = {
+
+  def readIdentifierOrKeyword(pos: Position): Token / { Scan[Char], stop } = {
+    // collect all alphanumeric chars
+    val name = string::collect { readWhile { c => c.isAlphanumeric } } 
+
+    // identify potential keywords
+    val kind = name match{
+      case "val" => Val()
+      case "if" => If()
+      case "else" => Else()
+      case "true" => BoolLiteral(true)
+      case "false" => BoolLiteral(false)
+      case _ => Identifier(name)
+    }
+
+    Token(kind, pos)
   }
 
-  try { skipWhitespace { prog() }} with Lexer {
-    def peek() = { 
-      resume(tryMatchAll(tokenDescriptors)) 
+  def readNumberToken(pos: Position): Token / { Scan[Char], stop } = {
+    val value = readDecimal()
+    val next = do Scan::peek()
+
+    // disallow identifiers to start with a number
+    if (next.isAlphabetic) {
+      val rest = string::collect { readWhile { c => c.isAlphanumeric }}
+      do raise(LexerError(), "invalid char at " ++ pos.show ++ " in " ++ "'" ++ value.show ++ rest ++ "'" )
+    }
+    Token(Number(value), pos)
+  }
+
+  // always skip whitespace 
+  skipWhitespace()
+
+  val pos = do getPos()
+
+  // one char lookahead
+  val c = do Scan::peek()
+
+  if (c.isAlphabetic) {
+    readIdentifierOrKeyword(pos)
+  } else if (c.isDigit) {
+    val next = do Scan::peek()
+    readNumberToken(pos)
+  } else if (c == '=') {
+    // consume first char 
+    do Scan::skip()
+    // second lookahead to recognize two char tokens
+    val next = do Scan::peek()
+
+    if(next == '=') {
+      do Scan::skip()
+      Token(Equal(), pos)
+    } else {
+      Token(Assign(), pos)
+    }
+  } else if (c == '!') {
+    // consume '!' and check for '!='
+    do Scan::skip()
+    readIf('=')
+    Token(NotEqual(), pos)
+  } else if (c == '<') {
+    do Scan::skip()
+    val next = do Scan::peek()
+    if (next == '=') {
+      do Scan::skip()
+      Token(LessEqual(), pos)
+    } else {
+      Token(Less(), pos)
+    }
+  } else if (c == '>') {
+    do Scan::skip()
+    val next = do Scan::peek()
+    if (next == '=') {
+      do Scan::skip()
+      Token(GreaterEqual(), pos)
+    } else {
+      Token(Greater(), pos)
+    }
+  } else if (c == '+') {
+    do Scan::skip()
+    Token(Plus(), pos)
+  } else if (c == '-') {
+    do Scan::skip()
+    Token(Minus(), pos)
+  } else if (c == '*') {
+    do Scan::skip()
+    Token(Mult(), pos)
+  } else if (c == '/') {
+    do Scan::skip()
+    Token(Div(), pos)
+  } else if (c == '(') {
+    do Scan::skip()
+    Token(LParen(), pos)
+  } else if (c == ')') {
+    do Scan::skip()
+    Token(RParen(), pos)
+  } else if (c == '{') {
+    do Scan::skip()
+    Token(LBrace(), pos)
+  } else if (c == '}') {
+    do Scan::skip()
+    Token(RBrace(), pos)
+  } else {
+    do raise(LexerError(), "can not tokenize char: " ++ "'" ++ c.show ++ "'" ++ " at " ++ pos.show)
+  }
+}
+
+def lexer[R]() { program: => R / Lexer[Token] }: R / { Scan[Char], getPos, Exception[LexerError] } = {
+  // buffer for the last token read
+  var lastToken: Option[Token] = None()
+
+  try {
+    program()
+  } with Lexer[Token] {
+    def peek() = {
+      val tok = lastToken match {
+        case Some(tok) => tok
+        case None() => {
+          try {
+            val tok = nextToken()
+            lastToken = Some(tok)
+            tok
+          } with stop {
+            Token(EOF(), do getPos())
+          } 
+        }
+      }
+      resume(tok)
     }
 
     def next() = {
-      if (eos()) {
-        do LexerError("Unexpected end of input", position())
-      } else {
-        val token = tryMatchAll(tokenDescriptors).getOrElse {
-          do LexerError("Cannot tokenize input", position())
+      val tok = lastToken match {
+        case Some(tok) => {
+          lastToken = None()
+          tok
         }
-        consume(token.lexeme)
-        resume(token)
+        case None() => {
+          try {
+            val tok = nextToken() 
+            tok
+          } with stop {
+            Token(EOF(), do getPos())
+          }
+        }
       }
+      resume(tok)
     }
   }
 }

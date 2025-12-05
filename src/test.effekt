@@ -1,29 +1,32 @@
 module src/test
 
 import test
+import scanner
 import src/lib/lexer
 
 def main() = mainSuite("lib") {
   test("lexer produces tokens and skips whitespace") {
-    reportLexerError {
-      lexer[Unit]("foo  (   \n)") {
-        val first = do next()
-        val second = do next()
-        val third = do next()
-        
-        assertEqual(first.show, "identifier")
-        assertEqual(second.show, "punctuation")
-        assertEqual(third.show, "punctuation")
+    val input =
+    "val 1x = 10\n" ++
+    "if (x >= 10) {\n" ++
+    "  x = x + 1\n" ++
+    "}\n"
 
-        assertEqual(first.lexeme, "foo")
-        assertEqual(second.lexeme, "(")
-        assertEqual(third.lexeme, ")")
-      
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with on[LexerError].panic
+    with lexer
+    def collectTokens(acc: List[Token]) { next: => Token}: List[Token] = {
+      val t = next()
+      t.kind match {
+        case EOF() => acc.reverse
+        case _ => collectTokens(Cons(t, acc)) { next } 
       }
     }
-  }
+    val expected = [Token(Val(), Position(1, 1)), Token(Identifier("x"), Position(1, 5)), Token(Assign(), Position(1, 7)), Token(Number(10), Position(1, 9)), Token(If(), Position(2, 1)), Token(LParen(), Position(2, 4)), Token(Identifier("x"), Position(2, 5)), Token(GreaterEqual(), Position(2, 7)), Token(Number(10), Position(2, 10)), Token(RParen(), Position(2, 12)), Token(LBrace(), Position(2, 14)), Token(Identifier("x"), Position(3, 3)), Token(Assign(), Position(3, 5)), Token(Identifier("x"), Position(3, 7)), Token(Plus(), Position(3, 9)), Token(Number(1), Position(3, 11)), Token(RBrace(), Position(4, 1))]
 
-  // test("Hello world") {
-  //   assertEqual(helloWorld(), "Hello, world!")
-  // }
+    val tokens = collectTokens(Nil()) { do next() }
+    assertEqual(tokens, expected)
+  }
 }
