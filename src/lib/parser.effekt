@@ -1,4 +1,4 @@
-
+import src/lib/lexer
 type Type {
   BaseType(name: String)
 }
@@ -9,10 +9,10 @@ type Expr {
   BoolLiteral(value: Bool)
   Variable(name: String)
   // binary operands
-  Add(left: Expr, right: Expr)
-  Sub(left: Expr, right: Expr)
-  Mul(left: Expr, right: Expr)
-  Div(left: Expr, right: Expr)
+  AddExpr(left: Expr, right: Expr)
+  SubExpr(left: Expr, right: Expr)
+  MultExpr(left: Expr, right: Expr)
+  DivExpr(left: Expr, right: Expr)
   // compare operators 
   Eq(left: Expr, right: Expr)
   Neq(left: Expr, right: Expr)
@@ -31,3 +31,295 @@ type Stmt {
 }
 
 type Program = List[Stmt]
+
+record ParseError()
+
+/// Consume the next token and assert it has the expected kind. If not, raise a ParseError.
+def expect(expected: TokenKind): Unit / { Lexer[Token], Exception[ParseError]} = {
+  val token = do next()
+  if (not(token.kind.equal(expected))) {
+    do raise(ParseError(), "expected " ++ expected.show ++ "at Position " ++ token.position.show ++ " but got " ++ token.kind.show)
+  }
+}
+
+/// Peek at the next token and return whether it matches `kind`.\n
+/// This does not consume the token
+def check(kind: TokenKind) : Bool / Lexer[Token] = {
+  val token = do peek()
+  token.kind.equal(kind)
+}
+
+/// parsePrimary parses the smallest expression forms: literals, variables,
+/// and parenthesized expressions. It does not handle binary operators.\n
+/// Parentheses are handled here so that ( ... ) produces a nested expression.
+def parsePrimary(): Expr / { Lexer[Token], Exception[ParseError]} = {
+  val token = do peek()
+  
+  token.kind match {
+    case Number(n) => {
+      do next()
+      IntLiteral(n)
+    }
+    case Boolean(b) => {
+      do next()
+      BoolLiteral(b)
+    }
+    case LowerIdentifier(id) => {
+      do next()
+      Variable(id)
+    }
+    case LParen() => {
+      do next()
+      val expr = parseExpression()
+      expect(RParen())
+      expr
+    }
+    case _ => do raise(ParseError(), "expected expression at position " ++ token.position.show ++ " but got " ++ token.kind.show)
+  }
+}
+
+/// Implements parsing for * and / which have higher precedence than + and -.
+/// This function uses a common pattern: parse the higher-precedence operand
+/// (parsePrimary) then loop (via local go()) to consume any * or / that follow.\n
+/// That loop builds left-associative binary trees:
+///   a * b * c  -> MultExpr(MultExpr(a,b), c)
+def parseMultiplicative(): Expr / { Lexer[Token], Exception[ParseError] } = {
+  var left = parsePrimary()
+  def go(): Unit / Lexer[Token] = {
+    val token = do peek()
+    token.kind match {
+      case Mult() => {
+        do next()
+        val right = parsePrimary() // RHS is primary (highest precedence)
+        left = MultExpr(left, right) // left-associative combine
+        go()
+      }
+      case Div() => {
+        do next()
+        val right = parsePrimary()
+        left = DivExpr(left, right)
+        go()
+      }
+      case _ => () // no more * or / => return current left
+    }
+  }
+  go()
+  left
+}
+
+/// Parses + and - operators. Note that it calls parseMultiplicative() for
+/// operands, which enforces that * and / bind tighter than + and -.\n
+/// The same left-associative looping pattern is used to allow chaining.
+def parseAdditive(): Expr / { Lexer[Token], Exception[ParseError] } = {
+  var left = parseMultiplicative()
+
+  def go(): Unit / Lexer[Token] = {
+    val token = do peek()
+    token.kind match {
+      case Plus() => {
+        do next()
+        val right = parseMultiplicative() // RHS is multiplicative: enforces precedence
+        left = AddExpr(left, right) // left-associative
+        go()
+      }
+      case Minus() => {
+        do next()
+        val right = parseMultiplicative()
+        left = SubExpr(left, right)
+        go()
+      }
+      case _ => ()
+    }
+  }
+  go() 
+  left
+}
+
+/// Parses comparison operators (==, !=, <, >, <=, >=).
+/// It calls parseAdditive() for both sides, so arithmetic binds more tightly
+/// than comparisons (i.e. "1 + 2 < 4" parses as (1+2) < 4).
+def parseComparison(): Expr / { Lexer[Token], Exception[ParseError] } = {
+  val left = parseAdditive()
+  
+  val token = do peek()
+  token.kind match {
+    case TokenKind::Equal() => {
+      do next()
+      val right = parseAdditive()
+      Eq(left, right)
+      
+    }
+    case NotEqual() => {
+      do next()
+      val right = parseAdditive()
+      Neq(left, right)
+      
+    }
+    case TokenKind::Less() => {
+      do next()
+      val right = parseAdditive()
+      Lt(left, right)
+      
+    }
+    case TokenKind::Greater() => {
+      do next()
+      val right = parseAdditive()
+      Gt(left, right)
+     
+    }
+    case LessEqual() => {
+      do next()
+      val right = parseAdditive()
+      LtE(left, right)
+      
+    }
+    case GreaterEqual() => {
+      do next()
+      val right = parseAdditive()
+      GtE(left, right)
+    }
+    case _ => left // no comparison: return left as-is
+  }
+  
+  
+  left 
+} 
+
+/// Handles expressions of the form: 'thenExpr `if` condition `else` elseExpr'\n
+/// Important: the code first parses a full comparison-level expression as the
+/// "then" expression, then checks whether an `If` token follows. If so, it
+/// parses the condition and the else expression. This means the "if-expression"
+/// has the lowest precedence: it wraps whatever expression came before it.\n
+/// Example: `42 if x > 0 else -1`
+def parseIfExpression(): Expr / { Lexer[Token], Exception[ParseError] } = {
+  var expr = parseComparison() // parse the candidate "then" expression first
+  val token = do peek()
+  token.kind match {
+    case If() => {
+      do next()
+      val condition = parseComparison()
+      expect(Else())
+      val elseExpr = parseComparison()
+      IfExpr(expr, condition, elseExpr)
+    }
+    case _ => expr
+  }
+}
+
+/// The entry point for all expressions. Currently `parseExpression` simply
+/// forwards to parseIfExpression, which already covers comparisons,
+/// additive and multiplicative expressions via composition.
+def parseExpression(): Expr / { Lexer[Token], Exception[ParseError] } = {
+  parseIfExpression()
+}
+
+/// parseStmt handles three cases:
+///  - variable declarations starting with `val`
+///  - an `if` statement with parens and braces
+///  - a fallback expression statement
+///
+/// Notes:
+///  - variable declarations allow an optional type annotation after a colon.
+///  - `expect` and `check` are used to require or optionally accept tokens.
+///  - `parseBlock` is used to parse the lists of statements inside braces.
+def parseStmt(): Stmt / { Lexer[Token], Exception[ParseError] } = {
+  val token = do peek()
+  token.kind match {
+    case Val() => {
+      do next()
+      val nameToken = do next()
+      val name = nameToken.kind match {
+        case LowerIdentifier(id) => id
+        case UpperIdentifier(id) => raise(ParseError(), "variable name at position " ++ nameToken.position.show ++ " must start with a lower case char: '" ++ id ++ "'")
+        case _ => raise(ParseError(), "expected variable name after 'val' at position " ++ nameToken.position.show)
+      }
+
+      // optional type annotation (looks for ': TypeName')
+      val typeAnnotation = {
+        if (check(Colon())) {
+          do next()
+          Some(parseType())
+        } else {
+          None()
+        }
+      }
+
+      expect(Assign())
+      val value = parseExpression()
+      VariableDecl(name, typeAnnotation, value)
+    }
+    case If() => {
+      do next()
+      expect(LParen())
+      val condition = parseExpression()
+      expect(RParen())
+      expect(LBrace())
+      val thenBranch = parseBlock()
+      expect(RBrace())
+
+      // optional else branch enclosed in braces
+      val elseBranch = {
+        if (check(Else())) {
+          do next()
+          expect(LBrace())
+          val elseBlock = parseBlock()
+          expect(RBrace())
+          elseBlock
+        } else {
+          Nil()
+        }
+      }
+      IfStmt(condition, thenBranch, elseBranch)
+    }
+    case _ => {
+      // fallback: parse an expression and wrap it as an ExprStmt
+      val expr = parseExpression()
+      ExprStmt(expr)
+    }
+  }
+}
+
+/// parseType expects a single UpperIdentifier as a type name (e.g. Int, Bool).
+/// It reports an error if a lowercase identifier is used for a type.
+def parseType(): Type / { Lexer[Token], Exception[ParseError] } = {
+  val token = do next()
+  token.kind match {
+    case UpperIdentifier(id) => BaseType(id)
+    case LowerIdentifier(id) => raise(ParseError(), "syntax error at position " ++ token.position.show ++ ": type annotations must start with upper case char")
+    case _ => raise(ParseError(), "expected type name (UpperIdentifier) at position " ++ token.position.show ++ " but got " ++ token.kind.show)
+  }
+}
+
+/// parseBlock collects statements until a closing '}' or EOF.
+/// It uses an accumulator and returns the statements in the correct order.\n
+/// Important detail: go accumulates statements in reverse (Cons(stmt, acc))
+/// and returns acc.reverse at the end so that statements keep their original order.
+def parseBlock(): List[Stmt] / { Lexer[Token], Exception[ParseError] } = {
+  def go(acc: List[Stmt]): List[Stmt] / Lexer[Token] = {
+    val token = do peek()
+    token.kind match {
+      case RBrace() => acc.reverse // end of block: return statements in original order
+      case EOF() => acc.reverse // defensive: EOF inside block -> return what we have
+      case _ => {
+        val stmt = parseStmt()
+        go(Cons(stmt, acc))
+      }
+    }
+  }
+  go(Nil())
+}
+
+/// parses a full program as a list of statements until EOF.
+def parseProgram(): Program / {Lexer[Token], Exception[ParseError]} = {
+  def go(acc: List[Stmt]): List[Stmt] / Lexer[Token] = {
+    val token = do peek()
+    token.kind match {
+      case EOF() => acc.reverse
+      case _ => {
+        val stmt = parseStmt()
+        go(Cons(stmt, acc))
+      }
+    }
+  }
+  go(Nil())
+}
