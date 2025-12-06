@@ -1,10 +1,20 @@
 module src/test
 
 import test
+import src/lib/testUtils
 import scanner
 import src/lib/lexer
 
 def main() = mainSuite("lib") {
+
+  def collectTokens(acc: List[Token]) { next: => Token}: List[Token] = {
+      val t = next()
+      t.kind match {
+        case EOF() => acc.reverse
+        case _ => collectTokens(Cons(t, acc)) { next } 
+      }
+    }
+
   test("lexer produces tokens and skips whitespace") {
     val input =
     "val x = 10\n" ++
@@ -19,16 +29,34 @@ def main() = mainSuite("lib") {
     with scanWithPos
     with on[LexerError].panic
     with lexer
-    def collectTokens(acc: List[Token]) { next: => Token}: List[Token] = {
-      val t = next()
-      t.kind match {
-        case EOF() => acc.reverse
-        case _ => collectTokens(Cons(t, acc)) { next } 
-      }
-    }
+    
     val expected = [Token(Val(), Position(1, 1)), Token(Identifier("x"), Position(1, 5)), Token(Assign(), Position(1, 7)), Token(Number(10), Position(1, 9)), Token(If(), Position(2, 1)), Token(LParen(), Position(2, 4)), Token(Identifier("x"), Position(2, 5)), Token(GreaterEqual(), Position(2, 7)), Token(Number(10), Position(2, 10)), Token(RParen(), Position(2, 12)), Token(LBrace(), Position(2, 14)), Token(Identifier("x"), Position(3, 3)), Token(Assign(), Position(3, 5)), Token(Identifier("x"), Position(3, 7)), Token(Plus(), Position(3, 9)), Token(Number(1), Position(3, 11)), Token(RBrace(), Position(4, 1)), Token(Else(), Position(4, 3)), Token(LBrace(), Position(4, 8)), Token(Identifier("x"), Position(5, 3)), Token(Assign(), Position(5, 5)), Token(Identifier("x"), Position(5, 7)), Token(Plus(), Position(5, 9)), Token(Number(2), Position(5, 11)), Token(RBrace(), Position(6, 1))]
 
     val tokens = collectTokens(Nil()) { do next() }
     assertEqual(tokens, expected)
+  }
+
+  test("lexer throws LexerError on unnokwn char") { 
+    val input = "val x = 2;"
+
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with on[LexerError].assertThrown
+    with lexer
+
+    val tokens = collectTokens(Nil()) { do next() }
+  }
+
+  test("lexer throws LexerError if an identifier starts with a number") {
+    val input = "val 1x = 2"
+
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with on[LexerError].assertThrown
+    with lexer
+
+    val tokens = collectTokens(Nil()) { do next() }
   }
 }
