@@ -1,0 +1,33 @@
+
+type Type {
+  BaseType(name: String)
+}
+
+type Expr {
+  // literals
+  IntLiteral(value: Int)
+  BoolLiteral(value: Bool)
+  Variable(name: String)
+  // binary operands
+  Add(left: Expr, right: Expr)
+  Sub(left: Expr, right: Expr)
+  Mul(left: Expr, right: Expr)
+  Div(left: Expr, right: Expr)
+  // compare operators 
+  Eq(left: Expr, right: Expr)
+  Neq(left: Expr, right: Expr)
+  Lt(left: Expr, right: Expr)
+  Gt(left: Expr, right: Expr)
+  LtE(left: Expr, right: Expr)
+  GtE(left: Expr, right: Expr)
+  // python-style if expression e.g. 42 if x > 0 else 100
+  IfExpr(thenExpr: Expr, condition: Expr, elseExpr: Expr)
+}
+
+type Stmt {
+  VariableDecl(name: String, typeAnnotation: Option[Type], value: Expr)
+  IfStmt(cond: Expr, thenBranch: List[Stmt], elseBranch: List[Stmt])
+  ExprStmt(expr: Expr)
+}
+
+type Program = List[Stmt]
