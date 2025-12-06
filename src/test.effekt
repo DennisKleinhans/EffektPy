@@ -4,16 +4,36 @@ import test
 import src/lib/testUtils
 import scanner
 import src/lib/lexer
+import src/lib/parser
 
 def main() = mainSuite("lib") {
 
   def collectTokens(acc: List[Token]) { next: => Token}: List[Token] = {
-      val t = next()
-      t.kind match {
-        case EOF() => acc.reverse
-        case _ => collectTokens(Cons(t, acc)) { next } 
-      }
+    val t = next()
+    t.kind match {
+      case EOF() => acc.reverse
+      case _ => collectTokens(Cons(t, acc)) { next } 
     }
+  }
+
+  def fullLexerHandler(input: String, assertLexerError: Bool) { prog: => Unit / { Lexer[Token]}} = {
+    
+    if (assertLexerError) {
+      with feed(input)
+      with scanner[Char]
+      with scanWithPos
+      with on[LexerError].assertThrown
+      with lexer
+      prog()
+    } else {
+      with feed(input)
+      with scanner[Char]
+      with scanWithPos
+      with on[LexerError].panic
+      with lexer
+      prog()
+    }
+  } 
 
   test("lexer produces tokens and skips whitespace") {
     val input =
@@ -24,28 +44,20 @@ def main() = mainSuite("lib") {
     "  x = x + 2\n" ++
     "}"
 
-    with feed(input)
-    with scanner[Char]
-    with scanWithPos
-    with on[LexerError].panic
-    with lexer
-    
     val expected = [Token(Val(), Position(1, 1)), Token(LowerIdentifier("x"), Position(1, 5)), Token(Assign(), Position(1, 7)), Token(Number(10), Position(1, 9)), Token(If(), Position(2, 1)), Token(LParen(), Position(2, 4)), Token(LowerIdentifier("x"), Position(2, 5)), Token(GreaterEqual(), Position(2, 7)), Token(Number(10), Position(2, 10)), Token(RParen(), Position(2, 12)), Token(LBrace(), Position(2, 14)), Token(LowerIdentifier("x"), Position(3, 3)), Token(Assign(), Position(3, 5)), Token(LowerIdentifier("x"), Position(3, 7)), Token(Plus(), Position(3, 9)), Token(Number(1), Position(3, 11)), Token(RBrace(), Position(4, 1)), Token(Else(), Position(4, 3)), Token(LBrace(), Position(4, 8)), Token(LowerIdentifier("x"), Position(5, 3)), Token(Assign(), Position(5, 5)), Token(LowerIdentifier("x"), Position(5, 7)), Token(Plus(), Position(5, 9)), Token(Number(2), Position(5, 11)), Token(RBrace(), Position(6, 1))]
 
+    with fullLexerHandler(input, false) 
     val tokens = collectTokens(Nil()) { do next() }
+    
     assertEqual(tokens, expected)
   }
 
   test("lexer distinguishes correctly between LowerIdentifier and UpperIdentifier") {
-    val input = "val x = 2: Int"
-    with feed(input)
-    with scanner[Char]
-    with scanWithPos
-    with on[LexerError].panic
-    with lexer
+    val input = "val x: Int = 2"
 
-    val expected = [Token(Val(), Position(1, 1)), Token(LowerIdentifier("x"), Position(1, 5)), Token(Assign(), Position(1, 7)), Token(Number(2), Position(1, 9)), Token(Colon(), Position(1, 10)), Token(UpperIdentifier("Int"), Position(1, 12))]
+    val expected = [Token(Val(), Position(1, 1)), Token(LowerIdentifier("x"), Position(1, 5)), Token(Colon(), Position(1, 6)), Token(UpperIdentifier("Int"), Position(1, 8)), Token(Assign(), Position(1, 12)), Token(Number(2), Position(1, 14))]
 
+    with fullLexerHandler(input, false)
     val tokens = collectTokens(Nil()) { do next() }
     assertEqual(tokens, expected)
   }
@@ -53,24 +65,83 @@ def main() = mainSuite("lib") {
   test("lexer throws LexerError on unknown char") { 
     val input = "val x = 2;"
 
-    with feed(input)
-    with scanner[Char]
-    with scanWithPos
-    with on[LexerError].assertThrown
-    with lexer
-
+    with fullLexerHandler(input, true)
     val tokens = collectTokens(Nil()) { do next() }
   }
 
   test("lexer throws LexerError if an identifier starts with a number") {
     val input = "val 1x = 2"
 
+    with fullLexerHandler(input, true)
+    val tokens = collectTokens(Nil()) { do next() }
+  }
+
+  test("parser parses variable declaration without type annotation (Int literal)") {
+    val input = "val x = 2"
     with feed(input)
     with scanner[Char]
     with scanWithPos
-    with on[LexerError].assertThrown
+    with on[LexerError].panic
     with lexer
+    with on[ParseError].panic
 
-    val tokens = collectTokens(Nil()) { do next() }
+    val expected = [VariableDecl("x", None(), IntLiteral(2))]
+    val obtained = parseProgram()
+
+    assertEqual(obtained, expected)
+  }
+
+  test("parser parses variable declaration with type annotation (Int literal)") {
+    val input = "val x: Int = 2"
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic
+
+    val expected = [VariableDecl("x", Some(BaseType("Int")), IntLiteral(2))]
+    val obtained = parseProgram()
+
+    assertEqual(obtained, expected)
+  }
+
+  test("parser parses variable declaration without type annotation (Bool literal)") {
+    val input = "val x = false"
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic
+
+    val expected = [VariableDecl("x", None(), BoolLiteral(false))]
+    val obtained = parseProgram()
+
+    assertEqual(obtained, expected)
+  }
+
+  test("parser parses variable declaration with type annotation (Bool literal)") {
+    val input = "val x: Bool = false"
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic
+
+    val expected = [VariableDecl("x", Some(BaseType("Bool")), BoolLiteral(false))]
+    val obtained = parseProgram()
+
+    assertEqual(obtained, expected)
+  }
+
+  test("parser parses binary math expressions (Add, Sub, Mult, Div)") {
+    val inputAdd = "2 + 2"
+    val inputSub = "2 - 2"
+    val inputMult = "2 * 2"
+    val inputDiv = "2 / 2"
+
+    
   }
 }
