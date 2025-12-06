@@ -36,7 +36,7 @@ def main() = mainSuite("lib") {
     assertEqual(tokens, expected)
   }
 
-  test("lexer disdingushes correctly between LowerIdentifier and UpperIdentifier") {
+  test("lexer distinguishes correctly between LowerIdentifier and UpperIdentifier") {
     val input = "val x = 2: Int"
     with feed(input)
     with scanner[Char]
@@ -50,7 +50,7 @@ def main() = mainSuite("lib") {
     assertEqual(tokens, expected)
   }
 
-  test("lexer throws LexerError on unnokwn char") { 
+  test("lexer throws LexerError on unknown char") { 
     val input = "val x = 2;"
 
     with feed(input)

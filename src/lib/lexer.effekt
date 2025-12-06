@@ -182,10 +182,16 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], getPos} = {
 
   def readNumberToken(pos: Position): Token / { Scan[Char], stop } = {
     val value = readDecimal()
-    val next = do Scan::peek()
+
+    val hasAlphaAfter = try {
+      val next = do Scan::peek()
+      next.isAlphabetic
+    } with stop {
+      false
+    }
 
     // disallow identifiers to start with a number
-    if (next.isAlphabetic) {
+    if (hasAlphaAfter) {
       val rest = string::collect { readWhile { c => c.isAlphanumeric }}
       do raise(LexerError(), "invalid char at " ++ pos.show ++ " in " ++ "'" ++ value.show ++ rest ++ "'" )
     }
@@ -203,7 +209,6 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], getPos} = {
   if (c.isAlphabetic) {
     readIdentifierOrKeyword(pos)
   } else if (c.isDigit) {
-    val next = do Scan::peek()
     readNumberToken(pos)
   } else if (c == '=') {
     // consume first char 
@@ -310,7 +315,6 @@ def lexer[R]() { program: => R / Lexer[Token] }: R / { Scan[Char], getPos, Excep
           }
         }
       }
-      println("read: " ++ tok.kind.show)
       resume(tok)
     }
   }
