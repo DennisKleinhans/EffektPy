@@ -11,39 +11,39 @@ interface Lexer[R] {
 
 type TokenKind {
   // keywords
-  Val();
-  If();
-  Else();
+  Val()
+  If()
+  Else()
 
   // identifier and literals
-  LowerIdentifier(id: String); // used for variables and function names like 'val someVal = 2' or 'def someFunc = {...}
-  UpperIdentifier(id: String); // used for types like "someValue: Int"
-  Number(n: Int);
-  BoolLiteral(b: Bool);
+  LowerIdentifier(id: String) // used for variables and function names like 'val someVal = 2' or 'def someFunc = {...}
+  UpperIdentifier(id: String) // used for types like "someValue: Int"
+  Number(n: Int)
+  Boolean(b: Bool)
 
   // operators
-  Assign();
-  Equal();
-  NotEqual();
-  Less();
-  Greater();
-  LessEqual();
-  GreaterEqual();
-  Plus();
-  Minus();
-  Mult();
-  Div();
+  Assign()
+  Equal()
+  NotEqual()
+  Less()
+  Greater()
+  LessEqual()
+  GreaterEqual()
+  Plus()
+  Minus()
+  Mult()
+  Div()
 
   // parentheses
-  LParen();
-  RParen();
-  LBrace();
-  RBrace();
+  LParen()
+  RParen()
+  LBrace()
+  RBrace()
 
   // used for type annotation
-  Colon();
+  Colon()
 
-  EOF();
+  EOF()
 }
 
 record Token(kind: TokenKind, position: Position)
@@ -56,7 +56,7 @@ def show(tokenKind: TokenKind): String = tokenKind match {
   case LowerIdentifier(id) => "LowerIdentifier: " ++ id
   case UpperIdentifier(id) => "UpperIdentifier: " ++ id
   case Number(n) => "Number: " ++ n.show
-  case BoolLiteral(b) => "Bool: " ++ b.show
+  case Boolean(b) => "Bool: " ++ b.show
   case Val() => "Keyword: val"
   case If() => "Keyword: if" 
   case Else() => "Keyword: else"
@@ -79,6 +79,9 @@ def show(tokenKind: TokenKind): String = tokenKind match {
   case Colon() => "Colon"
 }
 def show(token: Token): String = token.kind.show
+def equal(x: TokenKind, y: TokenKind): Bool = {
+  x.show == y.show
+}
 
 def scanWithPos[R]() {prog: => R / { Scan[Char], getPos } }: R / Scan[Char] = {
   // track current source position
@@ -166,8 +169,8 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], getPos} = {
       case "val" => Val()
       case "if" => If()
       case "else" => Else()
-      case "true" => BoolLiteral(true)
-      case "false" => BoolLiteral(false)
+      case "true" => Boolean(true)
+      case "false" => Boolean(false)
       case _ => {
         with on[OutOfBounds].panic
         if (name.charAt(0).isUpper) UpperIdentifier(name) else LowerIdentifier(name)
