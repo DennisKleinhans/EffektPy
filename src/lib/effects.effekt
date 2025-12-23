@@ -1,0 +1,7 @@
+import src/lib/tokens
+
+effect getPos(): Position
+interface Lexer[R] {
+  def peek(): R
+  def next(): R
+}

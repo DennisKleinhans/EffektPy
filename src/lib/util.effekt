@@ -1,0 +1,93 @@
+import src/lib/tokens
+import src/lib/ast
+import src/lib/effects
+import src/lib/errors
+
+/// Consume the next token and assert it has the expected kind. If not, raise a ParseError.
+def expect(expected: TokenKind): Unit / { Lexer[Token], Exception[ParseError]} = {
+  val token = do next()
+  if (not(token.kind.equal(expected))) {
+    do raise(ParseError(), "expected " ++ expected.show ++ " at Position " ++ token.position.show ++ " but got " ++ token.kind.show)
+  }
+}
+
+/// Peek at the next token and return whether it matches `kind`.\n
+/// This does not consume the token
+def check(kind: TokenKind) : Bool / Lexer[Token] = {
+  val token = do peek()
+  token.kind.equal(kind)
+}
+
+/// Helper function to create comparison expressions based on the operator token.
+def makeCmp(op: TokenKind, left: Expr, right: Expr): Expr / Exception[ParseError]  = {
+  op match {
+    case TokenKind::Equal() => Eq(left, right)
+    case NotEqual()         => Neq(left, right)
+    case TokenKind::Less()  => Lt(left, right)
+    case TokenKind::Greater() => Gt(left, right)
+    case LessEqual()        => LtE(left, right)
+    case GreaterEqual()     => GtE(left, right)
+    case _ => raise(ParseError(), "internal: unknown comparison operator")
+  }
+}
+
+/// Helper function to check whether a token kind is a comparison operator.
+def isComparisonOp(kind: TokenKind): Bool = {
+  kind match {
+    case TokenKind::Equal() => true
+    case NotEqual()         => true
+    case TokenKind::Less()  => true
+    case TokenKind::Greater() => true
+    case LessEqual()        => true
+    case GreaterEqual()     => true
+    case _ => false
+  }
+}
+
+/// Extracts a Type from a string representation. Raises ParseError if the
+/// string does not correspond to a known type.
+def extractType(input: String): Type / Exception[ParseError] = {
+  input match {
+    case "Int" => IntType()
+    case "Bool" => BoolType()
+    case _ => raise(ParseError(), "type annotation '" ++ input ++ "' is not a valid type")
+  }
+}
+
+
+def show(pos: Position): String = "line: " ++ pos.line.show ++ " column: " ++ pos.column.show
+def show(tokenKind: TokenKind): String = tokenKind match {
+  case LowerIdentifier(id) => "LowerIdentifier: " ++ id
+  case UpperIdentifier(id) => "UpperIdentifier: " ++ id
+  case Number(n) => "Number: " ++ n.show
+  case Boolean(b) => "Bool: " ++ b.show
+  case Val() => "Keyword: val"
+  case If() => "Keyword: if" 
+  case Else() => "Keyword: else"
+  case Then() => "Keyword: then"
+  case Assign() => "Operator: ="
+  case TokenKind::Equal() => "Operator: =="
+  case NotEqual() => "Operator: !="
+  case TokenKind::Less() => "Operator: <"
+  case TokenKind::Greater() => "Operator: >"
+  case LessEqual() => "Operator: <="
+  case GreaterEqual() => "Operator: >="
+  case Plus() => "Operator: +"
+  case Minus() => "Operator: -"
+  case Mult() => "Operator: *"
+  case Div() => "Operator: /"
+  case And() => "Operator: and"
+  case Or() => "Operator: or"
+  case Not() => "Operator: not"
+  case LParen() => "Punctuation: ("
+  case RParen() => "Punctuation: )"
+  case LBrace() => "Punctuation: {"
+  case RBrace() => "Punctuation: }"
+  case EOF() => "EndOfFile"
+  case Colon() => "Colon"
+}
+def show(token: Token): String = token.kind.show
+
+def equal(x: TokenKind, y: TokenKind): Bool = {
+  x.show == y.show
+}

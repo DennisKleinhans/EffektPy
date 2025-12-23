@@ -2,58 +2,9 @@ import scanner
 import io/filesystem
 import buffer
 import exception
-
-effect getPos(): Position
-interface Lexer[R] {
-  def peek(): R
-  def next(): R
-}
-
-type TokenKind {
-  // keywords
-  Val()
-  If()
-  Else()
-  Then()
-
-  // identifier and literals
-  LowerIdentifier(id: String) // used for variables and function names like 'val someVal = 2' or 'def someFunc = {...}
-  UpperIdentifier(id: String) // used for types like "someValue: Int"
-  Number(n: Int)
-  Boolean(b: Bool)
-
-  // operators
-  Assign()
-  Equal()
-  NotEqual()
-  Less()
-  Greater()
-  LessEqual()
-  GreaterEqual()
-  Plus()
-  Minus()
-  Mult()
-  Div()
-  And()
-  Or()
-  Not()
-
-  // parentheses
-  LParen()
-  RParen()
-  LBrace()
-  RBrace()
-
-  // used for type annotation
-  Colon()
-
-  EOF()
-}
-
-record Token(kind: TokenKind, position: Position)
-record Position (line: Int, column: Int)
-record LexerError()
-
+import src/lib/tokens
+import src/lib/errors
+import src/lib/effects
 
 def show(pos: Position): String = "line: " ++ pos.line.show ++ " column: " ++ pos.column.show
 def show(tokenKind: TokenKind): String = tokenKind match {
@@ -66,10 +17,10 @@ def show(tokenKind: TokenKind): String = tokenKind match {
   case Else() => "Keyword: else"
   case Then() => "Keyword: then"
   case Assign() => "Operator: ="
-  case Equal() => "Operator: =="
+  case TokenKind::Equal() => "Operator: =="
   case NotEqual() => "Operator: !="
-  case Less() => "Operator: <"
-  case Greater() => "Operator: >"
+  case TokenKind::Less() => "Operator: <"
+  case TokenKind::Greater() => "Operator: >"
   case LessEqual() => "Operator: <="
   case GreaterEqual() => "Operator: >="
   case Plus() => "Operator: +"
@@ -86,7 +37,9 @@ def show(tokenKind: TokenKind): String = tokenKind match {
   case EOF() => "EndOfFile"
   case Colon() => "Colon"
 }
+
 def show(token: Token): String = token.kind.show
+
 def equal(x: TokenKind, y: TokenKind): Bool = {
   x.show == y.show
 }

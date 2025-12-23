@@ -1,11 +1,15 @@
 module src/test
 
 import test
-import src/lib/testUtils
 import scanner
+import src/lib/testUtils
 import src/lib/lexer
 import src/lib/parser
 import src/lib/sugar
+import src/lib/tokens
+import src/lib/ast
+import src/lib/errors
+import src/lib/effects
 
 def main() = mainSuite("lib") {
 

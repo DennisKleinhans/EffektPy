@@ -1,0 +1,4 @@
+
+record ParseError()
+record LexerError()
+record DesugarError()

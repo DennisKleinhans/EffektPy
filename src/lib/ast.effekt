@@ -1,0 +1,40 @@
+import src/lib/tokens
+
+type Type {
+  IntType()
+  BoolType()
+}
+
+type Expr {
+  // literals
+  IntLiteral(value: Int)
+  BoolLiteral(value: Bool)
+  Variable(name: String)
+  // binary operands
+  AddExpr(left: Expr, right: Expr)
+  SubExpr(left: Expr, right: Expr)
+  MultExpr(left: Expr, right: Expr)
+  DivExpr(left: Expr, right: Expr)
+  AndExpr(left: Expr, right: Expr)
+  OrExpr(left: Expr, right: Expr)
+  // unary operands
+  NotExpr(expr: Expr)
+  // compare operators 
+  Eq(left: Expr, right: Expr)
+  Neq(left: Expr, right: Expr)
+  Lt(left: Expr, right: Expr)
+  Gt(left: Expr, right: Expr)
+  LtE(left: Expr, right: Expr)
+  GtE(left: Expr, right: Expr)
+  // chained comparison (preserve source structure until desugaring)
+  CompareChain(first: Expr, rest: List[(TokenKind, Expr)])
+  IfExpr(condition: Expr, thenExpr: Expr, elseExpr: Expr)
+}
+
+type Stmt {
+  VariableDecl(name: String, typeAnnotation: Option[Type], value: Expr)
+  IfStmt(cond: Expr, thenBranch: List[Stmt], elseBranch: List[Stmt])
+  ExprStmt(expr: Expr)
+}
+
+type Program = List[Stmt]

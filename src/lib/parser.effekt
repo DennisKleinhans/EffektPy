@@ -1,60 +1,8 @@
-import src/lib/lexer
-
-type Type {
-  IntType()
-  BoolType()
-}
-
-type Expr {
-  // literals
-  IntLiteral(value: Int)
-  BoolLiteral(value: Bool)
-  Variable(name: String)
-  // binary operands
-  AddExpr(left: Expr, right: Expr)
-  SubExpr(left: Expr, right: Expr)
-  MultExpr(left: Expr, right: Expr)
-  DivExpr(left: Expr, right: Expr)
-  AndExpr(left: Expr, right: Expr)
-  OrExpr(left: Expr, right: Expr)
-  // unary operands
-  NotExpr(expr: Expr)
-  // compare operators 
-  Eq(left: Expr, right: Expr)
-  Neq(left: Expr, right: Expr)
-  Lt(left: Expr, right: Expr)
-  Gt(left: Expr, right: Expr)
-  LtE(left: Expr, right: Expr)
-  GtE(left: Expr, right: Expr)
-  // chained comparison (preserve source structure until desugaring)
-  CompareChain(first: Expr, rest: List[(TokenKind, Expr)])
-  IfExpr(condition: Expr, thenExpr: Expr, elseExpr: Expr)
-}
-
-type Stmt {
-  VariableDecl(name: String, typeAnnotation: Option[Type], value: Expr)
-  IfStmt(cond: Expr, thenBranch: List[Stmt], elseBranch: List[Stmt])
-  ExprStmt(expr: Expr)
-}
-
-type Program = List[Stmt]
-
-record ParseError()
-
-/// Consume the next token and assert it has the expected kind. If not, raise a ParseError.
-def expect(expected: TokenKind): Unit / { Lexer[Token], Exception[ParseError]} = {
-  val token = do next()
-  if (not(token.kind.equal(expected))) {
-    do raise(ParseError(), "expected " ++ expected.show ++ " at Position " ++ token.position.show ++ " but got " ++ token.kind.show)
-  }
-}
-
-/// Peek at the next token and return whether it matches `kind`.\n
-/// This does not consume the token
-def check(kind: TokenKind) : Bool / Lexer[Token] = {
-  val token = do peek()
-  token.kind.equal(kind)
-}
+import src/lib/tokens
+import src/lib/ast
+import src/lib/util
+import src/lib/effects
+import src/lib/errors
 
 /// parsePrimary parses the smallest expression forms: literals, variables,
 /// and parenthesized expressions. It does not handle binary operators.\n
@@ -189,32 +137,6 @@ def parseAdditive(): Expr / { Lexer[Token], Exception[ParseError] } = {
 
   val first = parseMultiplicative()
   go(first) 
-}
-
-/// Helper function to create comparison expressions based on the operator token.
-def makeCmp(op: TokenKind, left: Expr, right: Expr): Expr / Exception[ParseError]  = {
-  op match {
-    case TokenKind::Equal() => Eq(left, right)
-    case NotEqual()         => Neq(left, right)
-    case TokenKind::Less()  => Lt(left, right)
-    case TokenKind::Greater() => Gt(left, right)
-    case LessEqual()        => LtE(left, right)
-    case GreaterEqual()     => GtE(left, right)
-    case _ => raise(ParseError(), "internal: unknown comparison operator")
-  }
-}
-
-/// Helper function to check whether a token kind is a comparison operator.
-def isComparisonOp(kind: TokenKind): Bool = {
-  kind match {
-    case TokenKind::Equal() => true
-    case NotEqual()         => true
-    case TokenKind::Less()  => true
-    case TokenKind::Greater() => true
-    case LessEqual()        => true
-    case GreaterEqual()     => true
-    case _ => false
-  }
 }
 
 /// Parses comparison expressions: ==, !=, <, >, <=, >=.
@@ -352,16 +274,6 @@ def parseStmt(): Stmt / { Lexer[Token], Exception[ParseError] } = {
       val expr = parseExpression()
       ExprStmt(expr)
     }
-  }
-}
-
-/// Extracts a Type from a string representation. Raises ParseError if the
-/// string does not correspond to a known type.
-def extractType(input: String): Type / Exception[ParseError] = {
-  input match {
-    case "Int" => IntType()
-    case "Bool" => BoolType()
-    case _ => raise(ParseError(), "type annotation '" ++ input ++ "' is not a valid type")
   }
 }
 

@@ -1,5 +1,7 @@
-import src/lib/parser
-import src/lib/lexer
+import src/lib/ast
+import src/lib/tokens
+import src/lib/errors
+import src/lib/util
 
 /// build a list of pairwise comparison expressions from a first expression and a list of (operator, expression) pairs
 def buildComparisonsFromPairs(first: Expr, pairs: List[(TokenKind, Expr)]): List[Expr] / Exception[ParseError] = {
@@ -7,7 +9,7 @@ def buildComparisonsFromPairs(first: Expr, pairs: List[(TokenKind, Expr)]): List
     remaining match {
       case Nil() => acc.reverse
       case Cons((op, rhs), tail) => {
-        val cmp = parser::makeCmp(op, currentLeft, rhs)
+        val cmp = makeCmp(op, currentLeft, rhs)
         go(rhs, tail, Cons(cmp, acc))
       }
     }
@@ -16,12 +18,9 @@ def buildComparisonsFromPairs(first: Expr, pairs: List[(TokenKind, Expr)]): List
 }
 
 /// combine a list of expressions into a chain of AndExpr
-def combineWithAnd(comps: List[Expr]): Expr = {
+def combineWithAnd(comps: List[Expr]): Expr / Exception[DesugarError] = {
   comps match {
-    case Nil() => // shouldn't happen for a real chain, but be defensive
-    // return a dummy literal 0 if you prefer - here we return first-like behaviour
-    // caller should ensure comps non-empty; but keep a fallback
-    IntLiteral(0)
+    case Nil() => raise(DesugarError(), "internal: combineWithAnd called with empty list") // should not happen
     case Cons(head, Nil()) => head
     case Cons(head, tail) => AndExpr(head, combineWithAnd(tail))
   }
@@ -56,6 +55,7 @@ def desugarExpr(e: Expr): Expr / Exception[ParseError] = {
       } else {
         // desugar subexpressions inside the comparison operands as well
         val compsDesugared = comps.map { (c) => desugarExpr(c) }
+        with on[DesugarError].panic
         combineWithAnd(compsDesugared)
       }
     }
