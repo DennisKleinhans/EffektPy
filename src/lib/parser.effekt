@@ -28,8 +28,7 @@ type Expr {
   GtE(left: Expr, right: Expr)
   // chained comparison (preserve source structure until desugaring)
   CompareChain(first: Expr, rest: List[(TokenKind, Expr)])
-  // python-style if expression e.g. 42 if x > 0 else 100
-  IfExpr(thenExpr: Expr, condition: Expr, elseExpr: Expr)
+  IfExpr(condition: Expr, thenExpr: Expr, elseExpr: Expr)
 }
 
 type Stmt {
@@ -46,7 +45,7 @@ record ParseError()
 def expect(expected: TokenKind): Unit / { Lexer[Token], Exception[ParseError]} = {
   val token = do next()
   if (not(token.kind.equal(expected))) {
-    do raise(ParseError(), "expected " ++ expected.show ++ "at Position " ++ token.position.show ++ " but got " ++ token.kind.show)
+    do raise(ParseError(), "expected " ++ expected.show ++ " at Position " ++ token.position.show ++ " but got " ++ token.kind.show)
   }
 }
 
@@ -268,17 +267,18 @@ def parseComparison(): Expr / { Lexer[Token], Exception[ParseError] } = {
 /// has the lowest precedence: it wraps whatever expression came before it.\n
 /// Example: `42 if x > 0 else -1`
 def parseIfExpression(): Expr / { Lexer[Token], Exception[ParseError] } = {
-  var expr = parseOr() // parse the candidate "then" expression first
   val token = do peek()
   token.kind match {
     case If() => {
       do next()
-      val condition = parseComparison()
+      val condition = parseOr()
+      expect(Then())
+      val thenExpr = parseOr()
       expect(Else())
-      val elseExpr = parseComparison()
-      IfExpr(expr, condition, elseExpr)
+      val elseExpr = parseOr()
+      IfExpr(condition, thenExpr, elseExpr)
     }
-    case _ => expr
+    case _ => parseOr()
   }
 }
 

@@ -14,6 +14,7 @@ type TokenKind {
   Val()
   If()
   Else()
+  Then()
 
   // identifier and literals
   LowerIdentifier(id: String) // used for variables and function names like 'val someVal = 2' or 'def someFunc = {...}
@@ -63,6 +64,7 @@ def show(tokenKind: TokenKind): String = tokenKind match {
   case Val() => "Keyword: val"
   case If() => "Keyword: if" 
   case Else() => "Keyword: else"
+  case Then() => "Keyword: then"
   case Assign() => "Operator: ="
   case Equal() => "Operator: =="
   case NotEqual() => "Operator: !="
@@ -175,6 +177,7 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], getPos} = {
       case "val" => Val()
       case "if" => If()
       case "else" => Else()
+      case "then" => Then()
       case "true" => Boolean(true)
       case "false" => Boolean(false)
       case "and" => And()

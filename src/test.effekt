@@ -295,10 +295,10 @@ def main() = mainSuite("lib") {
   }
 
   test("parser parses if-expressions"){
-    val input = "val x = 1 if true else 0"
+    val input = "val x = if true then 1 else 0"
 
     val expected = [
-      VariableDecl( "x", None(), IfExpr(IntLiteral(1), BoolLiteral(true), IntLiteral(0)))
+      VariableDecl( "x", None(), IfExpr(BoolLiteral(true), IntLiteral(1), IntLiteral(0)))
     ]
 
     with on[OutOfBounds].panic
@@ -325,6 +325,42 @@ def main() = mainSuite("lib") {
           [ExprStmt(IntLiteral(1))],
           [ExprStmt(IntLiteral(0))]
         )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
+
+  test("parser parses complex program with variable declarations, if-statements, and expressions") {
+    val input =
+    "val x: Int = 10\n" ++
+    "val y: Bool = true\n" ++
+    "if (x >= 10 and not y) {\n" ++
+    "  x + 1\n" ++
+    "} else {\n" ++
+    "  x - 1\n" ++
+    "}"
+
+    val expected = [
+      VariableDecl("x", Some(IntType()), IntLiteral(10)),
+      VariableDecl("y", Some(BoolType()), BoolLiteral(true)),
+      IfStmt(
+        AndExpr(
+          GtE(Variable("x"), IntLiteral(10)),
+          NotExpr(Variable("y"))
+        ),
+        [ExprStmt(AddExpr(Variable("x"), IntLiteral(1)))],
+        [ExprStmt(SubExpr(Variable("x"), IntLiteral(1)))]
+      )
     ]
 
     with on[OutOfBounds].panic
