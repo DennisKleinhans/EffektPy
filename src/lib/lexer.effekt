@@ -33,6 +33,9 @@ type TokenKind {
   Minus()
   Mult()
   Div()
+  And()
+  Or()
+  Not()
 
   // parentheses
   LParen()
@@ -71,6 +74,9 @@ def show(tokenKind: TokenKind): String = tokenKind match {
   case Minus() => "Operator: -"
   case Mult() => "Operator: *"
   case Div() => "Operator: /"
+  case And() => "Operator: and"
+  case Or() => "Operator: or"
+  case Not() => "Operator: not"
   case LParen() => "Punctuation: ("
   case RParen() => "Punctuation: )"
   case LBrace() => "Punctuation: {"
@@ -165,12 +171,15 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], getPos} = {
     val name = string::collect { readWhile { c => c.isAlphanumeric } } 
 
     // identify potential keywords
-    val kind = name match{
+    val kind = name match {
       case "val" => Val()
       case "if" => If()
       case "else" => Else()
       case "true" => Boolean(true)
       case "false" => Boolean(false)
+      case "and" => And()
+      case "or" => Or()
+      case "not" => Not()
       case _ => {
         with on[OutOfBounds].panic
         if (name.charAt(0).isUpper) UpperIdentifier(name) else LowerIdentifier(name)

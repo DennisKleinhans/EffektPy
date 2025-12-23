@@ -15,6 +15,10 @@ type Expr {
   SubExpr(left: Expr, right: Expr)
   MultExpr(left: Expr, right: Expr)
   DivExpr(left: Expr, right: Expr)
+  AndExpr(left: Expr, right: Expr)
+  OrExpr(left: Expr, right: Expr)
+  // unary operands
+  NotExpr(expr: Expr)
   // compare operators 
   Eq(left: Expr, right: Expr)
   Neq(left: Expr, right: Expr)
@@ -82,6 +86,58 @@ def parsePrimary(): Expr / { Lexer[Token], Exception[ParseError]} = {
   }
 }
 
+/// Implements parsing for unary `not` operator.
+/// This function checks for a leading `not` token, and if found, parses
+/// another unary expression as its operand (right-associative). If no `not` is found,
+/// it falls back to parsePrimary().
+def parseUnary(): Expr / { Lexer[Token], Exception[ParseError] } = {
+  val token = do peek()
+  token.kind match {
+    case Not() => { 
+      do next()
+      val inside = parseUnary()
+      NotExpr(inside) 
+    } // right-assoc for chains of not
+    case _ => parsePrimary()
+  }
+}
+
+/// Implements parsing for `and` which has higher precedence than `or`.
+/// This function uses a common pattern: parse the higher-precedence operand
+def parseAnd(): Expr / { Lexer[Token], Exception[ParseError] } = {
+  def go(left: Expr): Expr / Lexer[Token] = {
+    val token = do peek()
+    token.kind match {
+      case And() => { 
+        do next()
+        val right = parseComparison()
+        go(AndExpr(left, right)) 
+      }
+      case _ => left
+    }
+  }
+  val first = parseComparison()
+  go(first)
+}
+
+/// Implements parsing for `or` which has lower precedence than `and`.
+/// This function uses a common pattern: parse the higher-precedence operand
+def parseOr(): Expr / { Lexer[Token], Exception[ParseError] } = {
+  def go(left: Expr): Expr / Lexer[Token] = {
+    val token = do peek()
+    token.kind match {
+      case Or() => { 
+        do next()
+        val right = parseAnd()
+        go(OrExpr(left, right))
+      }
+      case _ => left
+    }
+  }
+  val first = parseAnd()
+  go(first)
+}
+
 /// Implements parsing for * and / which have higher precedence than + and -.
 /// This function uses a common pattern: parse the higher-precedence operand
 /// (parsePrimary) then loop (via local go()) to consume any * or / that follow.\n
@@ -94,19 +150,19 @@ def parseMultiplicative(): Expr / { Lexer[Token], Exception[ParseError] } = {
     token.kind match {
       case Mult() => {
         do next()
-        val right = parsePrimary() 
+        val right = parseUnary() 
         go(MultExpr(left, right))
       }
       case Div() => {
         do next()
-        val right = parsePrimary()
+        val right = parseUnary()
         go(DivExpr(left, right))
       }
       case _ => left // no more * or / => return current left
     }
   }
   
-  val first = parsePrimary()
+  val first = parseUnary()
   go(first)
 }
 
@@ -167,43 +223,40 @@ def isComparisonOp(kind: TokenKind): Bool = {
 /// a CompareChain node.
 def parseComparison(): Expr / { Lexer[Token], Exception[ParseError] } = {
   val left = parseAdditive()
-
   val token = do peek()
-  token.kind match {
-    // no comparison operator: return left as is
-    case _  and not(isComparisonOp(token.kind)) =>
-      left
+  
+  // no comparison operator: return left as is
+  if (not(isComparisonOp(token.kind))){
+    left
+  } else {
+  
+    // first comparison
+    val op1 = token.kind
+    do next()
+    val right1 = parseAdditive()
 
-    // single or chained comparisons 
-    case _ => {
-      // first comparison
-      val op1 = token.kind
-      do next()
-      val right1 = parseAdditive()
-
-      // collect further comparisons into a list
-      def collect(acc: List[(TokenKind, Expr)]): List[(TokenKind, Expr)] / Lexer[Token] = {
-        val t = do peek()
-        if (isComparisonOp(t.kind)) {
-          val op = t.kind
-          do next()
-          val rhs = parseAdditive()
-          collect(Cons((op, rhs), acc))
-        } else {
-          acc.reverse
-        }
+    // collect further comparisons into a list
+    def collect(acc: List[(TokenKind, Expr)]): List[(TokenKind, Expr)] / Lexer[Token] = {
+      val t = do peek()
+      if (isComparisonOp(t.kind)) {
+        val op = t.kind
+        do next()
+        val rhs = parseAdditive()
+        collect(Cons((op, rhs), acc))
+      } else {
+        acc.reverse
       }
+    }
 
-      val rest = collect(Nil())
+    val rest = collect(Nil())
 
-      // single comparison
-      if (rest is Nil()) {
-        makeCmp(op1, left, right1)
-      }
-      // chained comparisons
-      else {
-        CompareChain(left, Cons((op1, right1), rest))
-      }
+    // single comparison
+    if (rest is Nil()) {
+      makeCmp(op1, left, right1)
+    }
+    // chained comparisons
+    else {
+      CompareChain(left, Cons((op1, right1), rest))
     }
   }
 }
@@ -215,7 +268,7 @@ def parseComparison(): Expr / { Lexer[Token], Exception[ParseError] } = {
 /// has the lowest precedence: it wraps whatever expression came before it.\n
 /// Example: `42 if x > 0 else -1`
 def parseIfExpression(): Expr / { Lexer[Token], Exception[ParseError] } = {
-  var expr = parseComparison() // parse the candidate "then" expression first
+  var expr = parseOr() // parse the candidate "then" expression first
   val token = do peek()
   token.kind match {
     case If() => {

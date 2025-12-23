@@ -77,6 +77,53 @@ def main() = mainSuite("lib") {
     val tokens = collectTokens(Nil()) { do next() }
   }
 
+  test("lexer recognizes logical operators (and, or, not)") {
+    val inputs = ["and", "or", "not"]
+    val expectedOutputs = [
+      [Token(And(), Position(1, 1))],
+      [Token(Or(), Position(1, 1))],
+      [Token(Not(), Position(1, 1))]
+    ]
+
+    var iter = 0
+    while (iter < inputs.size) {
+      with on[OutOfBounds].panic
+      with fullLexerHandler(inputs.get(iter), false)
+      val tokens = collectTokens(Nil()) { do next() }
+      assertEqual(tokens, expectedOutputs.get(iter))
+      iter = iter + 1
+    }
+  }
+
+  test("lexer recognizes complex expressions with logical operators") {
+    val input = "val x = not (true and false) or (false or true and not false)"
+
+    val expected = [
+      Token(Val(), Position(1, 1)),
+      Token(LowerIdentifier("x"), Position(1, 5)),
+      Token(Assign(), Position(1, 7)),
+      Token(Not(), Position(1, 9)),
+      Token(LParen(), Position(1, 13)),
+      Token(Boolean(true), Position(1, 14)),
+      Token(And(), Position(1, 19)),
+      Token(Boolean(false), Position(1, 23)),
+      Token(RParen(), Position(1, 28)),
+      Token(Or(), Position(1, 30)),
+      Token(LParen(), Position(1, 33)),
+      Token(Boolean(false), Position(1, 34)),
+      Token(Or(), Position(1, 40)),
+      Token(Boolean(true), Position(1, 43)),
+      Token(And(), Position(1, 48)),
+      Token(Not(), Position(1, 52)),
+      Token(Boolean(false), Position(1, 56)),
+      Token(RParen(), Position(1, 61))
+    ]
+
+    with fullLexerHandler(input, false)
+    val tokens = collectTokens(Nil()) { do next() }
+    assertEqual(tokens, expected)
+  }
+
   test("parser parses variable declaration without type annotation (Int literal, Bool literal)") {
     val inputs = ["val x = 2", "val x = false"]
     val expectedOutputs = [
@@ -209,5 +256,87 @@ def main() = mainSuite("lib") {
       assertEqual(obtained, expectedOutputs.get(iter))
       iter = iter + 1
     }
+  }
+
+  test("parser parses logical expressions (and, or, not)") {
+    val inputs = [
+      "true and false",
+      "true or false",
+      "not true",
+      "not false",
+      "true and false or true",
+      "not (true or false) and true"
+    ]
+
+    val expectedOutputs = [
+      [ExprStmt(AndExpr(BoolLiteral(true), BoolLiteral(false)))],
+      [ExprStmt(OrExpr(BoolLiteral(true), BoolLiteral(false)))],
+      [ExprStmt(NotExpr(BoolLiteral(true)))],
+      [ExprStmt(NotExpr(BoolLiteral(false)))],
+      [ExprStmt(OrExpr(AndExpr(BoolLiteral(true), BoolLiteral(false)), BoolLiteral(true)))],
+      [ExprStmt(AndExpr(NotExpr(OrExpr(BoolLiteral(true), BoolLiteral(false))), BoolLiteral(true)))]
+    ]
+
+    var iter = 0
+    while (iter < inputs.size) {
+      with on[OutOfBounds].panic
+      with feed(inputs.get(iter))
+      with scanner[Char]
+      with scanWithPos
+      with on[LexerError].panic
+      with lexer
+      with on[ParseError].panic 
+      
+      val obtained = parseProgram()
+     
+      assertEqual(obtained, expectedOutputs.get(iter))
+      iter = iter + 1
+    }
+  }
+
+  test("parser parses if-expressions"){
+    val input = "val x = 1 if true else 0"
+
+    val expected = [
+      VariableDecl( "x", None(), IfExpr(IntLiteral(1), BoolLiteral(true), IntLiteral(0)))
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
+
+  test("parser parses if-statement with logical conditions") {
+    val input = "if (not false and true) { 1 } else { 0 }"
+
+    val expected = [
+      IfStmt(
+          AndExpr(
+            NotExpr(BoolLiteral(false)),
+            BoolLiteral(true)),
+          [ExprStmt(IntLiteral(1))],
+          [ExprStmt(IntLiteral(0))]
+        )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
   }
 }
