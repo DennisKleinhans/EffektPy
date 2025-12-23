@@ -1,6 +1,8 @@
 import src/lib/lexer
+
 type Type {
-  BaseType(name: String)
+  IntType()
+  BoolType()
 }
 
 type Expr {
@@ -20,6 +22,8 @@ type Expr {
   Gt(left: Expr, right: Expr)
   LtE(left: Expr, right: Expr)
   GtE(left: Expr, right: Expr)
+  // chained comparison (preserve source structure until desugaring)
+  CompareChain(first: Expr, rest: List[(TokenKind, Expr)])
   // python-style if expression e.g. 42 if x > 0 else 100
   IfExpr(thenExpr: Expr, condition: Expr, elseExpr: Expr)
 }
@@ -84,106 +88,125 @@ def parsePrimary(): Expr / { Lexer[Token], Exception[ParseError]} = {
 /// That loop builds left-associative binary trees:
 ///   a * b * c  -> MultExpr(MultExpr(a,b), c)
 def parseMultiplicative(): Expr / { Lexer[Token], Exception[ParseError] } = {
-  var left = parsePrimary()
-  def go(): Unit / Lexer[Token] = {
+  
+  def go(left: Expr): Expr / Lexer[Token] = {
     val token = do peek()
     token.kind match {
       case Mult() => {
         do next()
-        val right = parsePrimary() // RHS is primary (highest precedence)
-        left = MultExpr(left, right) // left-associative combine
-        go()
+        val right = parsePrimary() 
+        go(MultExpr(left, right))
       }
       case Div() => {
         do next()
         val right = parsePrimary()
-        left = DivExpr(left, right)
-        go()
+        go(DivExpr(left, right))
       }
-      case _ => () // no more * or / => return current left
+      case _ => left // no more * or / => return current left
     }
   }
-  go()
-  left
+  
+  val first = parsePrimary()
+  go(first)
 }
 
 /// Parses + and - operators. Note that it calls parseMultiplicative() for
 /// operands, which enforces that * and / bind tighter than + and -.\n
 /// The same left-associative looping pattern is used to allow chaining.
 def parseAdditive(): Expr / { Lexer[Token], Exception[ParseError] } = {
-  var left = parseMultiplicative()
 
-  def go(): Unit / Lexer[Token] = {
+  def go(left: Expr): Expr / Lexer[Token] = {
     val token = do peek()
     token.kind match {
       case Plus() => {
         do next()
-        val right = parseMultiplicative() // RHS is multiplicative: enforces precedence
-        left = AddExpr(left, right) // left-associative
-        go()
+        val right = parseMultiplicative()
+        go(AddExpr(left, right))
       }
       case Minus() => {
         do next()
         val right = parseMultiplicative()
-        left = SubExpr(left, right)
-        go()
+        go(SubExpr(left, right))
       }
-      case _ => ()
+      case _ => left
     }
   }
-  go() 
-  left
+
+  val first = parseMultiplicative()
+  go(first) 
 }
 
-/// Parses comparison operators (==, !=, <, >, <=, >=).
-/// It calls parseAdditive() for both sides, so arithmetic binds more tightly
-/// than comparisons (i.e. "1 + 2 < 4" parses as (1+2) < 4).
+/// Helper function to create comparison expressions based on the operator token.
+def makeCmp(op: TokenKind, left: Expr, right: Expr): Expr / Exception[ParseError]  = {
+  op match {
+    case TokenKind::Equal() => Eq(left, right)
+    case NotEqual()         => Neq(left, right)
+    case TokenKind::Less()  => Lt(left, right)
+    case TokenKind::Greater() => Gt(left, right)
+    case LessEqual()        => LtE(left, right)
+    case GreaterEqual()     => GtE(left, right)
+    case _ => raise(ParseError(), "internal: unknown comparison operator")
+  }
+}
+
+/// Helper function to check whether a token kind is a comparison operator.
+def isComparisonOp(kind: TokenKind): Bool = {
+  kind match {
+    case TokenKind::Equal() => true
+    case NotEqual()         => true
+    case TokenKind::Less()  => true
+    case TokenKind::Greater() => true
+    case LessEqual()        => true
+    case GreaterEqual()     => true
+    case _ => false
+  }
+}
+
+/// Parses comparison expressions: ==, !=, <, >, <=, >=.
+/// This function also handles chained comparisons by collecting them into
+/// a CompareChain node.
 def parseComparison(): Expr / { Lexer[Token], Exception[ParseError] } = {
   val left = parseAdditive()
-  
+
   val token = do peek()
   token.kind match {
-    case TokenKind::Equal() => {
+    // no comparison operator: return left as is
+    case _  and not(isComparisonOp(token.kind)) =>
+      left
+
+    // single or chained comparisons 
+    case _ => {
+      // first comparison
+      val op1 = token.kind
       do next()
-      val right = parseAdditive()
-      Eq(left, right)
-      
+      val right1 = parseAdditive()
+
+      // collect further comparisons into a list
+      def collect(acc: List[(TokenKind, Expr)]): List[(TokenKind, Expr)] / Lexer[Token] = {
+        val t = do peek()
+        if (isComparisonOp(t.kind)) {
+          val op = t.kind
+          do next()
+          val rhs = parseAdditive()
+          collect(Cons((op, rhs), acc))
+        } else {
+          acc.reverse
+        }
+      }
+
+      val rest = collect(Nil())
+
+      // single comparison
+      if (rest is Nil()) {
+        makeCmp(op1, left, right1)
+      }
+      // chained comparisons
+      else {
+        CompareChain(left, Cons((op1, right1), rest))
+      }
     }
-    case NotEqual() => {
-      do next()
-      val right = parseAdditive()
-      Neq(left, right)
-      
-    }
-    case TokenKind::Less() => {
-      do next()
-      val right = parseAdditive()
-      Lt(left, right)
-      
-    }
-    case TokenKind::Greater() => {
-      do next()
-      val right = parseAdditive()
-      Gt(left, right)
-     
-    }
-    case LessEqual() => {
-      do next()
-      val right = parseAdditive()
-      LtE(left, right)
-      
-    }
-    case GreaterEqual() => {
-      do next()
-      val right = parseAdditive()
-      GtE(left, right)
-    }
-    case _ => left // no comparison: return left as-is
   }
-  
-  
-  left 
-} 
+}
 
 /// Handles expressions of the form: 'thenExpr `if` condition `else` elseExpr'\n
 /// Important: the code first parses a full comparison-level expression as the
@@ -279,12 +302,22 @@ def parseStmt(): Stmt / { Lexer[Token], Exception[ParseError] } = {
   }
 }
 
+/// Extracts a Type from a string representation. Raises ParseError if the
+/// string does not correspond to a known type.
+def extractType(input: String): Type / Exception[ParseError] = {
+  input match {
+    case "Int" => IntType()
+    case "Bool" => BoolType()
+    case _ => raise(ParseError(), "type annotation '" ++ input ++ "' is not a valid type")
+  }
+}
+
 /// parseType expects a single UpperIdentifier as a type name (e.g. Int, Bool).
 /// It reports an error if a lowercase identifier is used for a type.
 def parseType(): Type / { Lexer[Token], Exception[ParseError] } = {
   val token = do next()
   token.kind match {
-    case UpperIdentifier(id) => BaseType(id)
+    case UpperIdentifier(id) => extractType(id)
     case LowerIdentifier(id) => raise(ParseError(), "syntax error at position " ++ token.position.show ++ ": type annotations must start with upper case char")
     case _ => raise(ParseError(), "expected type name (UpperIdentifier) at position " ++ token.position.show ++ " but got " ++ token.kind.show)
   }

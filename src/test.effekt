@@ -35,6 +35,7 @@ def main() = mainSuite("lib") {
     }
   } 
 
+
   test("lexer produces tokens and skips whitespace") {
     val input =
     "val x = 10\n" ++
@@ -76,72 +77,137 @@ def main() = mainSuite("lib") {
     val tokens = collectTokens(Nil()) { do next() }
   }
 
-  test("parser parses variable declaration without type annotation (Int literal)") {
-    val input = "val x = 2"
-    with feed(input)
-    with scanner[Char]
-    with scanWithPos
-    with on[LexerError].panic
-    with lexer
-    with on[ParseError].panic
+  test("parser parses variable declaration without type annotation (Int literal, Bool literal)") {
+    val inputs = ["val x = 2", "val x = false"]
+    val expectedOutputs = [
+      [VariableDecl("x", None(), IntLiteral(2))], 
+      [VariableDecl("x", None(), BoolLiteral(false))]
+    ]
+    var iter = 0
 
-    val expected = [VariableDecl("x", None(), IntLiteral(2))]
-    val obtained = parseProgram()
+    while (iter < inputs.size) {
+      with on[OutOfBounds].panic
+      with feed(inputs.get(iter))
+      with scanner[Char]
+      with scanWithPos
+      with on[LexerError].panic
+      with lexer
+      with on[ParseError].panic
 
-    assertEqual(obtained, expected)
+      val obtained = parseProgram()
+
+      assertEqual(obtained, expectedOutputs.get(iter))
+      iter = iter + 1
+    }
+   
   }
 
-  test("parser parses variable declaration with type annotation (Int literal)") {
-    val input = "val x: Int = 2"
-    with feed(input)
-    with scanner[Char]
-    with scanWithPos
-    with on[LexerError].panic
-    with lexer
-    with on[ParseError].panic
+  test("parser parses variable declaration with type annotation (Int literal, Bool literal)") {
+    val inputs = ["val x: Int = 2", "val x: Bool = false"]
+    val expectedOutputs = [
+      [VariableDecl("x", Some(IntType()), IntLiteral(2))], 
+      [VariableDecl("x", Some(BoolType()), BoolLiteral(false))]
+    ]
+    var iter = 0
 
-    val expected = [VariableDecl("x", Some(BaseType("Int")), IntLiteral(2))]
-    val obtained = parseProgram()
+    while (iter < inputs.size) {
+      with on[OutOfBounds].panic
+      with feed(inputs.get(iter))
+      with scanner[Char]
+      with scanWithPos
+      with on[LexerError].panic
+      with lexer
+      with on[ParseError].panic
 
-    assertEqual(obtained, expected)
-  }
+      val obtained = parseProgram()
 
-  test("parser parses variable declaration without type annotation (Bool literal)") {
-    val input = "val x = false"
-    with feed(input)
-    with scanner[Char]
-    with scanWithPos
-    with on[LexerError].panic
-    with lexer
-    with on[ParseError].panic
-
-    val expected = [VariableDecl("x", None(), BoolLiteral(false))]
-    val obtained = parseProgram()
-
-    assertEqual(obtained, expected)
-  }
-
-  test("parser parses variable declaration with type annotation (Bool literal)") {
-    val input = "val x: Bool = false"
-    with feed(input)
-    with scanner[Char]
-    with scanWithPos
-    with on[LexerError].panic
-    with lexer
-    with on[ParseError].panic
-
-    val expected = [VariableDecl("x", Some(BaseType("Bool")), BoolLiteral(false))]
-    val obtained = parseProgram()
-
-    assertEqual(obtained, expected)
+      assertEqual(obtained, expectedOutputs.get(iter))
+      iter = iter + 1
+    }
   }
 
   test("parser parses binary math expressions (Add, Sub, Mult, Div)") {
-    val inputAdd = "2 + 2"
-    val inputSub = "2 - 2"
-    val inputMult = "2 * 2"
-    val inputDiv = "2 / 2"
+    val inputs = ["2 + 2", "2 - 2", "2 * 2", "2 / 2"]
 
+    val expectedOutputs = [
+      [ExprStmt(AddExpr(IntLiteral(2), IntLiteral(2)))],
+      [ExprStmt(SubExpr(IntLiteral(2), IntLiteral(2)))],
+      [ExprStmt(MultExpr(IntLiteral(2), IntLiteral(2)))],
+      [ExprStmt(DivExpr(IntLiteral(2), IntLiteral(2)))]
+    ]
+
+    var iter = 0
+    while (iter < inputs.size) {
+      with on[OutOfBounds].panic
+      with feed(inputs.get(iter))
+      with scanner[Char]
+      with scanWithPos
+      with on[LexerError].panic
+      with lexer
+      with on[ParseError].panic 
+      
+      val obtained = parseProgram()
+     
+      assertEqual(obtained, expectedOutputs.get(iter))
+      iter = iter + 1
+    }
+  }
+
+  test("parser parses binary compare expressions (Eq, Neq, Lt, Gt, LtE, GtE)") {
+    val inputs = ["2 == 2", "2 != 2", "2 < 2", "2 > 2", "2 <= 2", "2 >= 2"]
+
+    val expectedOutputs = [
+      [ExprStmt(Eq(IntLiteral(2), IntLiteral(2)))],
+      [ExprStmt(Neq(IntLiteral(2), IntLiteral(2)))],
+      [ExprStmt(Lt(IntLiteral(2), IntLiteral(2)))],
+      [ExprStmt(Gt(IntLiteral(2), IntLiteral(2)))],
+      [ExprStmt(LtE(IntLiteral(2), IntLiteral(2)))],
+      [ExprStmt(GtE(IntLiteral(2), IntLiteral(2)))]
+    ]
+
+    var iter = 0
+    while (iter < inputs.size) {
+      with on[OutOfBounds].panic
+      with feed(inputs.get(iter))
+      with scanner[Char]
+      with scanWithPos
+      with on[LexerError].panic
+      with lexer
+      with on[ParseError].panic 
+      
+      val obtained = parseProgram()
+     
+      assertEqual(obtained, expectedOutputs.get(iter))
+      iter = iter + 1
+    }
+  }
+
+  test("parser parses chained compare expressions (a < b < c)") {
+    val inputs = ["2 < 3 < 4", "2 <= 3 <= 4", "4 > 3 > 2", "4 >= 3 >= 2", "2 == 3 == 4", "2 != 3 != 4", "2 < 3 > 4 == 5"]
+
+    val expectedOutputs = [
+      [ExprStmt(CompareChain(IntLiteral(2), Cons((Less(), IntLiteral(3)), Cons((Less(), IntLiteral(4)), Nil()))))],
+      [ExprStmt(CompareChain(IntLiteral(2), Cons((LessEqual(), IntLiteral(3)), Cons((LessEqual(), IntLiteral(4)), Nil()))))],
+      [ExprStmt(CompareChain(IntLiteral(4), Cons((Greater(), IntLiteral(3)), Cons((Greater(), IntLiteral(2)), Nil()))))],
+      [ExprStmt(CompareChain(IntLiteral(4), Cons((GreaterEqual(), IntLiteral(3)), Cons((GreaterEqual(), IntLiteral(2)), Nil()))))],
+      [ExprStmt(CompareChain(IntLiteral(2), Cons((Equal(), IntLiteral(3)), Cons((Equal(), IntLiteral(4)), Nil()))))],
+      [ExprStmt(CompareChain(IntLiteral(2), Cons((NotEqual(), IntLiteral(3)), Cons((NotEqual(), IntLiteral(4)), Nil()))))],
+      [ExprStmt(CompareChain(IntLiteral(2), Cons((Less(), IntLiteral(3)), Cons((Greater(), IntLiteral(4)), Cons((Equal(), IntLiteral(5)), Nil())))))]
+    ]
+    var iter = 0
+    while (iter < inputs.size) {
+      with on[OutOfBounds].panic
+      with feed(inputs.get(iter))
+      with scanner[Char]
+      with scanWithPos
+      with on[LexerError].panic
+      with lexer
+      with on[ParseError].panic 
+      
+      val obtained = parseProgram()
     
+      assertEqual(obtained, expectedOutputs.get(iter))
+      iter = iter + 1
+    }
   }
 }
