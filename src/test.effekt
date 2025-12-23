@@ -5,6 +5,7 @@ import src/lib/testUtils
 import scanner
 import src/lib/lexer
 import src/lib/parser
+import src/lib/sugar
 
 def main() = mainSuite("lib") {
 
@@ -314,6 +315,30 @@ def main() = mainSuite("lib") {
     assertEqual(obtained, expected)
   }
 
+  test("parser parses if-statement without else branch") {
+    val input = "if (true) { 1 }"
+
+    val expected = [
+      IfStmt(
+          BoolLiteral(true),
+          [ExprStmt(IntLiteral(1))],
+          Nil()
+        )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
+
   test("parser parses if-statement with logical conditions") {
     val input = "if (not false and true) { 1 } else { 0 }"
 
@@ -372,6 +397,26 @@ def main() = mainSuite("lib") {
     with on[ParseError].panic 
 
     val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
+
+  test("compare chains get desugared correctly") {
+    val input = "val x = 2 < 3 < 4"
+
+    val expected = [
+      VariableDecl("x", None(), AndExpr(Lt(IntLiteral(2), IntLiteral(3)), Lt(IntLiteral(3), IntLiteral(4))))
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = desugarProgram(parseProgram())
    
     assertEqual(obtained, expected)
   }
