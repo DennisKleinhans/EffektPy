@@ -44,6 +44,15 @@ def isComparisonOp(kind: TokenKind): Bool = {
   }
 }
 
+/// Peek at the token after the next one and return whether it is an assignment.
+def isAssignmentFollowUp(): Bool / Lexer[Token] = {
+  val nextNextToken = do peek2()
+  nextNextToken.kind match {
+    case Assign() => true
+    case _ => false
+  }
+}
+
 /// Extracts a Type from a string representation. Raises ParseError if the
 /// string does not correspond to a known type.
 def extractType(input: String): Type / Exception[ParseError] = {
@@ -62,6 +71,7 @@ def show(tokenKind: TokenKind): String = tokenKind match {
   case Number(n) => "Number: " ++ n.show
   case Boolean(b) => "Bool: " ++ b.show
   case Val() => "Keyword: val"
+  case Var() => "Keyword: var"
   case If() => "Keyword: if" 
   case Else() => "Keyword: else"
   case Then() => "Keyword: then"

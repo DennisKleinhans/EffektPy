@@ -211,6 +211,8 @@ def parseExpression(): Expr / { Lexer[Token], Exception[ParseError] } = {
   parseIfExpression()
 }
 
+
+
 /// parseStmt handles three cases:
 ///  - variable declarations starting with `val`
 ///  - an `if` statement with parens and braces
@@ -244,8 +246,33 @@ def parseStmt(): Stmt / { Lexer[Token], Exception[ParseError] } = {
 
       expect(Assign())
       val value = parseExpression()
-      VariableDecl(name, typeAnnotation, value)
+      ValDeclaration(name, typeAnnotation, value)
     }
+
+    case Var() => {
+      do next()
+      val nameToken = do next()
+      val name = nameToken.kind match {
+        case LowerIdentifier(id) => id
+        case UpperIdentifier(id) => raise(ParseError(), "variable name at position " ++ nameToken.position.show ++ " must start with a lower case char: '" ++ id ++ "'")
+        case _ => raise(ParseError(), "expected variable name after 'var' at position " ++ nameToken.position.show)
+      }
+
+      // optional type annotation (looks for ': TypeName')
+      val typeAnnotation = {
+        if (check(Colon())) {
+          do next()
+          Some(parseType())
+        } else {
+          None()
+        }
+      }
+
+      expect(Assign())
+      val value = parseExpression()
+      VarDeclaration(name, typeAnnotation, value)
+    }
+
     case If() => {
       do next()
       expect(LParen())
@@ -269,6 +296,15 @@ def parseStmt(): Stmt / { Lexer[Token], Exception[ParseError] } = {
       }
       IfStmt(condition, thenBranch, elseBranch)
     }
+
+    case LowerIdentifier(id) and isAssignmentFollowUp() => {
+      // assignment statement: <varName> = <expr>
+      do next() 
+      expect(Assign())
+      val value = parseExpression()
+      AssignStmt(id, value)
+    }
+
     case _ => {
       // fallback: parse an expression and wrap it as an ExprStmt
       val expr = parseExpression()

@@ -32,7 +32,9 @@ type Expr {
 }
 
 type Stmt {
-  VariableDecl(name: String, typeAnnotation: Option[Type], value: Expr)
+  ValDeclaration(name: String, typeAnnotation: Option[Type], value: Expr)
+  VarDeclaration(name: String, typeAnnotation: Option[Type], value: Expr)
+  AssignStmt(name: String, value: Expr)
   IfStmt(cond: Expr, thenBranch: List[Stmt], elseBranch: List[Stmt])
   ExprStmt(expr: Expr)
 }

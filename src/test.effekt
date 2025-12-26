@@ -50,7 +50,33 @@ def main() = mainSuite("lib") {
     "  x = x + 2\n" ++
     "}"
 
-    val expected = [Token(Val(), Position(1, 1)), Token(LowerIdentifier("x"), Position(1, 5)), Token(Assign(), Position(1, 7)), Token(Number(10), Position(1, 9)), Token(If(), Position(2, 1)), Token(LParen(), Position(2, 4)), Token(LowerIdentifier("x"), Position(2, 5)), Token(GreaterEqual(), Position(2, 7)), Token(Number(10), Position(2, 10)), Token(RParen(), Position(2, 12)), Token(LBrace(), Position(2, 14)), Token(LowerIdentifier("x"), Position(3, 3)), Token(Assign(), Position(3, 5)), Token(LowerIdentifier("x"), Position(3, 7)), Token(Plus(), Position(3, 9)), Token(Number(1), Position(3, 11)), Token(RBrace(), Position(4, 1)), Token(Else(), Position(4, 3)), Token(LBrace(), Position(4, 8)), Token(LowerIdentifier("x"), Position(5, 3)), Token(Assign(), Position(5, 5)), Token(LowerIdentifier("x"), Position(5, 7)), Token(Plus(), Position(5, 9)), Token(Number(2), Position(5, 11)), Token(RBrace(), Position(6, 1))]
+    val expected = [
+      Token(Val(), Position(1, 1)), 
+      Token(LowerIdentifier("x"), Position(1, 5)), 
+      Token(Assign(), Position(1, 7)), 
+      Token(Number(10), Position(1, 9)), 
+      Token(If(), Position(2, 1)), 
+      Token(LParen(), Position(2, 4)), 
+      Token(LowerIdentifier("x"), Position(2, 5)), 
+      Token(GreaterEqual(), Position(2, 7)), 
+      Token(Number(10), Position(2, 10)), 
+      Token(RParen(), Position(2, 12)), 
+      Token(LBrace(), Position(2, 14)), 
+      Token(LowerIdentifier("x"), Position(3, 3)), 
+      Token(Assign(), Position(3, 5)), 
+      Token(LowerIdentifier("x"), Position(3, 7)), 
+      Token(Plus(), Position(3, 9)), 
+      Token(Number(1), Position(3, 11)), 
+      Token(RBrace(), Position(4, 1)), 
+      Token(Else(), Position(4, 3)), 
+      Token(LBrace(), Position(4, 8)), 
+      Token(LowerIdentifier("x"), Position(5, 3)), 
+      Token(Assign(), Position(5, 5)), 
+      Token(LowerIdentifier("x"), Position(5, 7)), 
+      Token(Plus(), Position(5, 9)), 
+      Token(Number(2), Position(5, 11)), 
+      Token(RBrace(), Position(6, 1))
+    ]
 
     with fullLexerHandler(input, false) 
     val tokens = collectTokens(Nil()) { do next() }
@@ -58,10 +84,36 @@ def main() = mainSuite("lib") {
     assertEqual(tokens, expected)
   }
 
+  test("lexer distinguishes correctly between 'val' and 'var' keywords") {
+    val input = "val x = 2\n var y = 3"
+    val expected = [
+      Token(Val(), Position(1, 1)), 
+      Token(LowerIdentifier("x"), Position(1, 5)), 
+      Token(Assign(), Position(1, 7)), 
+      Token(Number(2), Position(1, 9)), 
+      Token(Var(), Position(2, 2)), 
+      Token(LowerIdentifier("y"), Position(2, 6)), 
+      Token(Assign(), Position(2, 8)), 
+      Token(Number(3), Position(2, 10))
+    ]
+
+    with fullLexerHandler(input, false)
+    val tokens = collectTokens(Nil()) { do next() }
+    assertEqual(tokens, expected)
+  }
+
   test("lexer distinguishes correctly between LowerIdentifier and UpperIdentifier") {
     val input = "val x: Int = 2"
+    
 
-    val expected = [Token(Val(), Position(1, 1)), Token(LowerIdentifier("x"), Position(1, 5)), Token(Colon(), Position(1, 6)), Token(UpperIdentifier("Int"), Position(1, 8)), Token(Assign(), Position(1, 12)), Token(Number(2), Position(1, 14))]
+    val expected = [
+      Token(Val(), Position(1, 1)), 
+      Token(LowerIdentifier("x"), Position(1, 5)), 
+      Token(Colon(), Position(1, 6)), 
+      Token(UpperIdentifier("Int"), Position(1, 8)), 
+      Token(Assign(), Position(1, 12)), 
+      Token(Number(2), Position(1, 14))
+    ]
 
     with fullLexerHandler(input, false)
     val tokens = collectTokens(Nil()) { do next() }
@@ -129,11 +181,13 @@ def main() = mainSuite("lib") {
     assertEqual(tokens, expected)
   }
 
-  test("parser parses variable declaration without type annotation (Int literal, Bool literal)") {
-    val inputs = ["val x = 2", "val x = false"]
+  test("parser parses variable declaration ('val' and 'var') without type annotation (Int literal, Bool literal)") {
+    val inputs = ["val x = 2", "val x = false", "var y = 2", "var y = false"]
     val expectedOutputs = [
-      [VariableDecl("x", None(), IntLiteral(2))], 
-      [VariableDecl("x", None(), BoolLiteral(false))]
+      [ValDeclaration("x", None(), IntLiteral(2))], 
+      [ValDeclaration("x", None(), BoolLiteral(false))],
+      [VarDeclaration("y", None(), IntLiteral(2))], 
+      [VarDeclaration("y", None(), BoolLiteral(false))]
     ]
     var iter = 0
 
@@ -154,11 +208,41 @@ def main() = mainSuite("lib") {
    
   }
 
-  test("parser parses variable declaration with type annotation (Int literal, Bool literal)") {
-    val inputs = ["val x: Int = 2", "val x: Bool = false"]
+  test("parser parses variable declaration ('val' and 'var') with type annotation (Int literal, Bool literal)") {
+    val inputs = ["val x: Int = 2", "val x: Bool = false", "var y: Int = 2", "var y: Bool = false"]
     val expectedOutputs = [
-      [VariableDecl("x", Some(IntType()), IntLiteral(2))], 
-      [VariableDecl("x", Some(BoolType()), BoolLiteral(false))]
+      [ValDeclaration("x", Some(IntType()), IntLiteral(2))], 
+      [ValDeclaration("x", Some(BoolType()), BoolLiteral(false))],
+      [VarDeclaration("y", Some(IntType()), IntLiteral(2))], 
+      [VarDeclaration("y", Some(BoolType()), BoolLiteral(false))]
+    ]
+    var iter = 0
+
+    while (iter < inputs.size) {
+      with on[OutOfBounds].panic
+      with feed(inputs.get(iter))
+      with scanner[Char]
+      with scanWithPos
+      with on[LexerError].panic
+      with lexer
+      with on[ParseError].panic
+
+      val obtained = parseProgram()
+
+      assertEqual(obtained, expectedOutputs.get(iter))
+      iter = iter + 1
+    }
+  }
+
+  test("parser parses assignment statements") {
+    val inputs = ["x = 2", "y = false", "z = x + 1", "a = not b", "c = (d and e) or (f or not g)", "d = x < 5 <= 10"]
+    val expectedOutputs = [
+      [AssignStmt("x", IntLiteral(2))],
+      [AssignStmt("y", BoolLiteral(false))],
+      [AssignStmt("z", AddExpr(Variable("x"), IntLiteral(1)))],
+      [AssignStmt("a", NotExpr(Variable("b")))],
+      [AssignStmt("c", OrExpr(AndExpr(Variable("d"), Variable("e")), OrExpr(Variable("f"), NotExpr(Variable("g")))))],
+      [AssignStmt("d", CompareChain(Variable("x"), Cons((Less(), IntLiteral(5)), Cons((LessEqual(), IntLiteral(10)), Nil()))))]
     ]
     var iter = 0
 
@@ -303,7 +387,7 @@ def main() = mainSuite("lib") {
     val input = "val x = if true then 1 else 0"
 
     val expected = [
-      VariableDecl( "x", None(), IfExpr(BoolLiteral(true), IntLiteral(1), IntLiteral(0)))
+      ValDeclaration( "x", None(), IfExpr(BoolLiteral(true), IntLiteral(1), IntLiteral(0)))
     ]
 
     with on[OutOfBounds].panic
@@ -369,26 +453,26 @@ def main() = mainSuite("lib") {
     assertEqual(obtained, expected)
   }
 
-  test("parser parses complex program with variable declarations, if-statements, and expressions") {
+  test("parser parses complex program with variable declarations, if-statements, assignments and expressions") {
     val input =
-    "val x: Int = 10\n" ++
+    "var x: Int = 10\n" ++
     "val y: Bool = true\n" ++
     "if (x >= 10 and not y) {\n" ++
-    "  x + 1\n" ++
+    "  x = x + 1\n" ++
     "} else {\n" ++
-    "  x - 1\n" ++
+    "  x = x - 1\n" ++
     "}"
 
     val expected = [
-      VariableDecl("x", Some(IntType()), IntLiteral(10)),
-      VariableDecl("y", Some(BoolType()), BoolLiteral(true)),
+      VarDeclaration("x", Some(IntType()), IntLiteral(10)),
+      ValDeclaration("y", Some(BoolType()), BoolLiteral(true)),
       IfStmt(
         AndExpr(
           GtE(Variable("x"), IntLiteral(10)),
           NotExpr(Variable("y"))
         ),
-        [ExprStmt(AddExpr(Variable("x"), IntLiteral(1)))],
-        [ExprStmt(SubExpr(Variable("x"), IntLiteral(1)))]
+        [AssignStmt("x", AddExpr(Variable("x"), IntLiteral(1)))],
+        [AssignStmt("x", SubExpr(Variable("x"), IntLiteral(1)))]
       )
     ]
 
@@ -409,7 +493,7 @@ def main() = mainSuite("lib") {
     val input = "val x = 2 < 3 < 4"
 
     val expected = [
-      VariableDecl("x", None(), AndExpr(Lt(IntLiteral(2), IntLiteral(3)), Lt(IntLiteral(3), IntLiteral(4))))
+      ValDeclaration("x", None(), AndExpr(Lt(IntLiteral(2), IntLiteral(3)), Lt(IntLiteral(3), IntLiteral(4))))
     ]
 
     with on[OutOfBounds].panic

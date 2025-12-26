@@ -5,45 +5,10 @@ import exception
 import src/lib/tokens
 import src/lib/errors
 import src/lib/effects
+import src/lib/util
 
-def show(pos: Position): String = "line: " ++ pos.line.show ++ " column: " ++ pos.column.show
-def show(tokenKind: TokenKind): String = tokenKind match {
-  case LowerIdentifier(id) => "LowerIdentifier: " ++ id
-  case UpperIdentifier(id) => "UpperIdentifier: " ++ id
-  case Number(n) => "Number: " ++ n.show
-  case Boolean(b) => "Bool: " ++ b.show
-  case Val() => "Keyword: val"
-  case If() => "Keyword: if" 
-  case Else() => "Keyword: else"
-  case Then() => "Keyword: then"
-  case Assign() => "Operator: ="
-  case TokenKind::Equal() => "Operator: =="
-  case NotEqual() => "Operator: !="
-  case TokenKind::Less() => "Operator: <"
-  case TokenKind::Greater() => "Operator: >"
-  case LessEqual() => "Operator: <="
-  case GreaterEqual() => "Operator: >="
-  case Plus() => "Operator: +"
-  case Minus() => "Operator: -"
-  case Mult() => "Operator: *"
-  case Div() => "Operator: /"
-  case And() => "Operator: and"
-  case Or() => "Operator: or"
-  case Not() => "Operator: not"
-  case LParen() => "Punctuation: ("
-  case RParen() => "Punctuation: )"
-  case LBrace() => "Punctuation: {"
-  case RBrace() => "Punctuation: }"
-  case EOF() => "EndOfFile"
-  case Colon() => "Colon"
-}
 
-def show(token: Token): String = token.kind.show
-
-def equal(x: TokenKind, y: TokenKind): Bool = {
-  x.show == y.show
-}
-
+/// scanner that tracks source position
 def scanWithPos[R]() {prog: => R / { Scan[Char], getPos } }: R / Scan[Char] = {
   // track current source position
   var line = 1
@@ -118,7 +83,7 @@ def scanWithPos[R]() {prog: => R / { Scan[Char], getPos } }: R / Scan[Char] = {
   }
 }
 
-
+/// lex a single token from the input stream 
 def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], getPos} = {
 
   def readIdentifierOrKeyword(pos: Position): Token / { Scan[Char], stop } = {
@@ -128,6 +93,7 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], getPos} = {
     // identify potential keywords
     val kind = name match {
       case "val" => Val()
+      case "var" => Var()
       case "if" => If()
       case "else" => Else()
       case "then" => Then()
@@ -242,42 +208,64 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], getPos} = {
   }
 }
 
+/// lexer that provides token-level lookahead 
 def lexer[R]() { program: => R / Lexer[Token] }: R / { Scan[Char], getPos, Exception[LexerError] } = {
   // buffer for the last token read
-  var lastToken: Option[Token] = None()
+  var firstToken: Option[Token] = None()
+  var secondToken : Option[Token] = None()
+
+  
+  def fetchNext(): Token / { Scan[Char], getPos, Exception[LexerError] } = {
+    try {
+      nextToken()
+    } with stop {
+      Token(EOF(), do getPos())
+    }
+  }
 
   try {
     program()
   } with Lexer[Token] {
     def peek() = {
-      val tok = lastToken match {
+      val tok = firstToken match {
         case Some(tok) => tok
         case None() => {
-          try {
-            val tok = nextToken()
-            lastToken = Some(tok)
-            tok
-          } with stop {
-            Token(EOF(), do getPos())
-          } 
+          val tok = fetchNext()
+          firstToken = Some(tok)
+          tok
+        }
+      }
+      resume(tok)
+    }
+
+    def peek2() = {
+      // ensure the first token exists
+      if (firstToken is None()) {
+        firstToken = Some(fetchNext())
+      }
+
+      //ensure the second token exists
+      val tok = secondToken match {
+        case Some(tok) => tok
+        case None() => {
+          val tok = fetchNext()
+          secondToken = Some(tok)
+          tok
         }
       }
       resume(tok)
     }
 
     def next() = {
-      val tok = lastToken match {
+      val tok = firstToken match {
         case Some(tok) => {
-          lastToken = None()
+          // move second token forward
+          firstToken = secondToken
+          secondToken = None()
           tok
         }
         case None() => {
-          try {
-            val tok = nextToken() 
-            tok
-          } with stop {
-            Token(EOF(), do getPos())
-          }
+          fetchNext()
         }
       }
       resume(tok)

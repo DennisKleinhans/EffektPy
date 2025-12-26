@@ -2,6 +2,7 @@
 type TokenKind {
   // keywords
   Val()
+  Var()
   If()
   Else()
   Then()

@@ -65,7 +65,9 @@ def desugarExpr(e: Expr): Expr / Exception[ParseError] = {
 /// desugar statements by desugaring contained expressions
 def desugarStmt(s: Stmt): Stmt / Exception[ParseError] = {
   s match {
-    case VariableDecl(name, tyOpt, value) => VariableDecl(name, tyOpt, desugarExpr(value))
+    case ValDeclaration(name, tyOpt, value) => ValDeclaration(name, tyOpt, desugarExpr(value))
+    case VarDeclaration(name, tyOpt, value) => VarDeclaration(name, tyOpt, desugarExpr(value))
+    case AssignStmt(name, value) => AssignStmt(name, desugarExpr(value))
     case IfStmt(cond, thenB, elseB) => {
       val cond2 = desugarExpr(cond)
       val then2 = thenB.map {st => desugarStmt(st)}
