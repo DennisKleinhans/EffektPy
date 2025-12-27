@@ -39,6 +39,7 @@ def desugarExpr(e: Expr): Expr / Exception[ParseError] = {
     case AndExpr(l, r) => AndExpr(desugarExpr(l), desugarExpr(r))
     case OrExpr(l, r) => OrExpr(desugarExpr(l), desugarExpr(r))
     case NotExpr(inner) => NotExpr(desugarExpr(inner))
+    case UnaryMinus(inner) => UnaryMinus(desugarExpr(inner))
     case Eq(l, r) => Eq(desugarExpr(l), desugarExpr(r))
     case Neq(l, r) => Neq(desugarExpr(l), desugarExpr(r))
     case Lt(l, r) => Lt(desugarExpr(l), desugarExpr(r))

@@ -33,9 +33,9 @@ def parsePrimary(): Expr / { Lexer[Token], Exception[ParseError]} = {
   }
 }
 
-/// Implements parsing for unary `not` operator.
+/// Implements parsing for unary `not` operator and unary `-`.
 /// This function checks for a leading `not` token, and if found, parses
-/// another unary expression as its operand (right-associative). If no `not` is found,
+/// another unary expression as its operand (right-associative). If no `not` or `-` is found,
 /// it falls back to parsePrimary().
 def parseUnary(): Expr / { Lexer[Token], Exception[ParseError] } = {
   val token = do peek()
@@ -45,6 +45,12 @@ def parseUnary(): Expr / { Lexer[Token], Exception[ParseError] } = {
       val inside = parseUnary()
       NotExpr(inside) 
     } // right-assoc for chains of not
+    case Minus() => {
+      do next()
+      val inside = parseUnary()
+      UnaryMinus(inside)
+    }
+
     case _ => parsePrimary()
   }
 }

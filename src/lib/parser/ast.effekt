@@ -19,6 +19,7 @@ type Expr {
   OrExpr(left: Expr, right: Expr)
   // unary operands
   NotExpr(expr: Expr)
+  UnaryMinus(expr: Expr)
   // compare operators 
   Eq(left: Expr, right: Expr)
   Neq(left: Expr, right: Expr)

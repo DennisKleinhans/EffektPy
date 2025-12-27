@@ -14,33 +14,6 @@ import src/lib/utils/effects
 
 def main() = mainSuite("parser") {
 
-  def collectTokens(acc: List[Token]) { next: => Token}: List[Token] = {
-    val t = next()
-    t.kind match {
-      case EOF() => acc.reverse
-      case _ => collectTokens(Cons(t, acc)) { next } 
-    }
-  }
-
-  def fullLexerHandler(input: String, assertLexerError: Bool) { prog: => Unit / { Lexer[Token]}} = {
-    
-    if (assertLexerError) {
-      with feed(input)
-      with scanner[Char]
-      with scanWithPos
-      with on[LexerError].assertThrown
-      with lexer
-      prog()
-    } else {
-      with feed(input)
-      with scanner[Char]
-      with scanWithPos
-      with on[LexerError].panic
-      with lexer
-      prog()
-    }
-  }
-
   test("parser parses variable declaration ('val' and 'var') without type annotation (Int literal, Bool literal)") {
     val inputs = ["val x = 2", "val x = false", "var y = 2", "var y = false"]
     val expectedOutputs = [
@@ -224,6 +197,42 @@ def main() = mainSuite("parser") {
       [ExprStmt(NotExpr(BoolLiteral(false)))],
       [ExprStmt(OrExpr(AndExpr(BoolLiteral(true), BoolLiteral(false)), BoolLiteral(true)))],
       [ExprStmt(AndExpr(NotExpr(OrExpr(BoolLiteral(true), BoolLiteral(false))), BoolLiteral(true)))]
+    ]
+
+    var iter = 0
+    while (iter < inputs.size) {
+      with on[OutOfBounds].panic
+      with feed(inputs.get(iter))
+      with scanner[Char]
+      with scanWithPos
+      with on[LexerError].panic
+      with lexer
+      with on[ParseError].panic 
+      
+      val obtained = parseProgram()
+     
+      assertEqual(obtained, expectedOutputs.get(iter))
+      iter = iter + 1
+    }
+  }
+
+  test("parser parses unary operators (not, -)") {
+    val inputs = [
+      "not true",
+      "not false",
+      "-5",
+      "-(2 + 3)",
+      "--5",
+      "-x * y"
+    ]
+
+    val expectedOutputs = [
+      [ExprStmt(NotExpr(BoolLiteral(true)))],
+      [ExprStmt(NotExpr(BoolLiteral(false)))],
+      [ExprStmt(UnaryMinus(IntLiteral(5)))],
+      [ExprStmt(UnaryMinus(AddExpr(IntLiteral(2), IntLiteral(3))))],
+      [ExprStmt(UnaryMinus(UnaryMinus(IntLiteral(5))))],
+      [ExprStmt(MultExpr(UnaryMinus(Variable("x")), Variable("y")))]
     ]
 
     var iter = 0
