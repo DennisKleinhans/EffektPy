@@ -181,4 +181,25 @@ def main() = mainSuite("lexer") {
     assertEqual(tokens, expected)
   }
 
+  test("lexer recognizes assignment operators (+=, -=)") {
+    val input = "var x = 10\nx += 5\nx -= 3"
+
+    val expected = [
+      Token(Var(), Position(1, 1)),
+      Token(LowerIdentifier("x"), Position(1, 5)),
+      Token(Assign(), Position(1, 7)),
+      Token(Number(10), Position(1, 9)),
+      Token(LowerIdentifier("x"), Position(2, 1)),
+      Token(PlusAssign(), Position(2, 3)),
+      Token(Number(5), Position(2, 6)),
+      Token(LowerIdentifier("x"), Position(3, 1)),
+      Token(MinusAssign(), Position(3, 3)),
+      Token(Number(3), Position(3, 6))
+    ]
+
+    with fullLexerHandler(input, false)
+    val tokens = collectTokens(Nil()) { do next() }
+    assertEqual(tokens, expected)
+  }
+
 }

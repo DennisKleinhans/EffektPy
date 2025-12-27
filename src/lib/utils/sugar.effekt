@@ -27,7 +27,7 @@ def combineWithAnd(comps: List[Expr]): Expr / Exception[DesugarError] = {
 }
 
 /// desugar expressions by transforming syntactic sugar into core constructs
-def desugarExpr(e: Expr): Expr / Exception[ParseError] = {
+def desugarExpr(e: Expr): Expr / { Exception[DesugarError], Exception[ParseError] } = {
   e match {
     case IntLiteral(_) => e
     case BoolLiteral(_) => e
@@ -64,11 +64,22 @@ def desugarExpr(e: Expr): Expr / Exception[ParseError] = {
 }
 
 /// desugar statements by desugaring contained expressions
-def desugarStmt(s: Stmt): Stmt / Exception[ParseError] = {
+def desugarStmt(s: Stmt): Stmt / { Exception[DesugarError], Exception[ParseError] } = {
   s match {
     case ValDeclaration(name, tyOpt, value) => ValDeclaration(name, tyOpt, desugarExpr(value))
     case VarDeclaration(name, tyOpt, value) => VarDeclaration(name, tyOpt, desugarExpr(value))
     case AssignStmt(name, value) => AssignStmt(name, desugarExpr(value))
+    case CompoundAssignStmt(name, operator, value) => {
+      // desugar a compound assignment into a normal assignment with a binary operation
+      val desugaredValue = desugarExpr(value)
+      val variableExpr = Variable(name)
+      val binaryExpr = operator match {
+        case PlusAssign() => AddExpr(variableExpr, desugaredValue)
+        case MinusAssign() => SubExpr(variableExpr, desugaredValue)
+        case _ => do raise(DesugarError(), "unsupported compound assignment operator in desugaring")
+      }
+      AssignStmt(name, desugarExpr(binaryExpr))
+    }
     case IfStmt(cond, thenB, elseB) => {
       val cond2 = desugarExpr(cond)
       val then2 = thenB.map {st => desugarStmt(st)}
@@ -81,5 +92,6 @@ def desugarStmt(s: Stmt): Stmt / Exception[ParseError] = {
 
 /// desugar a whole program by desugaring each statement
 def desugarProgram(p: Program): Program / Exception[ParseError] = {
+  with on[DesugarError].panic
   p.map { s => desugarStmt(s) }
 }

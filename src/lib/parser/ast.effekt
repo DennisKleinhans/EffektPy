@@ -36,6 +36,7 @@ type Stmt {
   ValDeclaration(name: String, typeAnnotation: Option[Type], value: Expr)
   VarDeclaration(name: String, typeAnnotation: Option[Type], value: Expr)
   AssignStmt(name: String, value: Expr)
+  CompoundAssignStmt(name: String, operator: TokenKind, value: Expr)
   IfStmt(cond: Expr, thenBranch: List[Stmt], elseBranch: List[Stmt])
   ExprStmt(expr: Expr)
 }

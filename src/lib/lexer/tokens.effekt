@@ -23,6 +23,8 @@ type TokenKind {
   GreaterEqual()
   Plus()
   Minus()
+  PlusAssign()
+  MinusAssign()
   Mult()
   Div()
   And()

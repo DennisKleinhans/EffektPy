@@ -303,12 +303,34 @@ def parseStmt(): Stmt / { Lexer[Token], Exception[ParseError] } = {
       IfStmt(condition, thenBranch, elseBranch)
     }
 
-    case LowerIdentifier(id) and isAssignmentFollowUp() => {
+    case LowerIdentifier(id) => {
       // assignment statement: <varName> = <expr>
-      do next() 
-      expect(Assign())
-      val value = parseExpression()
-      AssignStmt(id, value)
+      val nextToken = do peek2()
+      nextToken.kind match {
+        case Assign() => {
+          do next() // consume var name
+          do next() // consume '='
+          val value = parseExpression()
+          AssignStmt(id, value)
+        }
+        case PlusAssign()  => {
+          do next() // consume var name
+          do next() // consume '+=' or '-='
+          val value = parseExpression()
+          CompoundAssignStmt(id, PlusAssign(), value)
+        }
+        case MinusAssign()  => {
+          do next() // consume var name
+          do next() // consume '+=' or '-='
+          val value = parseExpression()
+          CompoundAssignStmt(id, MinusAssign(), value)
+        }
+      case _ => {
+        // fallback: parse an expression and wrap it as an ExprStmt
+        val expr = parseExpression()
+        ExprStmt(expr)
+        }
+      }
     }
 
     case _ => {

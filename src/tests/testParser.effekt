@@ -95,6 +95,30 @@ def main() = mainSuite("parser") {
     }
   }
 
+  test("parser parses compound assignment statements (+=, -=)") {
+    val inputs = ["x += 2", "y -= 3"]
+    val expectedOutputs = [
+      [CompoundAssignStmt("x", PlusAssign(), IntLiteral(2))],
+      [CompoundAssignStmt("y", MinusAssign(), IntLiteral(3))]
+    ]
+    var iter = 0
+
+    while (iter < inputs.size) {
+      with on[OutOfBounds].panic
+      with feed(inputs.get(iter))
+      with scanner[Char]
+      with scanWithPos
+      with on[LexerError].panic
+      with lexer
+      with on[ParseError].panic
+
+      val obtained = parseProgram()
+
+      assertEqual(obtained, expectedOutputs.get(iter))
+      iter = iter + 1
+    }
+  }
+
   test("parser parses binary math expressions (Add, Sub, Mult, Div)") {
     val inputs = ["2 + 2", "2 - 2", "2 * 2", "2 / 2"]
 

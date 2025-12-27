@@ -178,10 +178,22 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], getPos} = {
     }
   } else if (c == '+') {
     do Scan::skip()
-    Token(Plus(), pos)
+    val next = do Scan::peek()
+    if (next == '=') {
+      do Scan::skip()
+      Token(PlusAssign(), pos)
+    } else {
+      Token(Plus(), pos)
+    }
   } else if (c == '-') {
     do Scan::skip()
-    Token(Minus(), pos)
+    val next = do Scan::peek()
+    if (next == '=') {
+      do Scan::skip()
+      Token(MinusAssign(), pos)
+    } else {
+      Token(Minus(), pos)
+    }
   } else if (c == '*') {
     do Scan::skip()
     Token(Mult(), pos)

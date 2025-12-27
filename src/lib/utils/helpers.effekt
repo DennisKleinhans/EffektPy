@@ -84,6 +84,8 @@ def show(tokenKind: TokenKind): String = tokenKind match {
   case GreaterEqual() => "Operator: >="
   case Plus() => "Operator: +"
   case Minus() => "Operator: -"
+  case PlusAssign() => "Operator: +="
+  case MinusAssign() => "Operator: -="
   case Mult() => "Operator: *"
   case Div() => "Operator: /"
   case And() => "Operator: and"
