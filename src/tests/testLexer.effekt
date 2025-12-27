@@ -5,9 +5,9 @@ import scanner
 import src/lib/utils/testUtils
 import src/lib/lexer/lexer
 import src/lib/parser/parser
-import src/lib/utils/sugar
+import src/lib/desugar/sugar
 import src/lib/lexer/tokens
-import src/lib/parser/ast
+import src/lib/parser/surfaceAst
 import src/lib/utils/errors
 import src/lib/utils/effects
 

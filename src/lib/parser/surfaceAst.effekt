@@ -1,9 +1,5 @@
 import src/lib/lexer/tokens
-
-type Type {
-  IntType()
-  BoolType()
-}
+import src/lib/utils/types
 
 type Expr {
   // literals
@@ -42,3 +38,6 @@ type Stmt {
 }
 
 type Program = List[Stmt]
+
+
+

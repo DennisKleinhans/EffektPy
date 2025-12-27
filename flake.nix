@@ -26,6 +26,7 @@
         testFiles = [ 
           "src/tests/testLexer.effekt" 
           "src/tests/testParser.effekt"
+          "src/tests/testDesugar.effekt"
         ]; # relative paths to tests (as a string)
 
         ## Effekt configuration

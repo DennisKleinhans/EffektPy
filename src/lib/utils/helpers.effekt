@@ -1,7 +1,8 @@
 import src/lib/lexer/tokens
-import src/lib/parser/ast
+import src/lib/parser/surfaceAst
 import src/lib/utils/effects
 import src/lib/utils/errors
+import src/lib/utils/types
 
 /// Consume the next token and assert it has the expected kind. If not, raise a ParseError.
 def expect(expected: TokenKind): Unit / { Lexer[Token], Exception[ParseError]} = {
@@ -19,7 +20,7 @@ def check(kind: TokenKind) : Bool / Lexer[Token] = {
 }
 
 /// Helper function to create comparison expressions based on the operator token.
-def makeCmp(op: TokenKind, left: Expr, right: Expr): Expr / Exception[ParseError]  = {
+def makeCmp(op: TokenKind, left: surfaceAst::Expr, right: surfaceAst::Expr): surfaceAst::Expr / Exception[ParseError]  = {
   op match {
     case TokenKind::Equal() => Eq(left, right)
     case NotEqual()         => Neq(left, right)
