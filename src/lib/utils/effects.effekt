@@ -1,4 +1,4 @@
-import src/lib/tokens
+import src/lib/lexer/tokens
 
 effect getPos(): Position
 interface Lexer[R] {

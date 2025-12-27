@@ -2,10 +2,10 @@ import scanner
 import io/filesystem
 import buffer
 import exception
-import src/lib/tokens
-import src/lib/errors
-import src/lib/effects
-import src/lib/util
+import src/lib/lexer/tokens
+import src/lib/utils/errors
+import src/lib/utils/effects
+import src/lib/utils/helpers
 
 
 /// scanner that tracks source position

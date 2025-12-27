@@ -23,7 +23,10 @@
         pname = "EffektPy";         # package name
         version = "0.1.0";                 # package version
         mainFile = "src/main.effekt";      # relative path to entrypoint (as a string)
-        testFiles = [ "src/test.effekt" ]; # relative paths to tests (as a string)
+        testFiles = [ 
+          "src/tests/testLexer.effekt" 
+          "src/tests/testParser.effekt"
+        ]; # relative paths to tests (as a string)
 
         ## Effekt configuration
         effektConfig = {

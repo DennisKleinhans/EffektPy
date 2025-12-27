@@ -1,7 +1,7 @@
-import src/lib/ast
-import src/lib/tokens
-import src/lib/errors
-import src/lib/util
+import src/lib/parser/ast
+import src/lib/lexer/tokens
+import src/lib/utils/errors
+import src/lib/utils/helpers
 
 /// build a list of pairwise comparison expressions from a first expression and a list of (operator, expression) pairs
 def buildComparisonsFromPairs(first: Expr, pairs: List[(TokenKind, Expr)]): List[Expr] / Exception[ParseError] = {

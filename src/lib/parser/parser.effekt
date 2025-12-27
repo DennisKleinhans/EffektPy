@@ -1,8 +1,8 @@
-import src/lib/tokens
-import src/lib/ast
-import src/lib/util
-import src/lib/effects
-import src/lib/errors
+import src/lib/lexer/tokens
+import src/lib/parser/ast
+import src/lib/utils/effects
+import src/lib/utils/errors
+import src/lib/utils/helpers
 
 /// parsePrimary parses the smallest expression forms: literals, variables,
 /// and parenthesized expressions. It does not handle binary operators.\n

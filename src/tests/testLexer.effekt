@@ -1,0 +1,184 @@
+module src/test
+
+import test
+import scanner
+import src/lib/utils/testUtils
+import src/lib/lexer/lexer
+import src/lib/parser/parser
+import src/lib/utils/sugar
+import src/lib/lexer/tokens
+import src/lib/parser/ast
+import src/lib/utils/errors
+import src/lib/utils/effects
+
+def main() = mainSuite("lexer") {
+
+  def collectTokens(acc: List[Token]) { next: => Token}: List[Token] = {
+    val t = next()
+    t.kind match {
+      case EOF() => acc.reverse
+      case _ => collectTokens(Cons(t, acc)) { next } 
+    }
+  }
+
+  def fullLexerHandler(input: String, assertLexerError: Bool) { prog: => Unit / { Lexer[Token]}} = {
+    
+    if (assertLexerError) {
+      with feed(input)
+      with scanner[Char]
+      with scanWithPos
+      with on[LexerError].assertThrown
+      with lexer
+      prog()
+    } else {
+      with feed(input)
+      with scanner[Char]
+      with scanWithPos
+      with on[LexerError].panic
+      with lexer
+      prog()
+    }
+  } 
+
+
+  test("lexer produces tokens and skips whitespace") {
+    val input =
+    "val x = 10\n" ++
+    "if (x >= 10) {\n" ++
+    "  x = x + 1\n" ++
+    "} else {\n" ++
+    "  x = x + 2\n" ++
+    "}"
+
+    val expected = [
+      Token(Val(), Position(1, 1)), 
+      Token(LowerIdentifier("x"), Position(1, 5)), 
+      Token(Assign(), Position(1, 7)), 
+      Token(Number(10), Position(1, 9)), 
+      Token(If(), Position(2, 1)), 
+      Token(LParen(), Position(2, 4)), 
+      Token(LowerIdentifier("x"), Position(2, 5)), 
+      Token(GreaterEqual(), Position(2, 7)), 
+      Token(Number(10), Position(2, 10)), 
+      Token(RParen(), Position(2, 12)), 
+      Token(LBrace(), Position(2, 14)), 
+      Token(LowerIdentifier("x"), Position(3, 3)), 
+      Token(Assign(), Position(3, 5)), 
+      Token(LowerIdentifier("x"), Position(3, 7)), 
+      Token(Plus(), Position(3, 9)), 
+      Token(Number(1), Position(3, 11)), 
+      Token(RBrace(), Position(4, 1)), 
+      Token(Else(), Position(4, 3)), 
+      Token(LBrace(), Position(4, 8)), 
+      Token(LowerIdentifier("x"), Position(5, 3)), 
+      Token(Assign(), Position(5, 5)), 
+      Token(LowerIdentifier("x"), Position(5, 7)), 
+      Token(Plus(), Position(5, 9)), 
+      Token(Number(2), Position(5, 11)), 
+      Token(RBrace(), Position(6, 1))
+    ]
+
+    with fullLexerHandler(input, false) 
+    val tokens = collectTokens(Nil()) { do next() }
+    
+    assertEqual(tokens, expected)
+  }
+
+  test("lexer distinguishes correctly between 'val' and 'var' keywords") {
+    val input = "val x = 2\n var y = 3"
+    val expected = [
+      Token(Val(), Position(1, 1)), 
+      Token(LowerIdentifier("x"), Position(1, 5)), 
+      Token(Assign(), Position(1, 7)), 
+      Token(Number(2), Position(1, 9)), 
+      Token(Var(), Position(2, 2)), 
+      Token(LowerIdentifier("y"), Position(2, 6)), 
+      Token(Assign(), Position(2, 8)), 
+      Token(Number(3), Position(2, 10))
+    ]
+
+    with fullLexerHandler(input, false)
+    val tokens = collectTokens(Nil()) { do next() }
+    assertEqual(tokens, expected)
+  }
+
+  test("lexer distinguishes correctly between LowerIdentifier and UpperIdentifier") {
+    val input = "val x: Int = 2"
+    
+
+    val expected = [
+      Token(Val(), Position(1, 1)), 
+      Token(LowerIdentifier("x"), Position(1, 5)), 
+      Token(Colon(), Position(1, 6)), 
+      Token(UpperIdentifier("Int"), Position(1, 8)), 
+      Token(Assign(), Position(1, 12)), 
+      Token(Number(2), Position(1, 14))
+    ]
+
+    with fullLexerHandler(input, false)
+    val tokens = collectTokens(Nil()) { do next() }
+    assertEqual(tokens, expected)
+  }
+
+  test("lexer throws LexerError on unknown char") { 
+    val input = "val x = 2;"
+
+    with fullLexerHandler(input, true)
+    val tokens = collectTokens(Nil()) { do next() }
+  }
+
+  test("lexer throws LexerError if an identifier starts with a number") {
+    val input = "val 1x = 2"
+
+    with fullLexerHandler(input, true)
+    val tokens = collectTokens(Nil()) { do next() }
+  }
+
+  test("lexer recognizes logical operators (and, or, not)") {
+    val inputs = ["and", "or", "not"]
+    val expectedOutputs = [
+      [Token(And(), Position(1, 1))],
+      [Token(Or(), Position(1, 1))],
+      [Token(Not(), Position(1, 1))]
+    ]
+
+    var iter = 0
+    while (iter < inputs.size) {
+      with on[OutOfBounds].panic
+      with fullLexerHandler(inputs.get(iter), false)
+      val tokens = collectTokens(Nil()) { do next() }
+      assertEqual(tokens, expectedOutputs.get(iter))
+      iter = iter + 1
+    }
+  }
+
+  test("lexer recognizes complex expressions with logical operators") {
+    val input = "val x = not (true and false) or (false or true and not false)"
+
+    val expected = [
+      Token(Val(), Position(1, 1)),
+      Token(LowerIdentifier("x"), Position(1, 5)),
+      Token(Assign(), Position(1, 7)),
+      Token(Not(), Position(1, 9)),
+      Token(LParen(), Position(1, 13)),
+      Token(Boolean(true), Position(1, 14)),
+      Token(And(), Position(1, 19)),
+      Token(Boolean(false), Position(1, 23)),
+      Token(RParen(), Position(1, 28)),
+      Token(Or(), Position(1, 30)),
+      Token(LParen(), Position(1, 33)),
+      Token(Boolean(false), Position(1, 34)),
+      Token(Or(), Position(1, 40)),
+      Token(Boolean(true), Position(1, 43)),
+      Token(And(), Position(1, 48)),
+      Token(Not(), Position(1, 52)),
+      Token(Boolean(false), Position(1, 56)),
+      Token(RParen(), Position(1, 61))
+    ]
+
+    with fullLexerHandler(input, false)
+    val tokens = collectTokens(Nil()) { do next() }
+    assertEqual(tokens, expected)
+  }
+
+}
