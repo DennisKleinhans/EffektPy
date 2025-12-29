@@ -1,8 +1,32 @@
 import src/lib/lexer/tokens
+import src/lib/utils/types
+import map
 
+/// Effect for getting the current position in the source code (line and column)
 effect getPos(): Position
+
+/// Effect for lexing tokens from the input source code stream 
 interface Lexer[R] {
   def peek(): R
   def peek2(): R
   def next(): R
+}
+
+/// Effect for generating fresh type variables and equating types
+interface Typing {
+  def fresh(): TypingType
+  def equate(t1: TypingType, t2: TypingType): Unit
+}
+
+/// Effect for managing the typing context (variable bindings) 
+interface TypingContext {
+  def lookup(name: String): Binding
+  def define(name: String, t: TypingType, isMutable: Bool): Unit
+  def backup(): Map[String, Binding]
+  def restore(context: Map[String, Binding]): Unit
+}
+
+/// Effect for inspecting the current typing context (for debugging)
+interface Inspector {
+  def inspect(context: Map[String, Binding]): Unit
 }

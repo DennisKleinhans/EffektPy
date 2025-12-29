@@ -104,3 +104,4 @@ def show(token: Token): String = token.kind.show
 def equal(x: TokenKind, y: TokenKind): Bool = {
   x.show == y.show
 }
+

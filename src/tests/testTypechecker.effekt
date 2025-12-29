@@ -1,0 +1,525 @@
+import test
+import map
+import src/lib/typechecker/typecheck
+import src/lib/typechecker/unification
+import src/lib/desugar/coreAst
+import src/lib/utils/types
+import src/lib/utils/errors
+import src/lib/utils/effects
+import src/lib/utils/handlers
+import src/lib/utils/testUtils
+
+def main() = mainSuite("typechecker") {
+
+  def typeMapsEqual(m1: Map[String, TypingType], m2: Map[String, TypingType]): Bool = {
+      if (m1.size() != m2.size()) {
+        false
+      } else {
+        m1.keys().all { key =>
+        m2.get(key) match  {
+          case Some(v2) => m1.get(key) match {
+            case Some(v1) => v1.equal(v2)
+            case None() => false
+          }
+          case None() => false
+        }
+      }
+    }
+  }
+
+  def typeMapsEqual(m1: Map[String, Binding], m2: Map[String, Binding]): Bool = {
+      if (m1.size() != m2.size()) {
+        false
+      } else {
+        m1.keys().all { key =>
+        m2.get(key) match  {
+          case Some(v2) => m1.get(key) match {
+            case Some(v1) => v1.tpe.equal(v2.tpe)
+            case None() => false
+          }
+          case None() => false
+        }
+      }
+    }
+  }
+
+  test("typecheck simple variable declaration") {
+    val prog = [
+      ValDeclaration("x", None(), IntLiteral(5))
+    ]
+
+    val progWithAnnotation = [
+      ValDeclaration("x", Some(IntType()), IntLiteral(5))
+    ]
+
+    with on[NameError].panic
+    with on[TypeError].panic
+    with mockGetPos
+    with mockInspector
+    val result = typecheck(prog)
+    val resultWithAnnotation = typecheck(progWithAnnotation)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("x", TInt())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+    assertTrue(typeMapsEqual(resultWithAnnotation, expected))
+  }
+
+  test("typechecker throws error on wrong type assignment") {
+    val prog = [
+      ValDeclaration("x", Some(BoolType()), IntLiteral(5))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker infers type on artithmetic expression") {
+    val prog = [
+      ValDeclaration("x", None(), MultExpr(AddExpr(IntLiteral(5), IntLiteral(10)), IntLiteral(2)))
+    ]
+
+    with on[NameError].panic
+    with on[TypeError].panic
+    with mockGetPos
+    with mockInspector
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("x", TInt())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker throws error on type mismatch in expression") {
+    val prog = [
+      ValDeclaration("x", None(), AddExpr(IntLiteral(5), BoolLiteral(true)))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker throws error on assignment to immutable variable") {
+    val prog = [
+      ValDeclaration("x", None(), IntLiteral(5)),
+      AssignStmt("x", IntLiteral(10))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker infers types in comparison expression") {
+    val prog = [
+      ValDeclaration("x", None(), IntLiteral(5)),
+      ValDeclaration("y", None(), IntLiteral(10)),
+      ValDeclaration("z", None(), Eq(Variable("x"), Variable("y"))),
+      ValDeclaration("s", None(), Lt(Variable("x"), Variable("y"))),
+      ValDeclaration("w", None(), LtE(Variable("x"), Variable("y"))),
+      ValDeclaration("v", None(), Gt(Variable("y"), Variable("x"))),
+      ValDeclaration("t", None(), GtE(Variable("y"), Variable("x"))),
+      ValDeclaration("u", None(), Neq(Variable("x"), Variable("y")))
+    ]
+
+    with on[NameError].panic
+    with on[TypeError].panic
+    with mockGetPos
+    with mockInspector
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("x", TInt()),
+      ("y", TInt()),
+      ("z", TBool()),
+      ("s", TBool()),
+      ("w", TBool()),
+      ("v", TBool()),
+      ("t", TBool()),
+      ("u", TBool())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker throws error on comparison with wrong types") {
+    val prog = [
+      ValDeclaration("x", None(), IntLiteral(5)),
+      ValDeclaration("y", None(), BoolLiteral(true)),
+      ValDeclaration("z", None(), Eq(Variable("x"), Variable("y")))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker looks up variable types correctly") {
+    val prog = [
+      ValDeclaration("a", None(), IntLiteral(42)),
+      ValDeclaration("b", None(), AddExpr(Variable("a"), IntLiteral(8))),
+      ValDeclaration("c", None(), BoolLiteral(false)),
+      ValDeclaration("d", None(), OrExpr(Variable("c"), BoolLiteral(true)))
+    ]
+
+    with on[NameError].panic
+    with on[TypeError].panic
+    with mockGetPos
+    with mockInspector
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("a", TInt()),
+      ("b", TInt()),
+      ("c", TBool()),
+      ("d", TBool())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker throws error on undefined variable") {
+    val prog = [
+      ValDeclaration("x", None(), AddExpr(Variable("y"), IntLiteral(5)))
+    ]
+
+    with on[TypeError].panic
+    with assertThrows[NameError]
+    with mockGetPos
+    with mockInspector
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker reuses mutable variable types correctly") {
+    val prog = [
+      VarDeclaration("counter", Some(IntType()), IntLiteral(0)),
+      AssignStmt("counter", AddExpr(Variable("counter"), IntLiteral(1))),
+      AssignStmt("counter", MultExpr(Variable("counter"), IntLiteral(2)))
+    ]
+
+    with on[NameError].panic
+    with on[TypeError].panic
+    with mockGetPos
+    with mockInspector
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("counter", TInt())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker throws error on assigning wrong type to mutable variable") {
+    val prog = [
+      VarDeclaration("flag", Some(BoolType()), BoolLiteral(true)),
+      AssignStmt("flag", IntLiteral(10))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker infers types in if expression") {
+    val prog = [
+      ValDeclaration("x", None(), IntLiteral(5)),
+      ValDeclaration("y", None(), IntLiteral(10)),
+      ValDeclaration("maxVal", None(), IfExpr(Lt(Variable("x"), Variable("y")), Variable("y"), Variable("x")))
+    ]
+
+    with on[NameError].panic
+    with on[TypeError].panic
+    with mockGetPos
+    with mockInspector
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("x", TInt()),
+      ("y", TInt()),
+      ("maxVal", TInt())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker throws error on if expression with wrong types") {
+    val prog = [
+      ValDeclaration("x", None(), BoolLiteral(true)),
+      ValDeclaration("y", None(), BoolLiteral(true)),
+      ValDeclaration("result", None(), IfExpr(Variable("y"), Variable("x"), IntLiteral(10)))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker handles nested if expressions") {
+    val prog = [
+      ValDeclaration("a", None(), IntLiteral(5)),
+      ValDeclaration("b", None(), IntLiteral(10)),
+      ValDeclaration("maxVal", None(), IfExpr(Lt(Variable("a"), Variable("b")),
+        IfExpr(Gt(Variable("b"), IntLiteral(15)), Variable("b"), IntLiteral(15)),
+        Variable("a")))
+    ]
+
+    with on[NameError].panic
+    with on[TypeError].panic
+    with mockGetPos
+    with mockInspector
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("a", TInt()),
+      ("b", TInt()),
+      ("maxVal", TInt())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker throws error on nested if with type mismatch") {
+    val prog = [
+      ValDeclaration("a", None(), IntLiteral(5)),
+      ValDeclaration("b", None(), BoolLiteral(true)),
+      ValDeclaration("result", None(), IfExpr(Variable("b"),
+        IfExpr(Lt(Variable("a"), IntLiteral(10)), Variable("a"), BoolLiteral(false)),
+        IntLiteral(20)))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker infers types in blocks of if statement") {
+    val prog = [
+      ValDeclaration("x", None(), IntLiteral(5)),
+      ValDeclaration("y", None(), IntLiteral(10)),
+      IfStmt(Lt(Variable("x"), Variable("y")),
+        [
+          VarDeclaration("z", None(), AddExpr(Variable("x"), IntLiteral(2))),
+          InspectScope()
+        ],
+        [
+          VarDeclaration("z", None(), Lt(Variable("y"), IntLiteral(2))),
+          InspectScope()
+        ]
+      )
+    ]
+
+    var capturedContexts: List[Map[String, Binding]] = Nil()
+
+    with on[NameError].panic
+    with on[TypeError].panic
+    with mockGetPos
+    
+    try {typecheck(prog)} with Inspector {
+      def inspect(context) = {
+        capturedContexts = Cons(context, capturedContexts)
+        resume(())
+      }
+    }
+
+    val expectedThenContext = map::fromListGeneric[String, Binding]([
+      ("x", Binding(TInt(), false)),
+      ("y", Binding(TInt(), false)),
+      ("z", Binding(TInt(), false))
+    ])
+
+    val expectedElseContext = map::fromListGeneric[String, Binding]([
+      ("x", Binding(TInt(), false)),
+      ("y", Binding(TInt(), false)),
+      ("z", Binding(TBool(), false))
+    ])
+
+    with on[OutOfBounds].panic
+    assertTrue(typeMapsEqual(capturedContexts.get(1), expectedThenContext))
+    assertTrue(typeMapsEqual(capturedContexts.get(0), expectedElseContext))
+  }
+
+  test("typechecker throws error on if statement with type mismatch") {
+    val prog = [
+      ValDeclaration("x", None(), IntLiteral(5)),
+      ValDeclaration("y", None(), IntLiteral(10)),
+      IfStmt(Lt(Variable("x"), Variable("y")),
+        [
+          VarDeclaration("z", None(), AddExpr(Variable("x"), BoolLiteral(true)))
+        ],
+        [
+          VarDeclaration("z", None(), Lt(Variable("y"), IntLiteral(2)))
+        ]
+      )
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker throws error on if statement with non-boolean condition") {
+    val prog = [
+      ValDeclaration("x", None(), IntLiteral(5)),
+      ValDeclaration("y", None(), IntLiteral(10)),
+      IfStmt(AddExpr(Variable("x"), Variable("y")),
+        [
+          VarDeclaration("z", None(), AddExpr(Variable("x"), IntLiteral(2)))
+        ],
+        [
+          VarDeclaration("z", None(), Lt(Variable("y"), IntLiteral(2)))
+        ]
+      )
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker throws error on accessing variable out of scope") {
+    val prog = [
+      IfStmt(BoolLiteral(true),
+        [
+          VarDeclaration("x", None(), IntLiteral(5))
+        ],
+        [
+          VarDeclaration("y", None(), IntLiteral(10))
+        ]
+      ),
+      ValDeclaration("z", None(), AddExpr(Variable("x"), Variable("y")))
+    ]
+
+    with on[TypeError].panic
+    with assertThrows[NameError]
+    with mockGetPos
+    with mockInspector
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker handles shadowing correctly") {
+    val prog = [
+      ValDeclaration("x", None(), IntLiteral(5)),
+      IfStmt(BoolLiteral(true), 
+        [
+          ValDeclaration("x", None(), BoolLiteral(true)),
+          ValDeclaration("y", None(), Variable("x")),
+          InspectScope()
+        ], Nil()),
+      ValDeclaration("z", None(), Variable("x"))
+    ]
+
+    val expectedInnerContext = map::fromListGeneric[String, Binding]([
+      ("x", Binding(TBool(), false)),
+      ("y", Binding(TBool(), false))
+    ])
+    
+    val expectedOuterContext = map::fromListGeneric[String, TypingType]([
+      ("x", TInt()),
+      ("z", TInt())
+    ])
+
+    var innerContext: Map[String, Binding] = map::emptyGeneric[String, Binding]()
+    var outerContext: Map[String, TypingType] = map::emptyGeneric[String, TypingType]()
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector
+    try {outerContext = typecheck(prog)} with Inspector {
+      def inspect(context) = {
+        innerContext = context
+        resume(())
+      }
+    }
+    assertTrue(typeMapsEqual(innerContext, expectedInnerContext))
+    assertTrue(typeMapsEqual(outerContext, expectedOuterContext))
+  }
+
+  test("typechecker infers types correctly in complex program") {
+    val prog = [
+      VarDeclaration("a", None(), IntLiteral(10)),
+      VarDeclaration("b", None(), IntLiteral(20)),
+      ValDeclaration("c", None(), BoolLiteral(true)),
+      IfStmt(AndExpr(Gt(Variable("b"), Variable("a")), Variable("c")),
+        [
+          VarDeclaration("maxVal", None(), Variable("b")),
+          AssignStmt("a", AddExpr(Variable("a"), IntLiteral(5))),
+          IfStmt(Lt(Variable("a"), IntLiteral(25)),
+            [
+              AssignStmt("b", MultExpr(Variable("b"), IntLiteral(2)))
+            ],
+            [
+              AssignStmt("b", SubExpr(Variable("b"), IntLiteral(3)))
+            ]
+          )
+        ],
+        [
+          VarDeclaration("maxVal", None(), Variable("a")),
+          AssignStmt("b", SubExpr(Variable("b"), IntLiteral(5))),
+          IfStmt(Eq(Variable("b"), IntLiteral(15)),
+            [
+              AssignStmt("a", IntLiteral(15))
+            ],
+            [
+              AssignStmt("a", AddExpr(Variable("b"), IntLiteral(10)))
+            ]
+          )
+        ]
+      ),
+      ValDeclaration("result", None(), MultExpr(AddExpr(Variable("a"), Variable("b")), IntLiteral(2))),
+      ValDeclaration("comparison", None(), GtE(Variable("result"), IntLiteral(100)))
+    ]
+
+    with on[NameError].panic
+    with on[TypeError].panic
+    with mockGetPos
+    with mockInspector
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("a", TInt()),
+      ("b", TInt()),
+      ("c", TBool()),
+      ("result", TInt()),
+      ("comparison", TBool())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+}

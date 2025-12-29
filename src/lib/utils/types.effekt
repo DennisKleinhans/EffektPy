@@ -1,4 +1,13 @@
 type Type {
-    IntType()
-    BoolType()
+  IntType()
+  BoolType()
 }
+
+type TypingType {
+  TInt()
+  TBool()
+  TVar(id: Int)
+}
+
+record Binding(tpe: TypingType, isMutable: Bool)
+record Position (line: Int, column: Int)

@@ -2,3 +2,5 @@
 record ParseError()
 record LexerError()
 record DesugarError()
+record TypeError()
+record NameError()

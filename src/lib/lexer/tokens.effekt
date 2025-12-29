@@ -1,3 +1,4 @@
+import src/lib/utils/types
 
 type TokenKind {
   // keywords
@@ -44,4 +45,3 @@ type TokenKind {
 }
 
 record Token(kind: TokenKind, position: Position)
-record Position (line: Int, column: Int)

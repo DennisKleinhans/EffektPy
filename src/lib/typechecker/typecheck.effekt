@@ -1,0 +1,191 @@
+import map
+import src/lib/desugar/coreAst
+import src/lib/typechecker/unification
+import src/lib/utils/errors
+import src/lib/utils/types
+import src/lib/utils/effects
+import src/lib/utils/helpers
+import src/lib/utils/handlers
+
+/// Typechecks a program and returns a mapping from variable names to their inferred types
+def typecheck(prog: Program): Map[String, TypingType] / { Exception[TypeError], Exception[NameError], Inspector, getPos } = {
+  var equations: List[(TypingType, TypingType)] = Nil()
+  var counter = 0
+
+  with handleTypingContext
+  try {
+    prog.foreach { stmt => checkStmt(stmt) }
+    val finalSubst = solve(equations)
+
+    val globalEnv: Map[String, Binding] = do backup()
+    var results = map::emptyGeneric[String, TypingType]()
+    globalEnv.foreach { (name, binding) => 
+      results = results.put(name, applySubstitution(binding.tpe, finalSubst))
+    }
+    results
+  } with Typing {
+    def fresh() = {
+      val t = TVar(counter)
+      counter = counter + 1
+      resume(t)
+    }
+
+    def equate(t1: TypingType, t2: TypingType) = {
+      equations = Cons((t1, t2), equations)
+      resume(())
+    }
+  }
+}
+
+/// Typecheck a single statement
+def checkStmt(stmt: Stmt): Unit / { Typing, TypingContext, Inspector, Exception[TypeError], getPos } = stmt match {
+  case ValDeclaration(name, typeAnno, value) => {
+    val tExpr = checkExpr(value)
+    do equate(tExpr, translateType(typeAnno))
+    do define(name, tExpr, false)
+  }
+  case VarDeclaration(name, typeAnno, value) => {
+    val tExpr = checkExpr(value)
+    do equate(tExpr, translateType(typeAnno))
+    do define(name, tExpr, true)
+  }
+  case AssignStmt(name, value) => {
+    val binding = do lookup(name)
+    if (not(binding.isMutable)) {
+      val pos = do getPos()
+      raise(TypeError(), "Cannot assign to immutable variable '" ++ name ++ "' at " ++ pos.show)
+    }
+    do equate(binding.tpe, checkExpr(value))
+  }
+  case IfStmt(cond, thenBranch, elseBranch) => {
+    do equate(checkExpr(cond), TBool())
+
+    with handleNewTypingScope 
+    thenBranch.foreach{ stmt => checkStmt(stmt)}
+    
+    with handleNewTypingScope 
+    elseBranch.foreach{ stmt => checkStmt(stmt)}
+    
+  }
+  case InspectScope() => {
+    val currentContext = do backup()
+    do inspect(currentContext)
+  }
+  case ExprStmt(expr) => {
+    checkExpr(expr)
+    ()
+  }
+}
+
+/// Typecheck an expression and return its inferred type
+def checkExpr(expr: Expr): TypingType / { Typing, TypingContext } = expr match {
+  case IntLiteral(value) => TInt()
+  case BoolLiteral(value) => TBool()
+  case Variable(name) => {
+    val binding = do lookup(name)
+    binding.tpe
+  }
+  case AddExpr(left, right) => {
+    val tLeft = checkExpr(left)
+    val tRight = checkExpr(right)
+    do equate(tLeft, TInt())
+    do equate(tRight, TInt())
+    TInt()
+  }
+  case SubExpr(left, right) => {
+    val tLeft = checkExpr(left)
+    val tRight = checkExpr(right)
+    do equate(tLeft, TInt())
+    do equate(tRight, TInt())
+    TInt()
+  }
+  case MultExpr(left, right) => {
+    val tLeft = checkExpr(left)
+    val tRight = checkExpr(right)
+    do equate(tLeft, TInt())
+    do equate(tRight, TInt())
+    TInt()
+  }
+  case DivExpr(left, right) => {
+    val tLeft = checkExpr(left)
+    val tRight = checkExpr(right)
+    do equate(tLeft, TInt())
+    do equate(tRight, TInt())
+    TInt()
+  }
+  case IfExpr(condition, thenExpr, elseExpr) => {
+    val tCond = checkExpr(condition)
+    val tThen = checkExpr(thenExpr)
+    val tElse = checkExpr(elseExpr)
+    do equate(tCond, TBool())
+    do equate(tThen, tElse)
+    tThen
+  }
+  case AndExpr(left, right) => {
+    val tLeft = checkExpr(left)
+    val tRight = checkExpr(right)
+    do equate(tLeft, TBool())
+    do equate(tRight, TBool())
+    TBool()
+  }
+  case OrExpr(left, right) => {
+    val tLeft = checkExpr(left)
+    val tRight = checkExpr(right)
+    do equate(tLeft, TBool())
+    do equate(tRight, TBool())
+    TBool()
+  }
+  case NotExpr(inner) => {
+    val tInner = checkExpr(inner)
+    do equate(tInner, TBool())
+    TBool()
+  }
+  case Eq(left, right) => {
+    val tLeft = checkExpr(left)
+    val tRight = checkExpr(right)
+    do equate(tLeft, tRight)
+    TBool()
+  }
+  case Neq(left, right) => {
+    val tLeft = checkExpr(left)
+    val tRight = checkExpr(right)
+    do equate(tLeft, tRight)
+    TBool()
+  }
+  case Lt(left, right) => {
+    val tLeft = checkExpr(left)
+    val tRight = checkExpr(right)
+    do equate(tLeft, TInt())
+    do equate(tRight, TInt())
+    TBool()
+  }
+  case Gt(left, right) => {
+    val tLeft = checkExpr(left)
+    val tRight = checkExpr(right)
+    do equate(tLeft, TInt())
+    do equate(tRight, TInt())
+    TBool()
+  }
+  case LtE(left, right) => {
+    val tLeft = checkExpr(left)
+    val tRight = checkExpr(right)
+    do equate(tLeft, TInt())
+    do equate(tRight, TInt())
+    TBool()
+  }
+  case GtE(left, right) => {
+    val tLeft = checkExpr(left)
+    val tRight = checkExpr(right)
+    do equate(tLeft, TInt())
+    do equate(tRight, TInt())
+    TBool()
+  }
+  
+}
+
+/// Translate an optional Type annotation into a TypingType
+def translateType(t: Option[Type]): TypingType / Typing = t match {
+  case Some(IntType()) => TInt()
+  case Some(BoolType()) => TBool()
+  case None() => do fresh() // generate a fresh type variable
+}

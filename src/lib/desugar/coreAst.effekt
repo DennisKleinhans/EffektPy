@@ -30,6 +30,8 @@ type Stmt {
   AssignStmt(name: String, value: Expr)
   IfStmt(cond: Expr, thenBranch: List[Stmt], elseBranch: List[Stmt])
   ExprStmt(expr: Expr)
+  // for debugging purposes
+  InspectScope()
 }
 
 type Program = List[Stmt]

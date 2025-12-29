@@ -1,0 +1,82 @@
+import map
+import src/lib/utils/errors
+import src/lib/utils/types
+
+
+type Substitution = Map[Int, TypingType]
+
+/// Applies a substitution to a typing type
+def applySubstitution(t: TypingType, subst: Substitution): TypingType = t match {
+  case TInt() => TInt()
+  case TBool() => TBool()
+  case TVar(id) => {
+    subst.get(id) match {
+      case Some(t2) => applySubstitution(t2, subst)
+      case None() => TVar(id)
+    }
+  }
+}
+
+/// Checks if two typing types are equal
+def equal(t1: TypingType, t2: TypingType): Bool = {
+  (t1, t2) match {
+    case (TInt(), TInt()) => true
+    case (TBool(), TBool()) => true
+    case (TVar(id1), TVar(id2)) => id1 == id2
+    case _ => false
+  }
+}
+
+/// Pretty prints a typing type
+def show(t: TypingType): String = t match {
+  case TInt() => "Int"
+  case TBool() => "Bool"
+  case TVar(id) => "TVar(" ++ id.show ++ ")"
+}
+
+/// Checks if a type variable occurs in a typing type 
+def occursCheck(id: Int, t: TypingType): Bool = t match {
+  case TInt() => false
+  case TBool() => false
+  case TVar(otherId) => id == otherId
+}
+
+/// Unification algorithm for typing types
+def unify(eqs: List[(TypingType, TypingType)], subst: Substitution): Substitution / Exception[TypeError] = {
+  eqs match {
+    case Nil() => subst
+    case Cons((left, right), rest) => {
+      val lNorm = applySubstitution(left, subst)
+      val rNorm = applySubstitution(right, subst)
+      (lNorm, rNorm) match {
+        case (t1, t2) and equal(t1, t2) => unify(rest, subst)
+        case (TVar(id), other) => bind(id, other, rest, subst)
+        case (other, TVar(id)) => bind(id, other, rest, subst)
+        case (TInt(), TInt()) => unify(rest, subst)
+        case (TBool(), TBool()) => unify(rest, subst)
+        case _ => do raise(TypeError(), "cannot unify types " ++ lNorm.show ++ " with " ++ rNorm.show)
+      }
+    }
+  }
+}
+  
+/// Helper function to bind a type variable to a typing type during unification
+def bind(id: Int, t: TypingType, rest: List[(TypingType, TypingType)], subst: Substitution): Substitution / Exception[TypeError] = {
+  if (occursCheck(id, t)) {
+    do raise(TypeError(), "occurs check failed for variable " ++ id.show)
+  } else {
+    val single = map::singletonGeneric(id, t)
+    val newSubst: Substitution = subst.put(id, t)
+    val newRest: List[(TypingType, TypingType)] =
+      rest.map { case (l, r) =>
+        (applySubstitution(l, single),
+          applySubstitution(r, single))
+      }
+    unify(newRest, newSubst)
+  }
+}
+
+/// Solves a list of typing type equations and returns the resulting substitution
+def solve(equations: List[(TypingType, TypingType)]): Substitution / Exception[TypeError] = {  
+  unify(equations, map::emptyGeneric())
+}
