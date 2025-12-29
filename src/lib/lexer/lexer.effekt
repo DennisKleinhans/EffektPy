@@ -6,6 +6,7 @@ import src/lib/lexer/tokens
 import src/lib/utils/errors
 import src/lib/utils/effects
 import src/lib/utils/helpers
+import src/lib/utils/types
 
 
 /// scanner that tracks source position

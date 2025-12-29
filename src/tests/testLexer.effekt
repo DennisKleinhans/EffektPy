@@ -10,6 +10,7 @@ import src/lib/lexer/tokens
 import src/lib/parser/surfaceAst
 import src/lib/utils/errors
 import src/lib/utils/effects
+import src/lib/utils/types
 
 def main() = mainSuite("lexer") {
 
@@ -195,6 +196,23 @@ def main() = mainSuite("lexer") {
       Token(LowerIdentifier("x"), Position(3, 1)),
       Token(MinusAssign(), Position(3, 3)),
       Token(Number(3), Position(3, 6))
+    ]
+
+    with fullLexerHandler(input, false)
+    val tokens = collectTokens(Nil()) { do next() }
+    assertEqual(tokens, expected)
+  }
+
+  test("lexer recognizes if expressions") {
+    val input = "if true then 1 else 0"
+
+    val expected = [
+      Token(If(), Position(1, 1)),
+      Token(Boolean(true), Position(1, 4)),
+      Token(Then(), Position(1, 9)),
+      Token(Number(1), Position(1, 14)),
+      Token(Else(), Position(1, 16)),
+      Token(Number(0), Position(1, 21))
     ]
 
     with fullLexerHandler(input, false)
