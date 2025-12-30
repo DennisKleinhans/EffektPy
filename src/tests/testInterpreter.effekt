@@ -1,0 +1,269 @@
+import test
+import src/lib/utils/testUtils
+import src/lib/interpreter/eval
+import src/lib/utils/handlers
+import src/lib/utils/errors
+import src/lib/desugar/coreAst
+import src/lib/utils/types
+
+def main() = mainSuite("interpreter") {
+
+  def equal(v1: Value, v2: Value): Bool = (v1, v2) match {
+    case (VInt(n1), VInt(n2)) => n1 == n2
+    case (VBool(b1), VBool(b2)) => b1 == b2
+    case (VUnit(), VUnit()) => true
+    case _ => false
+  }
+
+  test("eval simple arithmetic") {
+    val progs = [
+      [ExprStmt(AddExpr(IntLiteral(10), IntLiteral(20)))],
+      [ExprStmt(SubExpr(IntLiteral(30), IntLiteral(5)))],
+      [ExprStmt(MultExpr(IntLiteral(4), IntLiteral(5)))],
+      [ExprStmt(DivExpr(IntLiteral(20), IntLiteral(4)))],
+      [ExprStmt(AddExpr(MultExpr(IntLiteral(2), IntLiteral(3)), IntLiteral(5)))],
+      [ExprStmt(SubExpr(DivExpr(IntLiteral(50), IntLiteral(2)), IntLiteral(5)))]
+    ]
+
+    val expected = [
+      VInt(30),
+      VInt(25),
+      VInt(20),
+      VInt(5),
+      VInt(11),
+      VInt(20)
+    ]
+    var iter = 0
+
+    while(iter < progs.size) {
+      with on[RuntimeError].panic
+      with on[OutOfBounds].panic
+      with mockGetPos 
+      with mockInspector[Unit, Address]
+
+      val result = evalProgram(progs.get(iter))
+      assertTrue(result.equal(expected.get(iter)))
+      iter = iter + 1
+    } 
+  }
+
+  test("eval equality and inequality") {
+    val prog1 = ExprStmt(
+      Eq(
+        IntLiteral(10),
+        IntLiteral(10)
+      )
+    )
+
+    val prog2 = ExprStmt(
+      Neq(
+        BoolLiteral(true),
+        BoolLiteral(false)
+      )
+    )
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+
+    val result1 = evalProgram([prog1])
+    assertTrue(result1.equal(VBool(true)))
+
+    val result2 = evalProgram([prog2])
+    assertTrue(result2.equal(VBool(true)))
+  }
+
+  test("eval comparison operators") {
+    val progs = [
+      [ExprStmt(Lt(IntLiteral(15), IntLiteral(20)))],
+      [ExprStmt(Gt(IntLiteral(25), IntLiteral(10)))],
+      [ExprStmt(LtE(IntLiteral(10), IntLiteral(10)))],
+      [ExprStmt(GtE(IntLiteral(30), IntLiteral(40)))]
+    ]
+
+    val expected = [VBool(true), VBool(true), VBool(true), VBool(false)]
+    var iter = 0
+    while(iter < progs.size) {
+      with on[RuntimeError].panic
+      with on [OutOfBounds].panic
+      with mockGetPos 
+      with mockInspector[Unit, Address]
+
+      val result = evalProgram(progs.get(iter))
+      assertTrue(result.equal(expected.get(iter)))
+      iter = iter + 1
+    }
+  }
+
+  test("eval simple if expressions") {
+    val prog1 = ExprStmt(
+      IfExpr(
+        BoolLiteral(true),
+        IntLiteral(10),
+        IntLiteral(20)
+      )
+    )
+
+    val prog2 = ExprStmt(
+      IfExpr(
+        BoolLiteral(false),
+        IntLiteral(10),
+        IntLiteral(20)
+      )
+    )
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+
+    val result1 = evalProgram([prog1])
+    assertTrue(result1.equal(VInt(10)))
+
+    val result2 = evalProgram([prog2])
+    assertTrue(result2.equal(VInt(20)))
+  }
+
+  test("eval if expression with comparison") {
+    val prog = ExprStmt(
+      IfExpr(
+        OrExpr(
+          AndExpr(
+            BoolLiteral(true),
+            BoolLiteral(false)
+          ),
+          BoolLiteral(true)
+        ),
+        IntLiteral(42),
+        IntLiteral(0)
+      )
+    )
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+
+    val result = evalProgram([prog])
+    assertTrue(result.equal(VInt(42)))
+  }
+
+  test("eval division by zero raises RuntimeError") {
+    val prog = ExprStmt(
+      DivExpr(
+        IntLiteral(10),
+        IntLiteral(0)
+      )
+    )
+
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    with assertThrows[RuntimeError]
+    evalProgram([prog])
+    ()
+  }
+
+  test("eval if statement") {
+    val prog = [
+      VarDeclaration("x", None(), IntLiteral(0)),
+      IfStmt(
+        BoolLiteral(true),
+        [
+          AssignStmt("x", IntLiteral(10))
+        ],
+        [
+          AssignStmt("x", IntLiteral(20))
+        ]
+      ),
+      ExprStmt(Variable("x"))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+
+    val result = evalProgram(prog)
+    assertTrue(result.equal(VInt(10)))
+  }
+
+  test("eval nested if expressions") {
+    val prog = ExprStmt(
+      IfExpr(
+        BoolLiteral(false),
+        IntLiteral(1),
+        IfExpr(
+          BoolLiteral(true),
+          IntLiteral(2),
+          IntLiteral(3)
+        )
+      )
+    )
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+
+    val result = evalProgram([prog])
+    assertTrue(result.equal(VInt(2)))
+  }
+
+  test("nested if statements") {
+    val prog = [
+      VarDeclaration("x", None(), IntLiteral(0)),
+      IfStmt(
+        BoolLiteral(false),
+        [
+          AssignStmt("x", IntLiteral(10))
+        ],
+        [
+          IfStmt(
+            BoolLiteral(true),
+            [
+              AssignStmt("x", IntLiteral(20))
+            ],
+            [
+              AssignStmt("x", IntLiteral(30))
+            ]
+          )
+        ]
+      ),
+      ExprStmt(Variable("x"))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+
+    val result = evalProgram(prog)
+    assertTrue(result.equal(VInt(20)))
+  }
+
+  test("eval complex program") {
+    val prog = [
+      ValDeclaration("a", None(), IntLiteral(10)),
+      VarDeclaration("b", None(), IntLiteral(20)),
+      AssignStmt("b", AddExpr(Variable("a"), IntLiteral(5))),
+      IfStmt(Lt(Variable("b"), Variable("a")),
+        [
+          AssignStmt("b", MultExpr(Variable("b"), IntLiteral(2)))
+        ],
+        [
+          AssignStmt("b", SubExpr(Variable("b"), IntLiteral(5))),
+          ValDeclaration("c", None(), DivExpr(Variable("b"), IntLiteral(2))),
+          AssignStmt("b", IfExpr(GtE(AddExpr(Variable("b"), Variable("c")), IntLiteral(30)),
+            IntLiteral(100),
+            IntLiteral(50)
+          ))
+        ]
+      ),
+      ExprStmt(Variable("b"))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+
+    val result = evalProgram(prog)
+    assertTrue(result.equal(VInt(50)))
+  }
+  
+
+}
