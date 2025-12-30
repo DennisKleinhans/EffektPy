@@ -60,6 +60,7 @@ def extractType(input: String): Type / Exception[ParseError] = {
   input match {
     case "Int" => IntType()
     case "Bool" => BoolType()
+    case "Unit" => UnitType()
     case _ => raise(ParseError(), "type annotation '" ++ input ++ "' is not a valid type")
   }
 }

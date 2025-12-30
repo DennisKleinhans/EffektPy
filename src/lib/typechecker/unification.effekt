@@ -9,6 +9,7 @@ type Substitution = Map[Int, TypingType]
 def applySubstitution(t: TypingType, subst: Substitution): TypingType = t match {
   case TInt() => TInt()
   case TBool() => TBool()
+  case TUnit() => TUnit()
   case TVar(id) => {
     subst.get(id) match {
       case Some(t2) => applySubstitution(t2, subst)
@@ -31,6 +32,7 @@ def equal(t1: TypingType, t2: TypingType): Bool = {
 def show(t: TypingType): String = t match {
   case TInt() => "Int"
   case TBool() => "Bool"
+  case TUnit() => "Unit"
   case TVar(id) => "TVar(" ++ id.show ++ ")"
 }
 
@@ -38,6 +40,7 @@ def show(t: TypingType): String = t match {
 def occursCheck(id: Int, t: TypingType): Bool = t match {
   case TInt() => false
   case TBool() => false
+  case TUnit() => false
   case TVar(otherId) => id == otherId
 }
 
