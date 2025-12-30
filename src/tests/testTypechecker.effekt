@@ -343,7 +343,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with mockGetPos
     
-    try {typecheck(prog)} with Inspector {
+    try { typecheck(prog) } with Inspector {
       def inspect(context) = {
         capturedContexts = Cons(context, capturedContexts)
         resume(())
@@ -460,8 +460,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector
-    try {outerContext = typecheck(prog)} with Inspector {
+    try { outerContext = typecheck(prog) } with Inspector {
       def inspect(context) = {
         innerContext = context
         resume(())
@@ -521,5 +520,68 @@ def main() = mainSuite("typechecker") {
     ])
 
     assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker handles nested if statements with shadowing") {
+    val prog = [
+      ValDeclaration("x", None(), IntLiteral(5)),
+      IfStmt(BoolLiteral(true),
+        [
+          ValDeclaration("x", None(), BoolLiteral(true)),
+          IfStmt(BoolLiteral(false),
+            [
+              ValDeclaration("y", None(), Variable("x")),
+              InspectScope()
+            ],
+            [
+              ValDeclaration("y", None(), IntLiteral(10)),
+              InspectScope()
+            ]
+          )
+        ],
+        Nil()
+      ),
+      ValDeclaration("z", None(), Variable("x"))
+    ]
+
+    var innerContext1: Map[String, Binding] = map::emptyGeneric[String, Binding]()
+    var innerContext2: Map[String, Binding] = map::emptyGeneric[String, Binding]()
+    var outerContext: Map[String, TypingType] = map::emptyGeneric[String, TypingType]()
+    var inspectCount = 0
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    
+    try { outerContext = typecheck(prog) } with Inspector {
+      
+      def inspect(context) = {
+        if (inspectCount == 0) {
+          innerContext1 = context
+        } else if (inspectCount == 1) {
+          innerContext2 = context
+        }
+        inspectCount = inspectCount + 1
+        resume(())
+      }
+    }
+
+    val expectedInnerContext1 = map::fromListGeneric[String, Binding]([
+      ("x", Binding(TBool(), false)),
+      ("y", Binding(TBool(), false))
+    ])
+
+    val expectedInnerContext2 = map::fromListGeneric[String, Binding]([
+      ("x", Binding(TBool(), false)),
+      ("y", Binding(TInt(), false))
+    ])
+
+    val expectedOuterContext = map::fromListGeneric[String, TypingType]([
+      ("x", TInt()),
+      ("z", TInt())
+    ])
+
+    assertTrue(typeMapsEqual(innerContext1, expectedInnerContext1))
+    assertTrue(typeMapsEqual(innerContext2, expectedInnerContext2))
+    assertTrue(typeMapsEqual(outerContext, expectedOuterContext))
   }
 }
