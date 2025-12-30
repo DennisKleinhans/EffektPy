@@ -38,24 +38,23 @@ def typecheck(prog: Program): Map[String, TypingType] / { Exception[TypeError], 
 }
 
 /// Typecheck a single statement
-def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypingType, TypeBinding], Inspector[TypeBinding], Exception[TypeError], getPos } = stmt match {
+def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], getPos } = stmt match {
   case ValDeclaration(name, typeAnno, value) => {
     val tExpr = checkExpr(value)
     do equate(tExpr, translateType(typeAnno))
-    do define(name, tExpr, false)
+    do define(name, TypeBinding(tExpr, false))
     TUnit()
   }
   case VarDeclaration(name, typeAnno, value) => {
     val tExpr = checkExpr(value)
     do equate(tExpr, translateType(typeAnno))
-    do define(name, tExpr, true)
+    do define(name, TypeBinding(tExpr, true))
     TUnit()
   }
   case AssignStmt(name, value) => {
     val binding = do lookup(name)
     if (not(binding.isMutable)) {
-      val pos = do getPos()
-      raise(TypeError(), "Cannot assign to immutable variable '" ++ name ++ "' at " ++ pos.show)
+      do raise(TypeError(), "Cannot assign to immutable variable '" ++ name ++ "' at " ++ do getPos().show)
     }
     do equate(binding.tpe, checkExpr(value))
     TUnit()
@@ -76,7 +75,7 @@ def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypingType, TypeBindin
   }
 }
 
-def checkBlock(stmts: List[Stmt]): TypingType / { Typing, Context[TypingType, TypeBinding], Inspector[TypeBinding], Exception[TypeError], getPos } = {
+def checkBlock(stmts: List[Stmt]): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], getPos } = {
   var lastType: TypingType = TUnit()
   with handleNewTypingScope
   stmts.foreach { stmt => lastType = checkStmt(stmt) }
@@ -84,12 +83,11 @@ def checkBlock(stmts: List[Stmt]): TypingType / { Typing, Context[TypingType, Ty
 }
 
 /// Typecheck an expression and return its inferred type
-def checkExpr(expr: Expr): TypingType / { Typing, Context[TypingType, TypeBinding] } = expr match {
+def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding] } = expr match {
   case IntLiteral(value) => TInt()
   case BoolLiteral(value) => TBool()
   case Variable(name) => {
-    val binding = do lookup(name)
-    binding.tpe
+    do lookup(name).tpe
   }
   case AddExpr(left, right) => {
     val tLeft = checkExpr(left)

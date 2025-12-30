@@ -19,11 +19,17 @@ interface Typing {
 }
 
 /// Effect for managing some context mapping from names to values of type R
-interface Context[R, T] {
-  def lookup(name: String): T
-  def define(name: String, value: R, isMutable: Bool): Unit
-  def backup(): Map[String, T]
-  def restore(context: Map[String, T]): Unit
+interface Context[R] {
+  def lookup(name: String): R
+  def define(name: String, value: R): Unit
+  def backup(): Map[String, R]
+  def restore(context: Map[String, R]): Unit
+}
+
+interface Store {
+  def allocate(value: Value): Address
+  def load(addr: Address): Value
+  def store(addr: Address, value: Value): Unit
 }
 
 /// Effect for inspecting the current typing context (for debugging)

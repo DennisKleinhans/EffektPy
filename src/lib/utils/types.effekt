@@ -17,6 +17,8 @@ type Value {
   VUnit()
 }
 
+type Address = Int
+
 record TypeBinding(tpe: TypingType, isMutable: Bool)
 record ValueBinding(value: Value, isMutable: Bool)
 record Position (line: Int, column: Int)

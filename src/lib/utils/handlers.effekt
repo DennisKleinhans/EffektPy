@@ -5,12 +5,12 @@ import src/lib/utils/effects
 import src/lib/utils/helpers
 
 /// Handler for TypingContext effect that manages variable bindings and their types in a mutable map.
-def handleTypingContext[R] { prog: => R / Context[TypingType, TypeBinding] }: R / { Exception[NameError], getPos } = {
+def handleTypingContext[R] { prog: => R / Context[TypeBinding] }: R / { Exception[NameError], getPos } = {
   var context: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
 
-  try { prog() } with Context[TypingType, TypeBinding] {
-    def define(name, value, isMutable) = {
-      context = context.put(name, TypeBinding(value, isMutable))
+  try { prog() } with Context[TypeBinding] {
+    def define(name, value) = {
+      context = context.put(name, value)
       resume(())
     }
 
@@ -18,8 +18,7 @@ def handleTypingContext[R] { prog: => R / Context[TypingType, TypeBinding] }: R 
       context.get(name) match {
         case Some(binding) => resume(binding)
         case None() => {
-          val pos = do getPos()
-          raise(NameError(), "Undefined variable '" ++ name ++ "' at " ++ pos.show())
+          raise(NameError(), "Undefined variable '" ++ name ++ "' at " ++ do getPos().show)
         }
       }
     }
@@ -33,6 +32,50 @@ def handleTypingContext[R] { prog: => R / Context[TypingType, TypeBinding] }: R 
   }
 }
 
+def handleRuntimeContext[R] { prog: => R / { Context[Address], Store } }: R / {Exception[RuntimeError], getPos } = {
+  var context: Map[String, Address] = map::emptyGeneric[String, Address]()
+  var heap: Map[Address, Value] = map::emptyGeneric[Address, Value]()
+  var nextAddress: Address = 0
+
+  try { prog() } with Context[Address] {
+    def define(name, addr) = {
+      context = context.put(name, addr)
+      resume(())
+    }
+
+    def lookup(name) = {
+      context.get(name) match {
+        case Some(addr) => resume(addr)
+        case None() => do raise(errors::RuntimeError(), "Undefined variable '" ++ name ++ "' at " ++ do getPos().show)
+      }
+    }
+
+    def backup() = resume(context)
+
+    def restore(savedContext) = {
+      context = savedContext
+      resume(())
+    }
+  } with Store {
+    def allocate(value) = {
+      val addr = nextAddress
+      nextAddress = nextAddress + 1
+      heap = heap.put(addr, value)
+      resume(addr)
+    }
+
+    def load(addr) = heap.get(addr) match {
+      case Some(value) => resume(value)
+      case None() => do raise(errors::RuntimeError(), "Invalid memory access at address " ++ addr.show)
+    }
+
+    def store(addr, value) = {
+      heap = heap.put(addr, value)
+      resume(())
+    }
+  }
+}
+
 /// Mock handler for getPos effect that always returns a fixed position (line 1, column 1).
 def mockGetPos[R] { prog: => R / getPos } = {
   try { prog() } with getPos {
@@ -41,14 +84,21 @@ def mockGetPos[R] { prog: => R / getPos } = {
 }
 
 /// Mock handler for Inspector effect that does nothing.
-def mockInspector[R] { prog: => R / Inspector[TypeBinding] }: R = {
-  try { prog() } with Inspector[TypeBinding] {
+def mockInspector[R, T] { prog: => R / Inspector[T] }: R = {
+  try { prog() } with Inspector[T] {
     def inspect(context) = resume(())
   }
 }
 
 /// Handler that creates a new typing scope for the duration of the action.
-def handleNewTypingScope[R]{ action: => R / Context[TypingType, TypeBinding] }: R / Context[TypingType, TypeBinding] = {
+def handleNewTypingScope[R]{ action: => R / Context[TypeBinding] }: R / Context[TypeBinding] = {
+  val snapshot = do backup()
+  val result = action()
+  do restore(snapshot)
+  result
+}
+
+def handleNewRuntimeScope[R]{ action: => R / Context[Address] }: R / Context[Address] = {
   val snapshot = do backup()
   val result = action()
   do restore(snapshot)
