@@ -5,12 +5,12 @@ import src/lib/utils/effects
 import src/lib/utils/helpers
 
 /// Handler for TypingContext effect that manages variable bindings and their types in a mutable map.
-def handleTypingContext[R] { prog: => R / TypingContext }: R / { Exception[NameError], getPos } = {
-  var context: Map[String, Binding] = map::emptyGeneric[String, Binding]()
+def handleTypingContext[R] { prog: => R / Context[TypingType, TypeBinding] }: R / { Exception[NameError], getPos } = {
+  var context: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
 
-  try { prog() } with TypingContext {
-    def define(name, tpe, isMutable) = {
-      context = context.put(name, Binding(tpe, isMutable))
+  try { prog() } with Context[TypingType, TypeBinding] {
+    def define(name, value, isMutable) = {
+      context = context.put(name, TypeBinding(value, isMutable))
       resume(())
     }
 
@@ -41,14 +41,14 @@ def mockGetPos[R] { prog: => R / getPos } = {
 }
 
 /// Mock handler for Inspector effect that does nothing.
-def mockInspector[R] { prog: => R / Inspector }: R = {
-  try { prog() } with Inspector {
+def mockInspector[R] { prog: => R / Inspector[TypeBinding] }: R = {
+  try { prog() } with Inspector[TypeBinding] {
     def inspect(context) = resume(())
   }
 }
 
 /// Handler that creates a new typing scope for the duration of the action.
-def handleNewTypingScope[R]{ action: => R / TypingContext }: R / TypingContext = {
+def handleNewTypingScope[R]{ action: => R / Context[TypingType, TypeBinding] }: R / Context[TypingType, TypeBinding] = {
   val snapshot = do backup()
   val result = action()
   do restore(snapshot)

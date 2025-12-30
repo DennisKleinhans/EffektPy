@@ -9,5 +9,11 @@ type TypingType {
   TVar(id: Int)
 }
 
-record Binding(tpe: TypingType, isMutable: Bool)
+type Value {
+  VInt(value: Int)
+  VBool(value: Bool)
+}
+
+record TypeBinding(tpe: TypingType, isMutable: Bool)
+record ValueBinding(value: Value, isMutable: Bool)
 record Position (line: Int, column: Int)

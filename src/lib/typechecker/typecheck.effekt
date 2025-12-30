@@ -8,7 +8,7 @@ import src/lib/utils/helpers
 import src/lib/utils/handlers
 
 /// Typechecks a program and returns a mapping from variable names to their inferred types
-def typecheck(prog: Program): Map[String, TypingType] / { Exception[TypeError], Exception[NameError], Inspector, getPos } = {
+def typecheck(prog: Program): Map[String, TypingType] / { Exception[TypeError], Exception[NameError], Inspector[TypeBinding], getPos } = {
   var equations: List[(TypingType, TypingType)] = Nil()
   var counter = 0
 
@@ -17,7 +17,7 @@ def typecheck(prog: Program): Map[String, TypingType] / { Exception[TypeError], 
     prog.foreach { stmt => checkStmt(stmt) }
     val finalSubst = solve(equations)
 
-    val globalEnv: Map[String, Binding] = do backup()
+    val globalEnv: Map[String, TypeBinding] = do backup()
     var results = map::emptyGeneric[String, TypingType]()
     globalEnv.foreach { (name, binding) => 
       results = results.put(name, applySubstitution(binding.tpe, finalSubst))
@@ -38,7 +38,7 @@ def typecheck(prog: Program): Map[String, TypingType] / { Exception[TypeError], 
 }
 
 /// Typecheck a single statement
-def checkStmt(stmt: Stmt): Unit / { Typing, TypingContext, Inspector, Exception[TypeError], getPos } = stmt match {
+def checkStmt(stmt: Stmt): Unit / { Typing, Context[TypingType, TypeBinding], Inspector[TypeBinding], Exception[TypeError], getPos } = stmt match {
   case ValDeclaration(name, typeAnno, value) => {
     val tExpr = checkExpr(value)
     do equate(tExpr, translateType(typeAnno))
@@ -78,7 +78,7 @@ def checkStmt(stmt: Stmt): Unit / { Typing, TypingContext, Inspector, Exception[
 }
 
 /// Typecheck an expression and return its inferred type
-def checkExpr(expr: Expr): TypingType / { Typing, TypingContext } = expr match {
+def checkExpr(expr: Expr): TypingType / { Typing, Context[TypingType, TypeBinding] } = expr match {
   case IntLiteral(value) => TInt()
   case BoolLiteral(value) => TBool()
   case Variable(name) => {

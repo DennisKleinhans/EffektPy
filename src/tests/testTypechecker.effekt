@@ -27,7 +27,7 @@ def main() = mainSuite("typechecker") {
     }
   }
 
-  def typeMapsEqual(m1: Map[String, Binding], m2: Map[String, Binding]): Bool = {
+  def typeMapsEqual(m1: Map[String, TypeBinding], m2: Map[String, TypeBinding]): Bool = {
       if (m1.size() != m2.size()) {
         false
       } else {
@@ -337,29 +337,29 @@ def main() = mainSuite("typechecker") {
       )
     ]
 
-    var capturedContexts: List[Map[String, Binding]] = Nil()
+    var capturedContexts: List[Map[String, TypeBinding]] = Nil()
 
     with on[NameError].panic
     with on[TypeError].panic
     with mockGetPos
     
-    try { typecheck(prog) } with Inspector {
+    try { typecheck(prog) } with Inspector[TypeBinding] {
       def inspect(context) = {
         capturedContexts = Cons(context, capturedContexts)
         resume(())
       }
     }
 
-    val expectedThenContext = map::fromListGeneric[String, Binding]([
-      ("x", Binding(TInt(), false)),
-      ("y", Binding(TInt(), false)),
-      ("z", Binding(TInt(), false))
+    val expectedThenContext = map::fromListGeneric[String, TypeBinding]([
+      ("x", TypeBinding(TInt(), false)),
+      ("y", TypeBinding(TInt(), false)),
+      ("z", TypeBinding(TInt(), false))
     ])
 
-    val expectedElseContext = map::fromListGeneric[String, Binding]([
-      ("x", Binding(TInt(), false)),
-      ("y", Binding(TInt(), false)),
-      ("z", Binding(TBool(), false))
+    val expectedElseContext = map::fromListGeneric[String, TypeBinding]([
+      ("x", TypeBinding(TInt(), false)),
+      ("y", TypeBinding(TInt(), false)),
+      ("z", TypeBinding(TBool(), false))
     ])
 
     with on[OutOfBounds].panic
@@ -444,9 +444,9 @@ def main() = mainSuite("typechecker") {
       ValDeclaration("z", None(), Variable("x"))
     ]
 
-    val expectedInnerContext = map::fromListGeneric[String, Binding]([
-      ("x", Binding(TBool(), false)),
-      ("y", Binding(TBool(), false))
+    val expectedInnerContext = map::fromListGeneric[String, TypeBinding]([
+      ("x", TypeBinding(TBool(), false)),
+      ("y", TypeBinding(TBool(), false))
     ])
     
     val expectedOuterContext = map::fromListGeneric[String, TypingType]([
@@ -454,13 +454,13 @@ def main() = mainSuite("typechecker") {
       ("z", TInt())
     ])
 
-    var innerContext: Map[String, Binding] = map::emptyGeneric[String, Binding]()
+    var innerContext: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
     var outerContext: Map[String, TypingType] = map::emptyGeneric[String, TypingType]()
 
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    try { outerContext = typecheck(prog) } with Inspector {
+    try { outerContext = typecheck(prog) } with Inspector[TypeBinding] {
       def inspect(context) = {
         innerContext = context
         resume(())
@@ -544,15 +544,15 @@ def main() = mainSuite("typechecker") {
       ValDeclaration("z", None(), Variable("x"))
     ]
 
-    var innerContext1: Map[String, Binding] = map::emptyGeneric[String, Binding]()
-    var innerContext2: Map[String, Binding] = map::emptyGeneric[String, Binding]()
+    var innerContext1: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
+    var innerContext2: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
     var outerContext: Map[String, TypingType] = map::emptyGeneric[String, TypingType]()
     var inspectCount = 0
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
     
-    try { outerContext = typecheck(prog) } with Inspector {
+    try { outerContext = typecheck(prog) } with Inspector[TypeBinding] {
       
       def inspect(context) = {
         if (inspectCount == 0) {
@@ -565,14 +565,14 @@ def main() = mainSuite("typechecker") {
       }
     }
 
-    val expectedInnerContext1 = map::fromListGeneric[String, Binding]([
-      ("x", Binding(TBool(), false)),
-      ("y", Binding(TBool(), false))
+    val expectedInnerContext1 = map::fromListGeneric[String, TypeBinding]([
+      ("x", TypeBinding(TBool(), false)),
+      ("y", TypeBinding(TBool(), false))
     ])
 
-    val expectedInnerContext2 = map::fromListGeneric[String, Binding]([
-      ("x", Binding(TBool(), false)),
-      ("y", Binding(TInt(), false))
+    val expectedInnerContext2 = map::fromListGeneric[String, TypeBinding]([
+      ("x", TypeBinding(TBool(), false)),
+      ("y", TypeBinding(TInt(), false))
     ])
 
     val expectedOuterContext = map::fromListGeneric[String, TypingType]([
