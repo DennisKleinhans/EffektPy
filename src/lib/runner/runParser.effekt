@@ -1,0 +1,28 @@
+import scanner
+import exception
+import src/lib/parser/surfaceAst
+import src/lib/utils/types
+import src/lib/lexer/lexer
+import src/lib/parser/parser
+import src/lib/desugar/sugar
+import src/lib/desugar/coreAst
+import src/lib/utils/errors
+
+
+def runParsing(input: String) : PipelineResult[Program] = {
+  try {
+    with string::feed(input)
+    with returning::scanner[Char, PipelineResult[Program]]
+    with scanWithPos
+    with lexer
+    val parsed = parseProgram()
+    val desugared = desugarProgram(parsed)
+    PipelineResult::Success(desugared)
+  } with Exception[LexerError] { 
+      def raise(exception, msg) = Failure("LexerError: " ++ msg)
+  } with Exception[ParseError] {
+      def raise(exception, msg) = Failure("ParseError: " ++ msg)
+  } with Exception[DesugarError] {
+      def raise(exception, msg) = Failure("DesugarError: " ++ msg)
+  }
+}

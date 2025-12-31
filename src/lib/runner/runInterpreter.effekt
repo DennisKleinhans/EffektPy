@@ -1,0 +1,23 @@
+import src/lib/interpreter/eval
+import src/lib/utils/errors
+import src/lib/utils/types
+import src/lib/desugar/coreAst
+import src/lib/utils/handlers
+import src/lib/utils/effects
+
+def runEval(prog: Program): PipelineResult[Value]  = {
+  var currentPos = Position(1, 1)
+  try {
+    with mockInspector[PipelineResult[Value], Address]
+    val result = evalProgram(prog)
+    PipelineResult::Success(result)
+  } with Exception[RuntimeError] {
+    def raise(exception, msg) = Failure("RuntimeError: " ++ msg)
+  } with Positioning {
+    def getPos() = resume(currentPos)
+    def setPos(p) = {
+      currentPos = p
+      resume(())
+    }
+  }
+}
