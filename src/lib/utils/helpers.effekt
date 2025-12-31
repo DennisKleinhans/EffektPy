@@ -20,14 +20,14 @@ def check(kind: TokenKind) : Bool / Lexer[Token] = {
 }
 
 /// Helper function to create comparison expressions based on the operator token.
-def makeCmp(op: TokenKind, left: surfaceAst::Expr, right: surfaceAst::Expr): surfaceAst::Expr / Exception[ParseError]  = {
+def makeCmp(op: TokenKind, left: surfaceAst::Expr, right: surfaceAst::Expr, pos: Position): surfaceAst::Expr / Exception[ParseError]  = {
   op match {
-    case TokenKind::Equal() => Eq(left, right)
-    case NotEqual()         => Neq(left, right)
-    case TokenKind::Less()  => Lt(left, right)
-    case TokenKind::Greater() => Gt(left, right)
-    case LessEqual()        => LtE(left, right)
-    case GreaterEqual()     => GtE(left, right)
+    case TokenKind::Equal() => Eq(left, right, pos)
+    case NotEqual()         => Neq(left, right, pos)
+    case TokenKind::Less()  => Lt(left, right, pos)
+    case TokenKind::Greater() => Gt(left, right, pos)
+    case LessEqual()        => LtE(left, right, pos)
+    case GreaterEqual()     => GtE(left, right, pos)
     case _ => raise(ParseError(), "internal: unknown comparison operator")
   }
 }
@@ -101,6 +101,7 @@ def show(tokenKind: TokenKind): String = tokenKind match {
   case Colon() => "Colon"
 }
 def show(token: Token): String = token.kind.show
+
 
 def equal(x: TokenKind, y: TokenKind): Bool = {
   x.show == y.show

@@ -8,8 +8,8 @@ import src/lib/utils/helpers
 import src/lib/utils/handlers
 
 /// Typechecks a program and returns a mapping from variable names to their inferred types
-def typecheck(prog: Program): Map[String, TypingType] / { Exception[TypeError], Exception[NameError], Inspector[TypeBinding], getPos } = {
-  var equations: List[(TypingType, TypingType)] = Nil()
+def typecheck(prog: Program): Map[String, TypingType] / { Exception[TypeError], Exception[NameError], Inspector[TypeBinding], Positioning } = {
+  var equations: List[TypeEquation] = Nil()
   var counter = 0
 
   with handleTypingContext
@@ -30,37 +30,41 @@ def typecheck(prog: Program): Map[String, TypingType] / { Exception[TypeError], 
       resume(t)
     }
 
-    def equate(t1: TypingType, t2: TypingType) = {
-      equations = Cons((t1, t2), equations)
+    def equate(t1: TypingType, t2: TypingType, pos) = {
+      equations = Cons(TypeEquation(t1, t2, pos), equations)
       resume(())
     }
   }
 }
 
 /// Typecheck a single statement
-def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], getPos } = stmt match {
-  case ValDeclaration(name, typeAnno, value) => {
+def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning } = stmt match {
+  case ValDeclaration(name, typeAnno, value, pos) => {
+    with at(pos) 
     val tExpr = checkExpr(value)
-    do equate(tExpr, translateType(typeAnno))
+    do equate(tExpr, translateType(typeAnno), pos)
     do define(name, TypeBinding(tExpr, false))
     TUnit()
   }
-  case VarDeclaration(name, typeAnno, value) => {
+  case VarDeclaration(name, typeAnno, value, pos) => {
+    with at(pos) 
     val tExpr = checkExpr(value)
-    do equate(tExpr, translateType(typeAnno))
+    do equate(tExpr, translateType(typeAnno), pos)
     do define(name, TypeBinding(tExpr, true))
     TUnit()
   }
-  case AssignStmt(name, value) => {
+  case AssignStmt(name, value, pos) => {
+    with at(pos) 
     val binding = do lookup(name)
     if (not(binding.isMutable)) {
-      do raise(TypeError(), "Cannot assign to immutable variable '" ++ name ++ "' at " ++ do getPos().show)
+      raise[Unit, TypeError](TypeError(), "Cannot assign to immutable variable '" ++ name ++ "' at " ++ do getPos().show)
     }
-    do equate(binding.tpe, checkExpr(value))
+    do equate(binding.tpe, checkExpr(value), pos)
     TUnit()
   }
-  case IfStmt(cond, thenBranch, elseBranch) => {
-    do equate(checkExpr(cond), TBool())
+  case IfStmt(cond, thenBranch, elseBranch, pos) => {
+    with at(pos) 
+    do equate(checkExpr(cond), TBool(), pos)
     checkBlock(thenBranch)
     checkBlock(elseBranch)
   }
@@ -69,13 +73,14 @@ def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspecto
     do inspect(currentContext)
     TUnit()
   }
-  case ExprStmt(expr) => {
+  case ExprStmt(expr, pos) => {
+    with at(pos) 
     checkExpr(expr)
     TUnit()
   }
 }
 
-def checkBlock(stmts: List[Stmt]): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], getPos } = {
+def checkBlock(stmts: List[Stmt]): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning } = {
   var lastType: TypingType = TUnit()
   with handleNewTypingScope
   stmts.foreach { stmt => lastType = checkStmt(stmt) }
@@ -83,105 +88,120 @@ def checkBlock(stmts: List[Stmt]): TypingType / { Typing, Context[TypeBinding], 
 }
 
 /// Typecheck an expression and return its inferred type
-def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding] } = expr match {
-  case IntLiteral(value) => TInt()
-  case BoolLiteral(value) => TBool()
-  case Variable(name) => {
+def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Positioning } = expr match {
+  case IntLiteral(value, pos) => { with at(pos); TInt()}
+  case BoolLiteral(value, pos) => { with at(pos); TBool()}
+  case Variable(name, pos) => {
+    with at(pos) 
     do lookup(name).tpe
   }
-  case AddExpr(left, right) => {
+  case AddExpr(left, right, pos) => {
+    with at(pos) 
     val tLeft = checkExpr(left)
     val tRight = checkExpr(right)
-    do equate(tLeft, TInt())
-    do equate(tRight, TInt())
+    do equate(tLeft, TInt(), pos)
+    do equate(tRight, TInt(), pos)
     TInt()
   }
-  case SubExpr(left, right) => {
+  case SubExpr(left, right, pos) => {
+    with at(pos) 
     val tLeft = checkExpr(left)
     val tRight = checkExpr(right)
-    do equate(tLeft, TInt())
-    do equate(tRight, TInt())
+    do equate(tLeft, TInt(), pos)
+    do equate(tRight, TInt(), pos)
     TInt()
   }
-  case MultExpr(left, right) => {
+  case MultExpr(left, right, pos) => {
+    with at(pos) 
     val tLeft = checkExpr(left)
     val tRight = checkExpr(right)
-    do equate(tLeft, TInt())
-    do equate(tRight, TInt())
+    do equate(tLeft, TInt(), pos)
+    do equate(tRight, TInt(), pos)
     TInt()
   }
-  case DivExpr(left, right) => {
+  case DivExpr(left, right, pos) => {
+    with at(pos) 
     val tLeft = checkExpr(left)
     val tRight = checkExpr(right)
-    do equate(tLeft, TInt())
-    do equate(tRight, TInt())
+    do equate(tLeft, TInt(), pos)
+    do equate(tRight, TInt(), pos)
     TInt()
   }
-  case IfExpr(condition, thenExpr, elseExpr) => {
+  case IfExpr(condition, thenExpr, elseExpr, pos) => {
+    with at(pos) 
     val tCond = checkExpr(condition)
     val tThen = checkExpr(thenExpr)
     val tElse = checkExpr(elseExpr)
-    do equate(tCond, TBool())
-    do equate(tThen, tElse)
+    do equate(tCond, TBool(), pos)
+    do equate(tThen, tElse, pos)
     tThen
   }
-  case AndExpr(left, right) => {
+  case AndExpr(left, right, pos) => {
+    with at(pos) 
     val tLeft = checkExpr(left)
     val tRight = checkExpr(right)
-    do equate(tLeft, TBool())
-    do equate(tRight, TBool())
+    do equate(tLeft, TBool(), pos)
+    do equate(tRight, TBool(), pos)
     TBool()
   }
-  case OrExpr(left, right) => {
+  case OrExpr(left, right, pos) => {
+    with at(pos) 
     val tLeft = checkExpr(left)
     val tRight = checkExpr(right)
-    do equate(tLeft, TBool())
-    do equate(tRight, TBool())
+    do equate(tLeft, TBool(), pos)
+    do equate(tRight, TBool(), pos)
     TBool()
   }
-  case NotExpr(inner) => {
+  case NotExpr(inner, pos) => {
+    with at(pos) 
     val tInner = checkExpr(inner)
-    do equate(tInner, TBool())
+    do equate(tInner, TBool(), pos)
     TBool()
   }
-  case Eq(left, right) => {
+  case Eq(left, right, pos) => {
+    with at(pos) 
     val tLeft = checkExpr(left)
     val tRight = checkExpr(right)
-    do equate(tLeft, tRight)
+    do equate(tLeft, tRight, pos)
     TBool()
   }
-  case Neq(left, right) => {
+  case Neq(left, right, pos) => {
+    with at(pos) 
     val tLeft = checkExpr(left)
     val tRight = checkExpr(right)
-    do equate(tLeft, tRight)
+    do equate(tLeft, tRight, pos)
     TBool()
   }
-  case Lt(left, right) => {
+  case Lt(left, right, pos) => {
+    with at(pos) 
     val tLeft = checkExpr(left)
     val tRight = checkExpr(right)
-    do equate(tLeft, TInt())
-    do equate(tRight, TInt())
+    do equate(tLeft, TInt(), pos)
+    do equate(tRight, TInt(), pos)
     TBool()
   }
-  case Gt(left, right) => {
+  case Gt(left, right, pos) => {
+    with at(pos) 
     val tLeft = checkExpr(left)
     val tRight = checkExpr(right)
-    do equate(tLeft, TInt())
-    do equate(tRight, TInt())
+    do equate(tLeft, TInt(), pos)
+    do equate(tRight, TInt(), pos)
     TBool()
   }
-  case LtE(left, right) => {
+  case LtE(left, right, pos) => {
+    with at(pos) 
     val tLeft = checkExpr(left)
     val tRight = checkExpr(right)
-    do equate(tLeft, TInt())
-    do equate(tRight, TInt())
+    do equate(tLeft, TInt(), pos)
+    do equate(tRight, TInt(), pos)
     TBool()
   }
-  case GtE(left, right) => {
+  case GtE(left, right, pos) => {
+    with at(pos) 
     val tLeft = checkExpr(left)
     val tRight = checkExpr(right)
-    do equate(tLeft, TInt())
-    do equate(tRight, TInt())
+    do equate(tLeft, TInt(), pos)
+    do equate(tRight, TInt(), pos)
     TBool()
   }
   

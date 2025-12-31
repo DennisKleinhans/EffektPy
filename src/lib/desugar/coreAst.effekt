@@ -2,34 +2,34 @@ import src/lib/utils/types
 
 type Expr {
   // literals
-  IntLiteral(value: Int)
-  BoolLiteral(value: Bool)
-  Variable(name: String)
+  IntLiteral(value: Int, pos: Position)
+  BoolLiteral(value: Bool, pos: Position)
+  Variable(name: String, pos: Position)
   // binary operands
-  AddExpr(left: Expr, right: Expr)
-  SubExpr(left: Expr, right: Expr)
-  MultExpr(left: Expr, right: Expr)
-  DivExpr(left: Expr, right: Expr)
-  AndExpr(left: Expr, right: Expr)
-  OrExpr(left: Expr, right: Expr)
+  AddExpr(left: Expr, right: Expr, pos: Position)
+  SubExpr(left: Expr, right: Expr, pos: Position)
+  MultExpr(left: Expr, right: Expr, pos: Position)
+  DivExpr(left: Expr, right: Expr, pos: Position)
+  AndExpr(left: Expr, right: Expr, pos: Position)
+  OrExpr(left: Expr, right: Expr, pos: Position)
   // unary operands
-  NotExpr(expr: Expr)
+  NotExpr(expr: Expr, pos: Position)
   // compare operators 
-  Eq(left: Expr, right: Expr)
-  Neq(left: Expr, right: Expr)
-  Lt(left: Expr, right: Expr)
-  Gt(left: Expr, right: Expr)
-  LtE(left: Expr, right: Expr)
-  GtE(left: Expr, right: Expr)
-  IfExpr(condition: Expr, thenExpr: Expr, elseExpr: Expr)
+  Eq(left: Expr, right: Expr, pos: Position)
+  Neq(left: Expr, right: Expr, pos: Position)
+  Lt(left: Expr, right: Expr, pos: Position)
+  Gt(left: Expr, right: Expr, pos: Position)
+  LtE(left: Expr, right: Expr, pos: Position)
+  GtE(left: Expr, right: Expr, pos: Position)
+  IfExpr(condition: Expr, thenExpr: Expr, elseExpr: Expr, pos: Position)
 }
 
 type Stmt {
-  ValDeclaration(name: String, typeAnnotation: Option[Type], value: Expr)
-  VarDeclaration(name: String, typeAnnotation: Option[Type], value: Expr)
-  AssignStmt(name: String, value: Expr)
-  IfStmt(cond: Expr, thenBranch: List[Stmt], elseBranch: List[Stmt])
-  ExprStmt(expr: Expr)
+  ValDeclaration(name: String, typeAnnotation: Option[Type], value: Expr, pos: Position)
+  VarDeclaration(name: String, typeAnnotation: Option[Type], value: Expr, pos: Position)
+  AssignStmt(name: String, value: Expr, pos: Position)
+  IfStmt(cond: Expr, thenBranch: List[Stmt], elseBranch: List[Stmt], pos: Position)
+  ExprStmt(expr: Expr, pos: Position)
   // for debugging purposes
   InspectScope()
 }

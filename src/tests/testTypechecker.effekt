@@ -8,10 +8,11 @@ import src/lib/utils/errors
 import src/lib/utils/effects
 import src/lib/utils/handlers
 import src/lib/utils/testUtils
+import src/lib/utils/coreTestUtils
 
 def main() = mainSuite("typechecker") {
 
-  def typeMapsEqual(m1: Map[String, TypingType], m2: Map[String, TypingType]): Bool = {
+  def typeMapscEqual(m1: Map[String, TypingType], m2: Map[String, TypingType]): Bool = {
       if (m1.size() != m2.size()) {
         false
       } else {
@@ -27,7 +28,7 @@ def main() = mainSuite("typechecker") {
     }
   }
 
-  def typeMapsEqual(m1: Map[String, TypeBinding], m2: Map[String, TypeBinding]): Bool = {
+  def typeMapscEqual(m1: Map[String, TypeBinding], m2: Map[String, TypeBinding]): Bool = {
       if (m1.size() != m2.size()) {
         false
       } else {
@@ -45,11 +46,11 @@ def main() = mainSuite("typechecker") {
 
   test("typecheck simple variable declaration") {
     val prog = [
-      ValDeclaration("x", None(), IntLiteral(5))
+      cVal("x", None(), cLit(5))
     ]
 
     val progWithAnnotation = [
-      ValDeclaration("x", Some(IntType()), IntLiteral(5))
+      cVal("x", Some(IntType()), cLit(5))
     ]
 
     with on[NameError].panic
@@ -63,13 +64,13 @@ def main() = mainSuite("typechecker") {
       ("x", TInt())
     ])
 
-    assertTrue(typeMapsEqual(result, expected))
-    assertTrue(typeMapsEqual(resultWithAnnotation, expected))
+    assertTrue(typeMapscEqual(result, expected))
+    assertTrue(typeMapscEqual(resultWithAnnotation, expected))
   }
 
   test("typechecker throws error on wrong type assignment") {
     val prog = [
-      ValDeclaration("x", Some(BoolType()), IntLiteral(5))
+      cVal("x", Some(BoolType()), cLit(5))
     ]
 
     with on[NameError].panic
@@ -82,7 +83,7 @@ def main() = mainSuite("typechecker") {
 
   test("typechecker infers type on artithmetic expression") {
     val prog = [
-      ValDeclaration("x", None(), MultExpr(AddExpr(IntLiteral(5), IntLiteral(10)), IntLiteral(2)))
+      cVal("x", None(), cMult(cAdd(cLit(5), cLit(10)), cLit(2)))
     ]
 
     with on[NameError].panic
@@ -95,12 +96,12 @@ def main() = mainSuite("typechecker") {
       ("x", TInt())
     ])
 
-    assertTrue(typeMapsEqual(result, expected))
+    assertTrue(typeMapscEqual(result, expected))
   }
 
   test("typechecker throws error on type mismatch in expression") {
     val prog = [
-      ValDeclaration("x", None(), AddExpr(IntLiteral(5), BoolLiteral(true)))
+      cVal("x", None(), cAdd(cLit(5), cLit(true)))
     ]
 
     with on[NameError].panic
@@ -113,8 +114,8 @@ def main() = mainSuite("typechecker") {
 
   test("typechecker throws error on assignment to immutable variable") {
     val prog = [
-      ValDeclaration("x", None(), IntLiteral(5)),
-      AssignStmt("x", IntLiteral(10))
+      cVal("x", None(), cLit(5)),
+      cAssign("x", cLit(10))
     ]
 
     with on[NameError].panic
@@ -127,14 +128,14 @@ def main() = mainSuite("typechecker") {
 
   test("typechecker infers types in comparison expression") {
     val prog = [
-      ValDeclaration("x", None(), IntLiteral(5)),
-      ValDeclaration("y", None(), IntLiteral(10)),
-      ValDeclaration("z", None(), Eq(Variable("x"), Variable("y"))),
-      ValDeclaration("s", None(), Lt(Variable("x"), Variable("y"))),
-      ValDeclaration("w", None(), LtE(Variable("x"), Variable("y"))),
-      ValDeclaration("v", None(), Gt(Variable("y"), Variable("x"))),
-      ValDeclaration("t", None(), GtE(Variable("y"), Variable("x"))),
-      ValDeclaration("u", None(), Neq(Variable("x"), Variable("y")))
+      cVal("x", None(), cLit(5)),
+      cVal("y", None(), cLit(10)),
+      cVal("z", None(), cEq(cV("x"), cV("y"))),
+      cVal("s", None(), cLt(cV("x"), cV("y"))),
+      cVal("w", None(), cLtE(cV("x"), cV("y"))),
+      cVal("v", None(), cGt(cV("y"), cV("x"))),
+      cVal("t", None(), cGtE(cV("y"), cV("x"))),
+      cVal("u", None(), cNeq(cV("x"), cV("y")))
     ]
 
     with on[NameError].panic
@@ -154,14 +155,14 @@ def main() = mainSuite("typechecker") {
       ("u", TBool())
     ])
 
-    assertTrue(typeMapsEqual(result, expected))
+    assertTrue(typeMapscEqual(result, expected))
   }
 
   test("typechecker throws error on comparison with wrong types") {
     val prog = [
-      ValDeclaration("x", None(), IntLiteral(5)),
-      ValDeclaration("y", None(), BoolLiteral(true)),
-      ValDeclaration("z", None(), Eq(Variable("x"), Variable("y")))
+      cVal("x", None(), cLit(5)),
+      cVal("y", None(), cLit(true)),
+      cVal("z", None(), cEq(cV("x"), cV("y")))
     ]
 
     with on[NameError].panic
@@ -174,10 +175,10 @@ def main() = mainSuite("typechecker") {
 
   test("typechecker looks up variable types correctly") {
     val prog = [
-      ValDeclaration("a", None(), IntLiteral(42)),
-      ValDeclaration("b", None(), AddExpr(Variable("a"), IntLiteral(8))),
-      ValDeclaration("c", None(), BoolLiteral(false)),
-      ValDeclaration("d", None(), OrExpr(Variable("c"), BoolLiteral(true)))
+      cVal("a", None(), cLit(42)),
+      cVal("b", None(), cAdd(cV("a"), cLit(8))),
+      cVal("c", None(), cLit(false)),
+      cVal("d", None(), cOr(cV("c"), cLit(true)))
     ]
 
     with on[NameError].panic
@@ -193,12 +194,12 @@ def main() = mainSuite("typechecker") {
       ("d", TBool())
     ])
 
-    assertTrue(typeMapsEqual(result, expected))
+    assertTrue(typeMapscEqual(result, expected))
   }
 
   test("typechecker throws error on undefined variable") {
     val prog = [
-      ValDeclaration("x", None(), AddExpr(Variable("y"), IntLiteral(5)))
+      cVal("x", None(), cAdd(cV("y"), cLit(5)))
     ]
 
     with on[TypeError].panic
@@ -211,9 +212,9 @@ def main() = mainSuite("typechecker") {
 
   test("typechecker reuses mutable variable types correctly") {
     val prog = [
-      VarDeclaration("counter", Some(IntType()), IntLiteral(0)),
-      AssignStmt("counter", AddExpr(Variable("counter"), IntLiteral(1))),
-      AssignStmt("counter", MultExpr(Variable("counter"), IntLiteral(2)))
+      cVar("counter", Some(IntType()), cLit(0)),
+      cAssign("counter", cAdd(cV("counter"), cLit(1))),
+      cAssign("counter", cMult(cV("counter"), cLit(2)))
     ]
 
     with on[NameError].panic
@@ -226,13 +227,13 @@ def main() = mainSuite("typechecker") {
       ("counter", TInt())
     ])
 
-    assertTrue(typeMapsEqual(result, expected))
+    assertTrue(typeMapscEqual(result, expected))
   }
 
   test("typechecker throws error on assigning wrong type to mutable variable") {
     val prog = [
-      VarDeclaration("flag", Some(BoolType()), BoolLiteral(true)),
-      AssignStmt("flag", IntLiteral(10))
+      cVar("flag", Some(BoolType()), cLit(true)),
+      cAssign("flag", cLit(10))
     ]
 
     with on[NameError].panic
@@ -245,9 +246,9 @@ def main() = mainSuite("typechecker") {
 
   test("typechecker infers types in if expression") {
     val prog = [
-      ValDeclaration("x", None(), IntLiteral(5)),
-      ValDeclaration("y", None(), IntLiteral(10)),
-      ValDeclaration("maxVal", None(), IfExpr(Lt(Variable("x"), Variable("y")), Variable("y"), Variable("x")))
+      cVal("x", None(), cLit(5)),
+      cVal("y", None(), cLit(10)),
+      cVal("maxVal", None(), cIf(cLt(cV("x"), cV("y")), cV("y"), cV("x")))
     ]
 
     with on[NameError].panic
@@ -262,14 +263,14 @@ def main() = mainSuite("typechecker") {
       ("maxVal", TInt())
     ])
 
-    assertTrue(typeMapsEqual(result, expected))
+    assertTrue(typeMapscEqual(result, expected))
   }
 
   test("typechecker throws error on if expression with wrong types") {
     val prog = [
-      ValDeclaration("x", None(), BoolLiteral(true)),
-      ValDeclaration("y", None(), BoolLiteral(true)),
-      ValDeclaration("result", None(), IfExpr(Variable("y"), Variable("x"), IntLiteral(10)))
+      cVal("x", None(), cLit(true)),
+      cVal("y", None(), cLit(true)),
+      cVal("result", None(), cIf(cV("y"), cV("x"), cLit(10)))
     ]
 
     with on[NameError].panic
@@ -282,11 +283,11 @@ def main() = mainSuite("typechecker") {
 
   test("typechecker handles nested if expressions") {
     val prog = [
-      ValDeclaration("a", None(), IntLiteral(5)),
-      ValDeclaration("b", None(), IntLiteral(10)),
-      ValDeclaration("maxVal", None(), IfExpr(Lt(Variable("a"), Variable("b")),
-        IfExpr(Gt(Variable("b"), IntLiteral(15)), Variable("b"), IntLiteral(15)),
-        Variable("a")))
+      cVal("a", None(), cLit(5)),
+      cVal("b", None(), cLit(10)),
+      cVal("maxVal", None(), cIf(cLt(cV("a"), cV("b")),
+        cIf(cGt(cV("b"), cLit(15)), cV("b"), cLit(15)),
+        cV("a")))
     ]
 
     with on[NameError].panic
@@ -301,16 +302,16 @@ def main() = mainSuite("typechecker") {
       ("maxVal", TInt())
     ])
 
-    assertTrue(typeMapsEqual(result, expected))
+    assertTrue(typeMapscEqual(result, expected))
   }
 
   test("typechecker throws error on nested if with type mismatch") {
     val prog = [
-      ValDeclaration("a", None(), IntLiteral(5)),
-      ValDeclaration("b", None(), BoolLiteral(true)),
-      ValDeclaration("result", None(), IfExpr(Variable("b"),
-        IfExpr(Lt(Variable("a"), IntLiteral(10)), Variable("a"), BoolLiteral(false)),
-        IntLiteral(20)))
+      cVal("a", None(), cLit(5)),
+      cVal("b", None(), cLit(true)),
+      cVal("result", None(), cIf(cV("b"),
+        cIf(cLt(cV("a"), cLit(10)), cV("a"), cLit(false)),
+        cLit(20)))
     ]
 
     with on[NameError].panic
@@ -323,15 +324,15 @@ def main() = mainSuite("typechecker") {
 
   test("typechecker infers types in blocks of if statement") {
     val prog = [
-      ValDeclaration("x", None(), IntLiteral(5)),
-      ValDeclaration("y", None(), IntLiteral(10)),
-      IfStmt(Lt(Variable("x"), Variable("y")),
+      cVal("x", None(), cLit(5)),
+      cVal("y", None(), cLit(10)),
+      cIf(cLt(cV("x"), cV("y")),
         [
-          VarDeclaration("z", None(), AddExpr(Variable("x"), IntLiteral(2))),
+          cVar("z", None(), cAdd(cV("x"), cLit(2))),
           InspectScope()
         ],
         [
-          VarDeclaration("z", None(), Lt(Variable("y"), IntLiteral(2))),
+          cVar("z", None(), cLt(cV("y"), cLit(2))),
           InspectScope()
         ]
       )
@@ -363,20 +364,20 @@ def main() = mainSuite("typechecker") {
     ])
 
     with on[OutOfBounds].panic
-    assertTrue(typeMapsEqual(capturedContexts.get(1), expectedThenContext))
-    assertTrue(typeMapsEqual(capturedContexts.get(0), expectedElseContext))
+    assertTrue(typeMapscEqual(capturedContexts.get(1), expectedThenContext))
+    assertTrue(typeMapscEqual(capturedContexts.get(0), expectedElseContext))
   }
 
   test("typechecker throws error on if statement with type mismatch") {
     val prog = [
-      ValDeclaration("x", None(), IntLiteral(5)),
-      ValDeclaration("y", None(), IntLiteral(10)),
-      IfStmt(Lt(Variable("x"), Variable("y")),
+      cVal("x", None(), cLit(5)),
+      cVal("y", None(), cLit(10)),
+      cIf(cLt(cV("x"), cV("y")),
         [
-          VarDeclaration("z", None(), AddExpr(Variable("x"), BoolLiteral(true)))
+          cVar("z", None(), cAdd(cV("x"), cLit(true)))
         ],
         [
-          VarDeclaration("z", None(), Lt(Variable("y"), IntLiteral(2)))
+          cVar("z", None(), cLt(cV("y"), cLit(2)))
         ]
       )
     ]
@@ -391,14 +392,14 @@ def main() = mainSuite("typechecker") {
 
   test("typechecker throws error on if statement with non-boolean condition") {
     val prog = [
-      ValDeclaration("x", None(), IntLiteral(5)),
-      ValDeclaration("y", None(), IntLiteral(10)),
-      IfStmt(AddExpr(Variable("x"), Variable("y")),
+      cVal("x", None(), cLit(5)),
+      cVal("y", None(), cLit(10)),
+      cIf(cAdd(cV("x"), cV("y")),
         [
-          VarDeclaration("z", None(), AddExpr(Variable("x"), IntLiteral(2)))
+          cVar("z", None(), cAdd(cV("x"), cLit(2)))
         ],
         [
-          VarDeclaration("z", None(), Lt(Variable("y"), IntLiteral(2)))
+          cVar("z", None(), cLt(cV("y"), cLit(2)))
         ]
       )
     ]
@@ -413,15 +414,15 @@ def main() = mainSuite("typechecker") {
 
   test("typechecker throws error on accessing variable out of scope") {
     val prog = [
-      IfStmt(BoolLiteral(true),
+      cIf(cLit(true),
         [
-          VarDeclaration("x", None(), IntLiteral(5))
+          cVar("x", None(), cLit(5))
         ],
         [
-          VarDeclaration("y", None(), IntLiteral(10))
+          cVar("y", None(), cLit(10))
         ]
       ),
-      ValDeclaration("z", None(), AddExpr(Variable("x"), Variable("y")))
+      cVal("z", None(), cAdd(cV("x"), cV("y")))
     ]
 
     with on[TypeError].panic
@@ -434,14 +435,14 @@ def main() = mainSuite("typechecker") {
 
   test("typechecker handles shadowing correctly") {
     val prog = [
-      ValDeclaration("x", None(), IntLiteral(5)),
-      IfStmt(BoolLiteral(true), 
+      cVal("x", None(), cLit(5)),
+      cIf(cLit(true), 
         [
-          ValDeclaration("x", None(), BoolLiteral(true)),
-          ValDeclaration("y", None(), Variable("x")),
+          cVal("x", None(), cLit(true)),
+          cVal("y", None(), cV("x")),
           InspectScope()
         ], Nil()),
-      ValDeclaration("z", None(), Variable("x"))
+      cVal("z", None(), cV("x"))
     ]
 
     val expectedInnerContext = map::fromListGeneric[String, TypeBinding]([
@@ -466,43 +467,43 @@ def main() = mainSuite("typechecker") {
         resume(())
       }
     }
-    assertTrue(typeMapsEqual(innerContext, expectedInnerContext))
-    assertTrue(typeMapsEqual(outerContext, expectedOuterContext))
+    assertTrue(typeMapscEqual(innerContext, expectedInnerContext))
+    assertTrue(typeMapscEqual(outerContext, expectedOuterContext))
   }
 
   test("typechecker infers types correctly in complex program") {
     val prog = [
-      VarDeclaration("a", None(), IntLiteral(10)),
-      VarDeclaration("b", None(), IntLiteral(20)),
-      ValDeclaration("c", None(), BoolLiteral(true)),
-      IfStmt(AndExpr(Gt(Variable("b"), Variable("a")), Variable("c")),
+      cVar("a", None(), cLit(10)),
+      cVar("b", None(), cLit(20)),
+      cVal("c", None(), cLit(true)),
+      cIf(cAnd(cGt(cV("b"), cV("a")), cV("c")),
         [
-          VarDeclaration("maxVal", None(), Variable("b")),
-          AssignStmt("a", AddExpr(Variable("a"), IntLiteral(5))),
-          IfStmt(Lt(Variable("a"), IntLiteral(25)),
+          cVar("maxVal", None(), cV("b")),
+          cAssign("a", cAdd(cV("a"), cLit(5))),
+          cIf(cLt(cV("a"), cLit(25)),
             [
-              AssignStmt("b", MultExpr(Variable("b"), IntLiteral(2)))
+              cAssign("b", cMult(cV("b"), cLit(2)))
             ],
             [
-              AssignStmt("b", SubExpr(Variable("b"), IntLiteral(3)))
+              cAssign("b", cSub(cV("b"), cLit(3)))
             ]
           )
         ],
         [
-          VarDeclaration("maxVal", None(), Variable("a")),
-          AssignStmt("b", SubExpr(Variable("b"), IntLiteral(5))),
-          IfStmt(Eq(Variable("b"), IntLiteral(15)),
+          cVar("maxVal", None(), cV("a")),
+          cAssign("b", cSub(cV("b"), cLit(5))),
+          cIf(cEq(cV("b"), cLit(15)),
             [
-              AssignStmt("a", IntLiteral(15))
+              cAssign("a", cLit(15))
             ],
             [
-              AssignStmt("a", AddExpr(Variable("b"), IntLiteral(10)))
+              cAssign("a", cAdd(cV("b"), cLit(10)))
             ]
           )
         ]
       ),
-      ValDeclaration("result", None(), MultExpr(AddExpr(Variable("a"), Variable("b")), IntLiteral(2))),
-      ValDeclaration("comparison", None(), GtE(Variable("result"), IntLiteral(100)))
+      cVal("result", None(), cMult(cAdd(cV("a"), cV("b")), cLit(2))),
+      cVal("comparison", None(), cGtE(cV("result"), cLit(100)))
     ]
 
     with on[NameError].panic
@@ -519,29 +520,29 @@ def main() = mainSuite("typechecker") {
       ("comparison", TBool())
     ])
 
-    assertTrue(typeMapsEqual(result, expected))
+    assertTrue(typeMapscEqual(result, expected))
   }
 
   test("typechecker handles nested if statements with shadowing") {
     val prog = [
-      ValDeclaration("x", None(), IntLiteral(5)),
-      IfStmt(BoolLiteral(true),
+      cVal("x", None(), cLit(5)),
+      cIf(cLit(true),
         [
-          ValDeclaration("x", None(), BoolLiteral(true)),
-          IfStmt(BoolLiteral(false),
+          cVal("x", None(), cLit(true)),
+          cIf(cLit(false),
             [
-              ValDeclaration("y", None(), Variable("x")),
+              cVal("y", None(), cV("x")),
               InspectScope()
             ],
             [
-              ValDeclaration("y", None(), IntLiteral(10)),
+              cVal("y", None(), cLit(10)),
               InspectScope()
             ]
           )
         ],
         Nil()
       ),
-      ValDeclaration("z", None(), Variable("x"))
+      cVal("z", None(), cV("x"))
     ]
 
     var innerContext1: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
@@ -580,8 +581,8 @@ def main() = mainSuite("typechecker") {
       ("z", TInt())
     ])
 
-    assertTrue(typeMapsEqual(innerContext1, expectedInnerContext1))
-    assertTrue(typeMapsEqual(innerContext2, expectedInnerContext2))
-    assertTrue(typeMapsEqual(outerContext, expectedOuterContext))
+    assertTrue(typeMapscEqual(innerContext1, expectedInnerContext1))
+    assertTrue(typeMapscEqual(innerContext2, expectedInnerContext2))
+    assertTrue(typeMapscEqual(outerContext, expectedOuterContext))
   }
 }

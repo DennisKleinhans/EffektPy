@@ -3,26 +3,27 @@ import src/lib/desugar/coreAst
 import src/lib/lexer/tokens
 import src/lib/utils/errors
 import src/lib/utils/helpers
+import src/lib/utils/types
 
 
 /// combine a list of expressions into a chain of AndExpr
-def combineWithAnd(comps: List[coreAst::Expr]): coreAst::Expr / Exception[DesugarError] = {
+def combineWithAnd(comps: List[coreAst::Expr], pos: Position): coreAst::Expr / Exception[DesugarError] = {
   comps match {
     case Nil() => raise(DesugarError(), "internal: combineWithAnd called with empty list") // should not happen
     case Cons(head, Nil()) => head
-    case Cons(head, tail) => coreAst::AndExpr(head, combineWithAnd(tail))
+    case Cons(head, tail) => coreAst::AndExpr(head, combineWithAnd(tail, pos), pos)
   }
 }
 
 /// helper function to desugar a single comparison operation into core compare expression
-def desugarCmp(left: coreAst::Expr, op: TokenKind, right: coreAst::Expr): coreAst::Expr / Exception[DesugarError] = {
+def desugarCmp(left: coreAst::Expr, op: TokenKind, right: coreAst::Expr, pos: Position): coreAst::Expr / Exception[DesugarError] = {
   op match {
-    case TokenKind::Equal() => coreAst::Eq(left, right)
-    case NotEqual()         => coreAst::Neq(left, right)
-    case TokenKind::Less()  => coreAst::Lt(left, right)
-    case TokenKind::Greater() => coreAst::Gt(left, right)
-    case LessEqual()        => coreAst::LtE(left, right)
-    case GreaterEqual()     => coreAst::GtE(left, right)
+    case TokenKind::Equal() => coreAst::Eq(left, right, pos)
+    case NotEqual()         => coreAst::Neq(left, right, pos)
+    case TokenKind::Less()  => coreAst::Lt(left, right, pos)
+    case TokenKind::Greater() => coreAst::Gt(left, right, pos)
+    case LessEqual()        => coreAst::LtE(left, right, pos)
+    case GreaterEqual()     => coreAst::GtE(left, right, pos)
     case _ => do raise(DesugarError(), "unsupported comparison operator in desugaring")
   }
 }
@@ -30,25 +31,25 @@ def desugarCmp(left: coreAst::Expr, op: TokenKind, right: coreAst::Expr): coreAs
 /// desugar expressions by transforming syntactic sugar into core constructs
 def desugarExpr(e: surfaceAst::Expr): coreAst::Expr / { Exception[DesugarError], Exception[ParseError] } = {
   e match {
-    case surfaceAst::IntLiteral(x) => coreAst::IntLiteral(x)
-    case surfaceAst::BoolLiteral(b) => coreAst::BoolLiteral(b)
-    case surfaceAst::Variable(id) => coreAst::Variable(id)
-    case surfaceAst::AddExpr(l, r) => coreAst::AddExpr(desugarExpr(l), desugarExpr(r))
-    case surfaceAst::SubExpr(l, r) => coreAst::SubExpr(desugarExpr(l), desugarExpr(r))
-    case surfaceAst::MultExpr(l, r) => coreAst::MultExpr(desugarExpr(l), desugarExpr(r))
-    case surfaceAst::DivExpr(l, r) => coreAst::DivExpr(desugarExpr(l), desugarExpr(r))
-    case surfaceAst::AndExpr(l, r) => coreAst::AndExpr(desugarExpr(l), desugarExpr(r))
-    case surfaceAst::OrExpr(l, r) => coreAst::OrExpr(desugarExpr(l), desugarExpr(r))
-    case surfaceAst::NotExpr(inner) => coreAst::NotExpr(desugarExpr(inner))
-    case surfaceAst::UnaryMinus(inner) => coreAst::SubExpr(coreAst::IntLiteral(0), desugarExpr(inner))
-    case surfaceAst::Eq(l, r) => coreAst::Eq(desugarExpr(l), desugarExpr(r))
-    case surfaceAst::Neq(l, r) => coreAst::Neq(desugarExpr(l), desugarExpr(r))
-    case surfaceAst::Lt(l, r) => coreAst::Lt(desugarExpr(l), desugarExpr(r))
-    case surfaceAst::Gt(l, r) => coreAst::Gt(desugarExpr(l), desugarExpr(r))
-    case surfaceAst::LtE(l, r) => coreAst::LtE(desugarExpr(l), desugarExpr(r))
-    case surfaceAst::GtE(l, r) => coreAst::GtE(desugarExpr(l), desugarExpr(r))
-    case surfaceAst::IfExpr(thenE, cond, elseE) => coreAst::IfExpr(desugarExpr(thenE), desugarExpr(cond), desugarExpr(elseE))
-    case surfaceAst::CompareChain(first, pairs) => {
+    case surfaceAst::IntLiteral(x, pos) => coreAst::IntLiteral(x, pos)
+    case surfaceAst::BoolLiteral(b, pos) => coreAst::BoolLiteral(b, pos)
+    case surfaceAst::Variable(id, pos) => coreAst::Variable(id, pos)
+    case surfaceAst::AddExpr(l, r, pos) => coreAst::AddExpr(desugarExpr(l), desugarExpr(r), pos)
+    case surfaceAst::SubExpr(l, r, pos) => coreAst::SubExpr(desugarExpr(l), desugarExpr(r), pos)
+    case surfaceAst::MultExpr(l, r, pos) => coreAst::MultExpr(desugarExpr(l), desugarExpr(r), pos)
+    case surfaceAst::DivExpr(l, r, pos) => coreAst::DivExpr(desugarExpr(l), desugarExpr(r), pos)
+    case surfaceAst::AndExpr(l, r, pos) => coreAst::AndExpr(desugarExpr(l), desugarExpr(r), pos)
+    case surfaceAst::OrExpr(l, r, pos) => coreAst::OrExpr(desugarExpr(l), desugarExpr(r), pos)
+    case surfaceAst::NotExpr(inner, pos) => coreAst::NotExpr(desugarExpr(inner), pos)
+    case surfaceAst::UnaryMinus(inner, pos) => coreAst::SubExpr(coreAst::IntLiteral(0, pos), desugarExpr(inner), pos)
+    case surfaceAst::Eq(l, r, pos) => coreAst::Eq(desugarExpr(l), desugarExpr(r), pos)
+    case surfaceAst::Neq(l, r, pos) => coreAst::Neq(desugarExpr(l), desugarExpr(r), pos)
+    case surfaceAst::Lt(l, r, pos) => coreAst::Lt(desugarExpr(l), desugarExpr(r), pos)
+    case surfaceAst::Gt(l, r, pos) => coreAst::Gt(desugarExpr(l), desugarExpr(r), pos)
+    case surfaceAst::LtE(l, r, pos) => coreAst::LtE(desugarExpr(l), desugarExpr(r), pos)
+    case surfaceAst::GtE(l, r, pos) => coreAst::GtE(desugarExpr(l), desugarExpr(r), pos)
+    case surfaceAst::IfExpr(thenE, cond, elseE, pos) => coreAst::IfExpr(desugarExpr(thenE), desugarExpr(cond), desugarExpr(elseE), pos)
+    case surfaceAst::CompareChain(first, pairs, pos) => {
       // desugar the leftmost expr
       val coreLeft = desugarExpr(first)
 
@@ -58,7 +59,7 @@ def desugarExpr(e: surfaceAst::Expr): coreAst::Expr / { Exception[DesugarError],
           case Nil() => acc.reverse
           case Cons((op, rhs), tail) => {
             val coreRhs = desugarExpr(rhs)
-            val cmp = desugarCmp(prev, op, coreRhs)
+            val cmp = desugarCmp(prev, op, coreRhs, pos)
             collect(coreRhs, tail, Cons(cmp, acc))
           }
         }
@@ -69,7 +70,7 @@ def desugarExpr(e: surfaceAst::Expr): coreAst::Expr / { Exception[DesugarError],
         // no pairs -> just return desugared first
         coreLeft
       } else {
-        combineWithAnd(comps)
+        combineWithAnd(comps, pos)
       }
     }
   }
@@ -78,31 +79,30 @@ def desugarExpr(e: surfaceAst::Expr): coreAst::Expr / { Exception[DesugarError],
 /// desugar statements by desugaring contained expressions
 def desugarStmt(s: surfaceAst::Stmt): coreAst::Stmt / { Exception[DesugarError], Exception[ParseError] } = {
   s match {
-    case surfaceAst::ValDeclaration(name, tyOpt, value) => coreAst::ValDeclaration(name, tyOpt, desugarExpr(value))
-    case surfaceAst::VarDeclaration(name, tyOpt, value) => coreAst::VarDeclaration(name, tyOpt, desugarExpr(value))
-    case surfaceAst::AssignStmt(name, value) => coreAst::AssignStmt(name, desugarExpr(value))
-    case surfaceAst::CompoundAssignStmt(name, operator, value) => {
+    case surfaceAst::ValDeclaration(name, tyOpt, value, pos) => coreAst::ValDeclaration(name, tyOpt, desugarExpr(value), pos)
+    case surfaceAst::VarDeclaration(name, tyOpt, value, pos) => coreAst::VarDeclaration(name, tyOpt, desugarExpr(value), pos)
+    case surfaceAst::AssignStmt(name, value, pos) => coreAst::AssignStmt(name, desugarExpr(value), pos)
+    case surfaceAst::CompoundAssignStmt(name, operator, value, pos) => {
       // desugar a compound assignment into a normal assignment with a binary operation
-      val variableExpr = surfaceAst::Variable(name)
+      val variableExpr = surfaceAst::Variable(name, pos)
       val binaryExpr = operator match {
-        case PlusAssign() => surfaceAst::AddExpr(variableExpr, value)
-        case MinusAssign() => surfaceAst::SubExpr(variableExpr, value)
+        case PlusAssign() => surfaceAst::AddExpr(variableExpr, value, pos)
+        case MinusAssign() => surfaceAst::SubExpr(variableExpr, value, pos)
         case _ => do raise(DesugarError(), "unsupported compound assignment operator in desugaring: " ++ operator.show)
       }
-      coreAst::AssignStmt(name, desugarExpr(binaryExpr))
+      coreAst::AssignStmt(name, desugarExpr(binaryExpr), pos)
     }
-    case surfaceAst::IfStmt(cond, thenB, elseB) => {
+    case surfaceAst::IfStmt(cond, thenB, elseB, pos) => {
       val cond2 = desugarExpr(cond)
       val then2 = thenB.map {st => desugarStmt(st)}
       val else2 = elseB.map {st => desugarStmt(st)}
-      coreAst::IfStmt(cond2, then2, else2)
+      coreAst::IfStmt(cond2, then2, else2, pos)
     }
-    case surfaceAst::ExprStmt(expr) => coreAst::ExprStmt(desugarExpr(expr))
+    case surfaceAst::ExprStmt(expr, pos) => coreAst::ExprStmt(desugarExpr(expr), pos)
   }
 }
 
 /// desugar a whole program by desugaring each statement
-def desugarProgram(p: surfaceAst::Program): coreAst::Program / Exception[ParseError] = {
-  with on[DesugarError].panic
+def desugarProgram(p: surfaceAst::Program): coreAst::Program / { Exception[ParseError], Exception[DesugarError] } = {
   p.map { s => desugarStmt(s) }
 }

@@ -4,17 +4,19 @@ import src/lib/desugar/sugar
 import src/lib/desugar/coreAst
 import src/lib/lexer/tokens
 import src/lib/utils/errors
+import src/lib/utils/coreTestUtils
+import src/lib/utils/surfaceTestUtils
 
 def main() = mainSuite("desugar") {
   
   test("desugar comparison chain") {
     
     // x < 10 >= 5
-    val chain = surfaceAst::CompareChain(
-      surfaceAst::Variable("x"),
+    val chain = sChain(
+      sV("x"),
       [
-        (TokenKind::Less(), surfaceAst::IntLiteral(10)),
-        (TokenKind::GreaterEqual(), surfaceAst::IntLiteral(5))
+        (TokenKind::Less(), sLit(10)),
+        (TokenKind::GreaterEqual(), sLit(5))
       ]
     )
 
@@ -22,9 +24,9 @@ def main() = mainSuite("desugar") {
     with on[ParseError].panic
     val desugared = desugarExpr(chain)
 
-    val expected = coreAst::AndExpr(
-      coreAst::Lt(coreAst::Variable("x"), coreAst::IntLiteral(10)),
-      coreAst::GtE(coreAst::IntLiteral(10), coreAst::IntLiteral(5))
+    val expected = cAnd(
+      cLt(cV("x"), cLit(10)),
+      cGtE(cLit(10), cLit(5))
     )
 
     assertEqual(desugared, expected)
@@ -32,17 +34,17 @@ def main() = mainSuite("desugar") {
 
   test("desugar compound assignment") {
     // x += 5
-    val stmt = surfaceAst::CompoundAssignStmt("x", TokenKind::PlusAssign(), surfaceAst::IntLiteral(5))
+    val stmt = sCAssign("x", TokenKind::PlusAssign(), sLit(5))
 
     with on[DesugarError].panic
     with on[ParseError].panic
     val desugared = desugarStmt(stmt)
 
-    val expected = coreAst::AssignStmt(
+    val expected = cAssign(
       "x",
-      coreAst::AddExpr(
-        coreAst::Variable("x"),
-        coreAst::IntLiteral(5)
+      cAdd(
+        cV("x"),
+        cLit(5)
       )
     )
 
@@ -51,15 +53,15 @@ def main() = mainSuite("desugar") {
 
   test("desugar unary minus") {
     // -x
-    val expr = surfaceAst::UnaryMinus(surfaceAst::Variable("x"))
+    val expr = sUminus(sV("x"))
 
     with on[DesugarError].panic
     with on[ParseError].panic
     val desugared = desugarExpr(expr)
 
-    val expected = coreAst::SubExpr(
-      coreAst::IntLiteral(0),
-      coreAst::Variable("x")
+    val expected = cSub(
+      cLit(0),
+      cV("x")
     )
 
     assertEqual(desugared, expected)
@@ -72,16 +74,16 @@ def main() = mainSuite("desugar") {
     // b += 10
     // b > 15 <= 30
     val program: surfaceAst::Program = [
-      surfaceAst::ValDeclaration("a", None(), surfaceAst::IntLiteral(10)),
-      surfaceAst::VarDeclaration("b", None(), surfaceAst::IntLiteral(20)),
-      surfaceAst::CompoundAssignStmt("b", TokenKind::PlusAssign(), surfaceAst::IntLiteral(10)),
-      surfaceAst::AssignStmt("b", surfaceAst::AddExpr(surfaceAst::Variable("a"), surfaceAst::IntLiteral(5))),
-      surfaceAst::ExprStmt(
-        surfaceAst::CompareChain(
-          surfaceAst::Variable("b"),
+      sVal("a", None(), sLit(10)),
+      sVar("b", None(), sLit(20)),
+      sCAssign("b", TokenKind::PlusAssign(), sLit(10)),
+      sAssign("b", sAdd(sV("a"), sLit(5))),
+      sExpr(
+        sChain(
+          sV("b"),
           [
-            (TokenKind::Greater(), surfaceAst::IntLiteral(15)),
-            (TokenKind::LessEqual(), surfaceAst::IntLiteral(30))
+            (TokenKind::Greater(), sLit(15)),
+            (TokenKind::LessEqual(), sLit(30))
           ]
         )
       )
@@ -92,14 +94,14 @@ def main() = mainSuite("desugar") {
     val desugaredProgram = desugarProgram(program)
 
     val expectedProgram: coreAst::Program = [
-      coreAst::ValDeclaration("a", None(), coreAst::IntLiteral(10)),
-      coreAst::VarDeclaration("b", None(), coreAst::IntLiteral(20)),
-      coreAst::AssignStmt("b", coreAst::AddExpr(coreAst::Variable("b"), coreAst::IntLiteral(10))),
-      coreAst::AssignStmt("b", coreAst::AddExpr(coreAst::Variable("a"), coreAst::IntLiteral(5))),
-      coreAst::ExprStmt(
-        coreAst::AndExpr(
-          coreAst::Gt(coreAst::Variable("b"), coreAst::IntLiteral(15)),
-          coreAst::LtE(coreAst::IntLiteral(15), coreAst::IntLiteral(30))
+      cVal("a", None(), cLit(10)),
+      cVar("b", None(), cLit(20)),
+      cAssign("b", cAdd(cV("b"), cLit(10))),
+      cAssign("b", cAdd(cV("a"), cLit(5))),
+      cExpr(
+        cAnd(
+          cGt(cV("b"), cLit(15)),
+          cLtE(cLit(15), cLit(30))
         )
       )
     ]

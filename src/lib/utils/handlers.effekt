@@ -5,7 +5,7 @@ import src/lib/utils/effects
 import src/lib/utils/helpers
 
 /// Handler for TypingContext effect that manages variable bindings and their types in a mutable map.
-def handleTypingContext[R] { prog: => R / Context[TypeBinding] }: R / { Exception[NameError], getPos } = {
+def handleTypingContext[R] { prog: => R / Context[TypeBinding] }: R / { Exception[NameError], Positioning } = {
   var context: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
 
   try { prog() } with Context[TypeBinding] {
@@ -32,7 +32,7 @@ def handleTypingContext[R] { prog: => R / Context[TypeBinding] }: R / { Exceptio
   }
 }
 
-def handleRuntimeContext[R] { prog: => R / { Context[Address], Store } }: R / {Exception[RuntimeError], getPos } = {
+def handleRuntimeContext[R] { prog: => R / { Context[Address], Store } }: R / {Exception[RuntimeError], Positioning } = {
   var context: Map[String, Address] = map::emptyGeneric[String, Address]()
   var heap: Map[Address, Value] = map::emptyGeneric[Address, Value]()
   var nextAddress: Address = 0
@@ -77,9 +77,10 @@ def handleRuntimeContext[R] { prog: => R / { Context[Address], Store } }: R / {E
 }
 
 /// Mock handler for getPos effect that always returns a fixed position (line 1, column 1).
-def mockGetPos[R] { prog: => R / getPos } = {
-  try { prog() } with getPos {
-    def getPos() = resume(Position(1, 1)) // always return line 1, column 1
+def mockGetPos[R] { prog: => R / Positioning } = {
+  try { prog() } with Positioning {
+    def getPos() = resume(Position(0, 0)) // always return line 0, column 0
+    def setPos(p) = resume(())
   }
 }
 
@@ -103,4 +104,12 @@ def handleNewRuntimeScope[R]{ action: => R / Context[Address] }: R / Context[Add
   val result = action()
   do restore(snapshot)
   result
+}
+
+def at[R](p: Position) { block: => R / Positioning }: R / Positioning = {
+  val old = do getPos()
+  do setPos(p)
+  val res = block()
+  do setPos(old)
+  res
 }

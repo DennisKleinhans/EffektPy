@@ -10,7 +10,7 @@ import src/lib/utils/types
 
 
 /// scanner that tracks source position
-def scanWithPos[R]() {prog: => R / { Scan[Char], getPos } }: R / Scan[Char] = {
+def scanWithPos[R]() {prog: => R / { Scan[Char], Positioning } }: R / Scan[Char] = {
   // track current source position
   var line = 1
   var col = 1
@@ -79,13 +79,18 @@ def scanWithPos[R]() {prog: => R / { Scan[Char], getPos } }: R / Scan[Char] = {
         }
       }
     }
-  } with getPos {
-    resume(position())
+  } with Positioning {
+    def getPos() = resume(position())
+    def setPos(p) = {
+      line = p.line
+      col = p.column
+      resume(())
+    }
   }
 }
 
 /// lex a single token from the input stream 
-def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], getPos} = {
+def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], Positioning} = {
 
   def readIdentifierOrKeyword(pos: Position): Token / { Scan[Char], stop } = {
     // collect all alphanumeric chars
@@ -222,13 +227,13 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], getPos} = {
 }
 
 /// lexer that provides token-level lookahead 
-def lexer[R]() { program: => R / Lexer[Token] }: R / { Scan[Char], getPos, Exception[LexerError] } = {
+def lexer[R]() { program: => R / Lexer[Token] }: R / { Scan[Char], Positioning, Exception[LexerError] } = {
   // buffer for the last token read
   var firstToken: Option[Token] = None()
   var secondToken : Option[Token] = None()
 
   
-  def fetchNext(): Token / { Scan[Char], getPos, Exception[LexerError] } = {
+  def fetchNext(): Token / { Scan[Char], Positioning, Exception[LexerError] } = {
     try {
       nextToken()
     } with stop {

@@ -3,7 +3,11 @@ import src/lib/utils/types
 import map
 
 /// Effect for getting the current position in the source code (line and column)
-effect getPos(): Position
+// effect getPos(): Position
+interface Positioning {
+  def getPos(): Position
+  def setPos(p: Position): Unit
+}
 
 /// Effect for lexing tokens from the input source code stream 
 interface Lexer[R] {
@@ -15,7 +19,7 @@ interface Lexer[R] {
 /// Effect for generating fresh type variables and equating types
 interface Typing {
   def fresh(): TypingType
-  def equate(t1: TypingType, t2: TypingType): Unit
+  def equate(t1: TypingType, t2: TypingType, pos: Position): Unit
 }
 
 /// Effect for managing some context mapping from names to values of type R

@@ -19,6 +19,12 @@ type Value {
 
 type Address = Int
 
+type PipelineResult[T] {
+  Success(data: T)
+  Failure(msg: String)
+}
+
+record TypeEquation(left: TypingType, right: TypingType, pos: Position)
 record TypeBinding(tpe: TypingType, isMutable: Bool)
 record ValueBinding(value: Value, isMutable: Bool)
 record Position (line: Int, column: Int)

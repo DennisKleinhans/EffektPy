@@ -12,16 +12,18 @@ import src/lib/parser/surfaceAst
 import src/lib/utils/errors
 import src/lib/utils/effects
 import src/lib/utils/types
+import src/lib/utils/surfaceTestUtils
+import src/lib/utils/handlers
 
 def main() = mainSuite("parser") {
 
   test("parser parses variable declaration ('val' and 'var') without type annotation (Int literal, Bool literal)") {
     val inputs = ["val x = 2", "val x = false", "var y = 2", "var y = false"]
     val expectedOutputs = [
-      [ValDeclaration("x", None(), IntLiteral(2))], 
-      [ValDeclaration("x", None(), BoolLiteral(false))],
-      [VarDeclaration("y", None(), IntLiteral(2))], 
-      [VarDeclaration("y", None(), BoolLiteral(false))]
+      [sVal("x", None(), sLit(2))], 
+      [sVal("x", None(), sLit(false))],
+      [sVar("y", None(), sLit(2))], 
+      [sVar("y", None(), sLit(false))]
     ]
     var iter = 0
 
@@ -30,6 +32,7 @@ def main() = mainSuite("parser") {
       with feed(inputs.get(iter))
       with scanner[Char]
       with scanWithPos
+      with mockGetPos
       with on[LexerError].panic
       with lexer
       with on[ParseError].panic
@@ -45,10 +48,10 @@ def main() = mainSuite("parser") {
   test("parser parses variable declaration ('val' and 'var') with type annotation (Int literal, Bool literal)") {
     val inputs = ["val x: Int = 2", "val x: Bool = false", "var y: Int = 2", "var y: Bool = false"]
     val expectedOutputs = [
-      [ValDeclaration("x", Some(IntType()), IntLiteral(2))], 
-      [ValDeclaration("x", Some(BoolType()), BoolLiteral(false))],
-      [VarDeclaration("y", Some(IntType()), IntLiteral(2))], 
-      [VarDeclaration("y", Some(BoolType()), BoolLiteral(false))]
+      [sVal("x", Some(IntType()), sLit(2))], 
+      [sVal("x", Some(BoolType()), sLit(false))],
+      [sVar("y", Some(IntType()), sLit(2))], 
+      [sVar("y", Some(BoolType()), sLit(false))]
     ]
     var iter = 0
 
@@ -57,6 +60,7 @@ def main() = mainSuite("parser") {
       with feed(inputs.get(iter))
       with scanner[Char]
       with scanWithPos
+      with mockGetPos
       with on[LexerError].panic
       with lexer
       with on[ParseError].panic
@@ -71,12 +75,12 @@ def main() = mainSuite("parser") {
   test("parser parses assignment statements") {
     val inputs = ["x = 2", "y = false", "z = x + 1", "a = not b", "c = (d and e) or (f or not g)", "d = x < 5 <= 10"]
     val expectedOutputs = [
-      [AssignStmt("x", IntLiteral(2))],
-      [AssignStmt("y", BoolLiteral(false))],
-      [AssignStmt("z", AddExpr(Variable("x"), IntLiteral(1)))],
-      [AssignStmt("a", NotExpr(Variable("b")))],
-      [AssignStmt("c", OrExpr(AndExpr(Variable("d"), Variable("e")), OrExpr(Variable("f"), NotExpr(Variable("g")))))],
-      [AssignStmt("d", CompareChain(Variable("x"), Cons((Less(), IntLiteral(5)), Cons((LessEqual(), IntLiteral(10)), Nil()))))]
+      [sAssign("x", sLit(2))],
+      [sAssign("y", sLit(false))],
+      [sAssign("z", sAdd(sV("x"), sLit(1)))],
+      [sAssign("a", sNot(sV("b")))],
+      [sAssign("c", sOr(sAnd(sV("d"), sV("e")), sOr(sV("f"), sNot(sV("g")))))],
+      [sAssign("d", sChain(sV("x"), Cons((Less(), sLit(5)), Cons((LessEqual(), sLit(10)), Nil()))))]
     ]
     var iter = 0
 
@@ -85,6 +89,7 @@ def main() = mainSuite("parser") {
       with feed(inputs.get(iter))
       with scanner[Char]
       with scanWithPos
+      with mockGetPos
       with on[LexerError].panic
       with lexer
       with on[ParseError].panic
@@ -99,8 +104,8 @@ def main() = mainSuite("parser") {
   test("parser parses compound assignment statements (+=, -=)") {
     val inputs = ["x += 2", "y -= 3"]
     val expectedOutputs = [
-      [CompoundAssignStmt("x", PlusAssign(), IntLiteral(2))],
-      [CompoundAssignStmt("y", MinusAssign(), IntLiteral(3))]
+      [sCAssign("x", PlusAssign(), sLit(2))],
+      [sCAssign("y", MinusAssign(), sLit(3))]
     ]
     var iter = 0
 
@@ -109,6 +114,7 @@ def main() = mainSuite("parser") {
       with feed(inputs.get(iter))
       with scanner[Char]
       with scanWithPos
+      with mockGetPos
       with on[LexerError].panic
       with lexer
       with on[ParseError].panic
@@ -124,10 +130,10 @@ def main() = mainSuite("parser") {
     val inputs = ["2 + 2", "2 - 2", "2 * 2", "2 / 2"]
 
     val expectedOutputs = [
-      [ExprStmt(AddExpr(IntLiteral(2), IntLiteral(2)))],
-      [ExprStmt(SubExpr(IntLiteral(2), IntLiteral(2)))],
-      [ExprStmt(MultExpr(IntLiteral(2), IntLiteral(2)))],
-      [ExprStmt(DivExpr(IntLiteral(2), IntLiteral(2)))]
+      [sExpr(sAdd(sLit(2), sLit(2)))],
+      [sExpr(sSub(sLit(2), sLit(2)))],
+      [sExpr(sMult(sLit(2), sLit(2)))],
+      [sExpr(sDiv(sLit(2), sLit(2)))]
     ]
 
     var iter = 0
@@ -136,6 +142,7 @@ def main() = mainSuite("parser") {
       with feed(inputs.get(iter))
       with scanner[Char]
       with scanWithPos
+      with mockGetPos
       with on[LexerError].panic
       with lexer
       with on[ParseError].panic 
@@ -151,12 +158,12 @@ def main() = mainSuite("parser") {
     val inputs = ["2 == 2", "2 != 2", "2 < 2", "2 > 2", "2 <= 2", "2 >= 2"]
 
     val expectedOutputs = [
-      [ExprStmt(Eq(IntLiteral(2), IntLiteral(2)))],
-      [ExprStmt(Neq(IntLiteral(2), IntLiteral(2)))],
-      [ExprStmt(Lt(IntLiteral(2), IntLiteral(2)))],
-      [ExprStmt(Gt(IntLiteral(2), IntLiteral(2)))],
-      [ExprStmt(LtE(IntLiteral(2), IntLiteral(2)))],
-      [ExprStmt(GtE(IntLiteral(2), IntLiteral(2)))]
+      [sExpr(sEq(sLit(2), sLit(2)))],
+      [sExpr(sNeq(sLit(2), sLit(2)))],
+      [sExpr(sLt(sLit(2), sLit(2)))],
+      [sExpr(sGt(sLit(2), sLit(2)))],
+      [sExpr(sLtE(sLit(2), sLit(2)))],
+      [sExpr(sGtE(sLit(2), sLit(2)))]
     ]
 
     var iter = 0
@@ -165,6 +172,7 @@ def main() = mainSuite("parser") {
       with feed(inputs.get(iter))
       with scanner[Char]
       with scanWithPos
+      with mockGetPos
       with on[LexerError].panic
       with lexer
       with on[ParseError].panic 
@@ -180,13 +188,13 @@ def main() = mainSuite("parser") {
     val inputs = ["2 < 3 < 4", "2 <= 3 <= 4", "4 > 3 > 2", "4 >= 3 >= 2", "2 == 3 == 4", "2 != 3 != 4", "2 < 3 > 4 == 5"]
 
     val expectedOutputs = [
-      [ExprStmt(CompareChain(IntLiteral(2), Cons((Less(), IntLiteral(3)), Cons((Less(), IntLiteral(4)), Nil()))))],
-      [ExprStmt(CompareChain(IntLiteral(2), Cons((LessEqual(), IntLiteral(3)), Cons((LessEqual(), IntLiteral(4)), Nil()))))],
-      [ExprStmt(CompareChain(IntLiteral(4), Cons((Greater(), IntLiteral(3)), Cons((Greater(), IntLiteral(2)), Nil()))))],
-      [ExprStmt(CompareChain(IntLiteral(4), Cons((GreaterEqual(), IntLiteral(3)), Cons((GreaterEqual(), IntLiteral(2)), Nil()))))],
-      [ExprStmt(CompareChain(IntLiteral(2), Cons((Equal(), IntLiteral(3)), Cons((Equal(), IntLiteral(4)), Nil()))))],
-      [ExprStmt(CompareChain(IntLiteral(2), Cons((NotEqual(), IntLiteral(3)), Cons((NotEqual(), IntLiteral(4)), Nil()))))],
-      [ExprStmt(CompareChain(IntLiteral(2), Cons((Less(), IntLiteral(3)), Cons((Greater(), IntLiteral(4)), Cons((Equal(), IntLiteral(5)), Nil())))))]
+      [sExpr(sChain(sLit(2), Cons((Less(), sLit(3)), Cons((Less(), sLit(4)), Nil()))))],
+      [sExpr(sChain(sLit(2), Cons((LessEqual(), sLit(3)), Cons((LessEqual(), sLit(4)), Nil()))))],
+      [sExpr(sChain(sLit(4), Cons((Greater(), sLit(3)), Cons((Greater(), sLit(2)), Nil()))))],
+      [sExpr(sChain(sLit(4), Cons((GreaterEqual(), sLit(3)), Cons((GreaterEqual(), sLit(2)), Nil()))))],
+      [sExpr(sChain(sLit(2), Cons((Equal(), sLit(3)), Cons((Equal(), sLit(4)), Nil()))))],
+      [sExpr(sChain(sLit(2), Cons((NotEqual(), sLit(3)), Cons((NotEqual(), sLit(4)), Nil()))))],
+      [sExpr(sChain(sLit(2), Cons((Less(), sLit(3)), Cons((Greater(), sLit(4)), Cons((Equal(), sLit(5)), Nil())))))]
     ]
     var iter = 0
     while (iter < inputs.size) {
@@ -194,6 +202,7 @@ def main() = mainSuite("parser") {
       with feed(inputs.get(iter))
       with scanner[Char]
       with scanWithPos
+      with mockGetPos
       with on[LexerError].panic
       with lexer
       with on[ParseError].panic 
@@ -216,12 +225,12 @@ def main() = mainSuite("parser") {
     ]
 
     val expectedOutputs = [
-      [ExprStmt(AndExpr(BoolLiteral(true), BoolLiteral(false)))],
-      [ExprStmt(OrExpr(BoolLiteral(true), BoolLiteral(false)))],
-      [ExprStmt(NotExpr(BoolLiteral(true)))],
-      [ExprStmt(NotExpr(BoolLiteral(false)))],
-      [ExprStmt(OrExpr(AndExpr(BoolLiteral(true), BoolLiteral(false)), BoolLiteral(true)))],
-      [ExprStmt(AndExpr(NotExpr(OrExpr(BoolLiteral(true), BoolLiteral(false))), BoolLiteral(true)))]
+      [sExpr(sAnd(sLit(true), sLit(false)))],
+      [sExpr(sOr(sLit(true), sLit(false)))],
+      [sExpr(sNot(sLit(true)))],
+      [sExpr(sNot(sLit(false)))],
+      [sExpr(sOr(sAnd(sLit(true), sLit(false)), sLit(true)))],
+      [sExpr(sAnd(sNot(sOr(sLit(true), sLit(false))), sLit(true)))]
     ]
 
     var iter = 0
@@ -230,6 +239,7 @@ def main() = mainSuite("parser") {
       with feed(inputs.get(iter))
       with scanner[Char]
       with scanWithPos
+      with mockGetPos
       with on[LexerError].panic
       with lexer
       with on[ParseError].panic 
@@ -252,12 +262,12 @@ def main() = mainSuite("parser") {
     ]
 
     val expectedOutputs = [
-      [ExprStmt(NotExpr(BoolLiteral(true)))],
-      [ExprStmt(NotExpr(BoolLiteral(false)))],
-      [ExprStmt(UnaryMinus(IntLiteral(5)))],
-      [ExprStmt(UnaryMinus(AddExpr(IntLiteral(2), IntLiteral(3))))],
-      [ExprStmt(UnaryMinus(UnaryMinus(IntLiteral(5))))],
-      [ExprStmt(MultExpr(UnaryMinus(Variable("x")), Variable("y")))]
+      [sExpr(sNot(sLit(true)))],
+      [sExpr(sNot(sLit(false)))],
+      [sExpr(sUminus(sLit(5)))],
+      [sExpr(sUminus(sAdd(sLit(2), sLit(3))))],
+      [sExpr(sUminus(sUminus(sLit(5))))],
+      [sExpr(sMult(sUminus(sV("x")), sV("y")))]
     ]
 
     var iter = 0
@@ -266,6 +276,7 @@ def main() = mainSuite("parser") {
       with feed(inputs.get(iter))
       with scanner[Char]
       with scanWithPos
+      with mockGetPos
       with on[LexerError].panic
       with lexer
       with on[ParseError].panic 
@@ -281,13 +292,14 @@ def main() = mainSuite("parser") {
     val input = "val x = if true then 1 else 0"
 
     val expected = [
-      ValDeclaration( "x", None(), IfExpr(BoolLiteral(true), IntLiteral(1), IntLiteral(0)))
+      sVal( "x", None(), sIf(sLit(true), sLit(1), sLit(0)))
     ]
 
     with on[OutOfBounds].panic
     with feed(input)
     with scanner[Char]
     with scanWithPos
+    with mockGetPos
     with on[LexerError].panic
     with lexer
     with on[ParseError].panic 
@@ -301,9 +313,9 @@ def main() = mainSuite("parser") {
     val input = "if (true) { 1 }"
 
     val expected = [
-      IfStmt(
-          BoolLiteral(true),
-          [ExprStmt(IntLiteral(1))],
+      sIf(
+          sLit(true),
+          [sExpr(sLit(1))],
           Nil()
         )
     ]
@@ -312,6 +324,7 @@ def main() = mainSuite("parser") {
     with feed(input)
     with scanner[Char]
     with scanWithPos
+    with mockGetPos
     with on[LexerError].panic
     with lexer
     with on[ParseError].panic 
@@ -325,12 +338,12 @@ def main() = mainSuite("parser") {
     val input = "if (not false and true) { 1 } else { 0 }"
 
     val expected = [
-      IfStmt(
-          AndExpr(
-            NotExpr(BoolLiteral(false)),
-            BoolLiteral(true)),
-          [ExprStmt(IntLiteral(1))],
-          [ExprStmt(IntLiteral(0))]
+      sIf(
+          sAnd(
+            sNot(sLit(false)),
+            sLit(true)),
+          [sExpr(sLit(1))],
+          [sExpr(sLit(0))]
         )
     ]
 
@@ -338,6 +351,7 @@ def main() = mainSuite("parser") {
     with feed(input)
     with scanner[Char]
     with scanWithPos
+    with mockGetPos
     with on[LexerError].panic
     with lexer
     with on[ParseError].panic 
@@ -358,15 +372,15 @@ def main() = mainSuite("parser") {
     "}"
 
     val expected = [
-      VarDeclaration("x", Some(IntType()), IntLiteral(10)),
-      ValDeclaration("y", Some(BoolType()), BoolLiteral(true)),
-      IfStmt(
-        AndExpr(
-          GtE(Variable("x"), IntLiteral(10)),
-          NotExpr(Variable("y"))
+      sVar("x", Some(IntType()), sLit(10)),
+      sVal("y", Some(BoolType()), sLit(true)),
+      sIf(
+        sAnd(
+          sGtE(sV("x"), sLit(10)),
+          sNot(sV("y"))
         ),
-        [AssignStmt("x", AddExpr(Variable("x"), IntLiteral(1)))],
-        [AssignStmt("x", SubExpr(Variable("x"), IntLiteral(1)))]
+        [sAssign("x", sAdd(sV("x"), sLit(1)))],
+        [sAssign("x", sSub(sV("x"), sLit(1)))]
       )
     ]
 
@@ -374,6 +388,7 @@ def main() = mainSuite("parser") {
     with feed(input)
     with scanner[Char]
     with scanWithPos
+    with mockGetPos
     with on[LexerError].panic
     with lexer
     with on[ParseError].panic 

@@ -5,6 +5,7 @@ import src/lib/utils/handlers
 import src/lib/utils/errors
 import src/lib/desugar/coreAst
 import src/lib/utils/types
+import src/lib/utils/coreTestUtils
 
 def main() = mainSuite("interpreter") {
 
@@ -15,14 +16,16 @@ def main() = mainSuite("interpreter") {
     case _ => false
   }
 
+  val mockedPos = Position(1, 1)
+
   test("eval simple arithmetic") {
     val progs = [
-      [ExprStmt(AddExpr(IntLiteral(10), IntLiteral(20)))],
-      [ExprStmt(SubExpr(IntLiteral(30), IntLiteral(5)))],
-      [ExprStmt(MultExpr(IntLiteral(4), IntLiteral(5)))],
-      [ExprStmt(DivExpr(IntLiteral(20), IntLiteral(4)))],
-      [ExprStmt(AddExpr(MultExpr(IntLiteral(2), IntLiteral(3)), IntLiteral(5)))],
-      [ExprStmt(SubExpr(DivExpr(IntLiteral(50), IntLiteral(2)), IntLiteral(5)))]
+      [cExpr(cAdd(cLit(10), cLit(20)))],
+      [cExpr(cSub(cLit(30), cLit(5)))],
+      [cExpr(cMult(cLit(4), cLit(5)))],
+      [cExpr(cDiv(cLit(20), cLit(4)))],
+      [cExpr(cAdd(cMult(cLit(2), cLit(3)), cLit(5)))],
+      [cExpr(cSub(cDiv(cLit(50), cLit(2)), cLit(5)))]
     ]
 
     val expected = [
@@ -48,17 +51,17 @@ def main() = mainSuite("interpreter") {
   }
 
   test("eval equality and inequality") {
-    val prog1 = ExprStmt(
-      Eq(
-        IntLiteral(10),
-        IntLiteral(10)
+    val prog1 = cExpr(
+      cEq(
+        cLit(10),
+        cLit(10)
       )
     )
 
-    val prog2 = ExprStmt(
-      Neq(
-        BoolLiteral(true),
-        BoolLiteral(false)
+    val prog2 = cExpr(
+      cNeq(
+        cLit(true),
+        cLit(false)
       )
     )
 
@@ -75,10 +78,10 @@ def main() = mainSuite("interpreter") {
 
   test("eval comparison operators") {
     val progs = [
-      [ExprStmt(Lt(IntLiteral(15), IntLiteral(20)))],
-      [ExprStmt(Gt(IntLiteral(25), IntLiteral(10)))],
-      [ExprStmt(LtE(IntLiteral(10), IntLiteral(10)))],
-      [ExprStmt(GtE(IntLiteral(30), IntLiteral(40)))]
+      [cExpr(cLt(cLit(15), cLit(20)))],
+      [cExpr(cGt(cLit(25), cLit(10)))],
+      [cExpr(cLtE(cLit(10), cLit(10)))],
+      [cExpr(cGtE(cLit(30), cLit(40)))]
     ]
 
     val expected = [VBool(true), VBool(true), VBool(true), VBool(false)]
@@ -96,19 +99,19 @@ def main() = mainSuite("interpreter") {
   }
 
   test("eval simple if expressions") {
-    val prog1 = ExprStmt(
-      IfExpr(
-        BoolLiteral(true),
-        IntLiteral(10),
-        IntLiteral(20)
+    val prog1 = cExpr(
+      cIf(
+        cLit(true),
+        cLit(10),
+        cLit(20)
       )
     )
 
-    val prog2 = ExprStmt(
-      IfExpr(
-        BoolLiteral(false),
-        IntLiteral(10),
-        IntLiteral(20)
+    val prog2 = cExpr(
+      cIf(
+        cLit(false),
+        cLit(10),
+        cLit(20)
       )
     )
 
@@ -124,17 +127,17 @@ def main() = mainSuite("interpreter") {
   }
 
   test("eval if expression with comparison") {
-    val prog = ExprStmt(
-      IfExpr(
-        OrExpr(
-          AndExpr(
-            BoolLiteral(true),
-            BoolLiteral(false)
+    val prog = cExpr(
+      cIf(
+        cOr(
+          cAnd(
+            cLit(true),
+            cLit(false)
           ),
-          BoolLiteral(true)
+          cLit(true)
         ),
-        IntLiteral(42),
-        IntLiteral(0)
+        cLit(42),
+        cLit(0)
       )
     )
 
@@ -147,10 +150,10 @@ def main() = mainSuite("interpreter") {
   }
 
   test("eval division by zero raises RuntimeError") {
-    val prog = ExprStmt(
-      DivExpr(
-        IntLiteral(10),
-        IntLiteral(0)
+    val prog = cExpr(
+      cDiv(
+        cLit(10),
+        cLit(0)
       )
     )
 
@@ -162,18 +165,18 @@ def main() = mainSuite("interpreter") {
   }
 
   test("eval if statement") {
-    val prog = [
-      VarDeclaration("x", None(), IntLiteral(0)),
-      IfStmt(
-        BoolLiteral(true),
+    val prog = [ 
+      cVar("x", None(), cLit(0)),
+      cIf(
+        cLit(true),
         [
-          AssignStmt("x", IntLiteral(10))
+          cAssign("x", cLit(10))
         ],
         [
-          AssignStmt("x", IntLiteral(20))
+          cAssign("x", cLit(20))
         ]
       ),
-      ExprStmt(Variable("x"))
+      cExpr(cV("x"))
     ]
 
     with on[RuntimeError].panic
@@ -185,14 +188,14 @@ def main() = mainSuite("interpreter") {
   }
 
   test("eval nested if expressions") {
-    val prog = ExprStmt(
-      IfExpr(
-        BoolLiteral(false),
-        IntLiteral(1),
-        IfExpr(
-          BoolLiteral(true),
-          IntLiteral(2),
-          IntLiteral(3)
+    val prog = cExpr(
+      cIf(
+        cLit(false),
+        cLit(1),
+        cIf(
+          cLit(true),
+          cLit(2),
+          cLit(3)
         )
       )
     )
@@ -207,25 +210,25 @@ def main() = mainSuite("interpreter") {
 
   test("nested if statements") {
     val prog = [
-      VarDeclaration("x", None(), IntLiteral(0)),
-      IfStmt(
-        BoolLiteral(false),
+      cVar("x", None(), cLit(0)),
+      cIf(
+        cLit(false),
         [
-          AssignStmt("x", IntLiteral(10))
+          cAssign("x", cLit(10))
         ],
         [
-          IfStmt(
-            BoolLiteral(true),
+          cIf(
+            cLit(true),
             [
-              AssignStmt("x", IntLiteral(20))
+              cAssign("x", cLit(20))
             ],
             [
-              AssignStmt("x", IntLiteral(30))
+              cAssign("x", cLit(30))
             ]
           )
         ]
       ),
-      ExprStmt(Variable("x"))
+      cExpr(cV("x"))
     ]
 
     with on[RuntimeError].panic
@@ -238,23 +241,23 @@ def main() = mainSuite("interpreter") {
 
   test("eval complex program") {
     val prog = [
-      ValDeclaration("a", None(), IntLiteral(10)),
-      VarDeclaration("b", None(), IntLiteral(20)),
-      AssignStmt("b", AddExpr(Variable("a"), IntLiteral(5))),
-      IfStmt(Lt(Variable("b"), Variable("a")),
+      cVal("a", None(), cLit(10)),
+      cVar("b", None(), cLit(20)),
+      cAssign("b", cAdd(cV("a"), cLit(5))),
+      cIf(cLt(cV("b"), cV("a")),
         [
-          AssignStmt("b", MultExpr(Variable("b"), IntLiteral(2)))
+          cAssign("b", cMult(cV("b"), cLit(2)))
         ],
         [
-          AssignStmt("b", SubExpr(Variable("b"), IntLiteral(5))),
-          ValDeclaration("c", None(), DivExpr(Variable("b"), IntLiteral(2))),
-          AssignStmt("b", IfExpr(GtE(AddExpr(Variable("b"), Variable("c")), IntLiteral(30)),
-            IntLiteral(100),
-            IntLiteral(50)
+          cAssign("b", cSub(cV("b"), cLit(5))),
+          cVal("c", None(), cDiv(cV("b"), cLit(2))),
+          cAssign("b", cIf(cGtE(cAdd(cV("b"), cV("c")), cLit(30)),
+            cLit(100),
+            cLit(50)
           ))
         ]
       ),
-      ExprStmt(Variable("b"))
+      cExpr(cV("b"))
     ]
 
     with on[RuntimeError].panic
