@@ -107,3 +107,12 @@ def equal(x: TokenKind, y: TokenKind): Bool = {
   x.show == y.show
 }
 
+def equal(v1: Value, v2: Value): Bool = {
+  (v1, v2) match {
+    case (VInt(n1), VInt(n2)) => n1 == n2
+    case (VBool(b1), VBool(b2)) => b1 == b2
+    case (VUnit(), VUnit()) => true
+    case _ => false
+  }
+}
+

@@ -1,52 +1,11 @@
 module main 
 
-import scanner
-import exception
-import io/filesystem
-import io/error
-import src/lib/parser/surfaceAst
-import src/lib/utils/types
-import src/lib/lexer/lexer
-import src/lib/parser/parser
-import src/lib/desugar/sugar
-import src/lib/desugar/coreAst
-import src/lib/utils/errors
-import src/lib/typechecker/typecheck
-import src/lib/utils/effects
-import src/lib/interpreter/eval
-import src/lib/runner/runParser
-import src/lib/runner/runTypechecker
-import src/lib/runner/runInterpreter
-
-def run(input: String) = {
-
-  runParsing(input) match {
-    case Failure(msg) => println(msg) 
-    case PipelineResult::Success(ast) => {
-      runTypecheck(ast) match {
-        case Failure(msg) => println(msg)
-        case PipelineResult::Success(_) => {
-          runEval(ast) match {
-            case Failure(msg) => println(msg)
-            case PipelineResult::Success(value) => value match {
-              case VInt(n) => println("Result: " ++ n.show)
-              case VBool(b) => println("Result: " ++ b.show)
-              case VUnit() => println("Result: ()")
-            }
-          }
-        }
-      }
-    }
-  }
-
-}
-
-
+import src/lib/runner/runPipeline
 
 
 def main(): Unit = {
   
-  run(
+  runPipeline(
     """if (10 < 20) {
       if (true) {
         val x = 2

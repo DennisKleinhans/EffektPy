@@ -1,0 +1,133 @@
+import test
+import src/lib/utils/testUtils
+import src/lib/runner/runPipeline
+import src/lib/utils/types
+import src/lib/utils/helpers
+
+def main() = mainSuite("pipeline") {
+
+  test("simple arithmetic"){
+    val result = runPipeline("val x = 10 + 20 * 3\nx")
+    assertTrue(result.equal(VInt(70)))
+  }
+
+  test("compare expressions"){
+    val result = runPipeline("val x = 10 < 20\nx")
+    assertTrue(result.equal(VBool(true)))
+  }
+
+  test("compare chain expressions"){
+    val result = runPipeline("val x = 10 < 20 < 30\nx")
+    assertTrue(result.equal(VBool(true)))
+  }
+
+  test("if expression"){
+    val result = runPipeline("val x = if 10 < 20 then 1 else 2\nx")
+    assertTrue(result.equal(VInt(1)))
+  }
+
+  test("nested if expression"){
+    val result = runPipeline("val x = if 10 < 20 then (if 5 > 3 then 2 else 3) else 4\nx")
+    assertTrue(result.equal(VInt(2)))
+  }
+
+  test("if statement without else"){
+    val result = runPipeline("""
+      if (10 < 5) {
+        val x = 2
+        x
+      }
+    """)
+    assertTrue(result.equal(VUnit()))
+  }
+
+  test("if statement with else") {
+    val result = runPipeline("""
+      if (10 < 5) {
+        val x = 2
+        x
+      } else {
+        val x = 5
+        x
+      }
+    """)
+    assertTrue(result.equal(VInt(5)))
+  }
+
+  test("nested if statements") {
+    val result = runPipeline("""
+      if (10 < 20) {
+        if (true) {
+          val x = 2
+          x
+        }
+      } else {
+        val x = 5
+        x
+      }
+    """)
+    assertTrue(result.equal(VInt(2)))
+  }
+
+  test("variable assignment and update") {
+    val result = runPipeline("""
+      var x = 10
+      x = x + 5
+      x
+    """)
+    assertTrue(result.equal(VInt(15)))
+  }
+
+  test("shadowing in if blocks") {
+    val result = runPipeline("""
+      var x = 10
+      if (true) {
+        val x = 20
+        x
+      } else {
+        val x = 30
+        x
+      }
+    """)
+    assertTrue(result.equal(VInt(20)))
+  }
+
+  test("shadowing in nested if blocks") {
+    val result = runPipeline("""
+      var x = 10
+      if (true) {
+        val x = 20
+        if (false) {
+          val x = 40
+          x
+        } else {
+          val x = 30
+          x
+        }
+      } else {
+        val x = 50
+        x
+      }
+    """)
+    assertTrue(result.equal(VInt(30)))
+  }
+
+  test("complex program") {
+    val result = runPipeline("""
+      var x = 5
+      var y = 10
+      if (x < y) {
+        x = x + 15
+        if (y > 5) {
+          y = y + 20
+        } else {
+          y = y + 30
+        }
+      } else {
+        x = x + 25
+      }
+      x + y
+    """)
+    assertTrue(result.equal(VInt(50)))
+  }
+}

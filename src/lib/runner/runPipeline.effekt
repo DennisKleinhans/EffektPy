@@ -1,0 +1,24 @@
+import scanner
+import src/lib/runner/runParser
+import src/lib/runner/runTypechecker
+import src/lib/runner/runInterpreter
+import src/lib/utils/types
+
+def runPipeline(input: String) = {
+
+  runParsing(input) match {
+    case Failure(msg) => { println(msg); VUnit() }
+    case PipelineResult::Success(ast) => {
+      runTypecheck(ast) match {
+        case Failure(msg) => { println(msg); VUnit() }
+        case PipelineResult::Success(_) => {
+          runEval(ast) match {
+            case Failure(msg) => { println(msg); VUnit() }
+            case PipelineResult::Success(value) => value 
+          }
+        }
+      }
+    }
+  }
+
+}
