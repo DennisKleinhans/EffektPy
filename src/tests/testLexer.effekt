@@ -1,4 +1,4 @@
-module src/test/testLexer
+module src/tests/testLexer
 
 import test
 import scanner

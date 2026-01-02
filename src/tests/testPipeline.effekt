@@ -1,4 +1,4 @@
-module src/test/testPipeline
+module src/tests/testPipeline
 
 import test
 import src/lib/runner/runPipeline
@@ -8,17 +8,17 @@ import src/lib/utils/helpers
 
 def main() = mainSuite("pipeline") {
 
-  test("simple arithmetic"){
+  test("simple arithmetic") {
     val result = runPipeline("val x = 10 + 20 * 3\nx")
     assertTrue(result.equal(VInt(70)))
   }
 
-  test("compare expressions"){
+  test("compare expressions") {
     val result = runPipeline("val x = 10 < 20\nx")
     assertTrue(result.equal(VBool(true)))
   }
 
-  test("compare chain expressions"){
+  test("compare chain expressions") {
     val result = runPipeline("val x = 10 < 20 < 30\nx")
     assertTrue(result.equal(VBool(true)))
   }
@@ -38,7 +38,7 @@ def main() = mainSuite("pipeline") {
     assertTrue(result.equal(VInt(2)))
   }
 
-  test("if statement without else"){
+  test("if statement without else") {
     val result = runPipeline("""
       if (10 < 5) {
         val x = 2
@@ -85,6 +85,24 @@ def main() = mainSuite("pipeline") {
     assertTrue(result.equal(VInt(15)))
   }
 
+  test("compund assignment plus") {
+    val result = runPipeline("""
+      var x = 10
+      x += 1
+      x
+    """)
+    assertTrue(result.equal(VInt(11)))
+  }
+
+  test("compound assignment minus") {
+    val result = runPipeline("""
+      var x = 10
+      x -= 2
+      x
+    """)
+    assertTrue(result.equal(VInt(8)))
+  }
+
   test("shadowing in if blocks") {
     val result = runPipeline("""
       var x = 10
@@ -126,12 +144,12 @@ def main() = mainSuite("pipeline") {
       if (x < y) {
         x = x + 15
         if (y > 5) {
-          y = y + 20
+          y += 20
         } else {
-          y = y + 30
+          y += 30
         }
       } else {
-        x = x + 25
+        x += 25
       }
       x + y
     """)

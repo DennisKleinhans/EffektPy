@@ -1,4 +1,4 @@
-module src/test/testParser
+module src/tests/testParser
 
 import test
 import scanner

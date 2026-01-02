@@ -1,4 +1,4 @@
-module src/test/testInterpreter
+module src/tests/testInterpreter
 
 import test
 import src/lib/interpreter/eval

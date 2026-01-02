@@ -1,4 +1,4 @@
-module src/test/testTypechecker
+module src/tests/testTypechecker
 
 import test
 import map
