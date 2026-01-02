@@ -1,3 +1,5 @@
+module src/lib/utils/testUtils
+
 import test
 
 def assertNotThrown[E](ex: on[E]){ body: => Unit / Exception[E] }: Unit / Assertion =

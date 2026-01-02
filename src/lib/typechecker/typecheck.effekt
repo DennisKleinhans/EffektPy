@@ -1,3 +1,5 @@
+module src/lib/typechecker/typecheck
+
 import map
 import src/lib/desugar/coreAst
 import src/lib/typechecker/unification
@@ -7,7 +9,7 @@ import src/lib/utils/effects
 import src/lib/utils/helpers
 import src/lib/utils/handlers
 
-/// Typechecks a program and returns a mapping from variable names to their inferred types
+/// typechecks a program and returns a mapping from variable names to their inferred types
 def typecheck(prog: Program): Map[String, TypingType] / { Exception[TypeError], Exception[NameError], Inspector[TypeBinding], Positioning } = {
   var equations: List[TypeEquation] = Nil()
   var counter = 0
@@ -37,7 +39,7 @@ def typecheck(prog: Program): Map[String, TypingType] / { Exception[TypeError], 
   }
 }
 
-/// Typecheck a single statement
+/// typecheck a single statement
 def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning } = stmt match {
   case ValDeclaration(name, typeAnno, value, pos) => {
     with at(pos) 
@@ -46,6 +48,7 @@ def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspecto
     do define(name, TypeBinding(tExpr, false))
     TUnit()
   }
+
   case VarDeclaration(name, typeAnno, value, pos) => {
     with at(pos) 
     val tExpr = checkExpr(value)
@@ -53,6 +56,7 @@ def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspecto
     do define(name, TypeBinding(tExpr, true))
     TUnit()
   }
+
   case AssignStmt(name, value, pos) => {
     with at(pos) 
     val binding = do lookup(name)
@@ -62,17 +66,20 @@ def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspecto
     do equate(binding.tpe, checkExpr(value), pos)
     TUnit()
   }
+
   case IfStmt(cond, thenBranch, elseBranch, pos) => {
     with at(pos) 
     do equate(checkExpr(cond), TBool(), pos)
     checkBlock(thenBranch)
     checkBlock(elseBranch)
   }
+
   case InspectScope() => {
     val currentContext = do backup()
     do inspect(currentContext)
     TUnit()
   }
+
   case ExprStmt(expr, pos) => {
     with at(pos) 
     checkExpr(expr)
@@ -95,6 +102,7 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
     with at(pos) 
     do lookup(name).tpe
   }
+
   case AddExpr(left, right, pos) => {
     with at(pos) 
     val tLeft = checkExpr(left)
@@ -103,6 +111,7 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
     do equate(tRight, TInt(), pos)
     TInt()
   }
+
   case SubExpr(left, right, pos) => {
     with at(pos) 
     val tLeft = checkExpr(left)
@@ -111,6 +120,7 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
     do equate(tRight, TInt(), pos)
     TInt()
   }
+
   case MultExpr(left, right, pos) => {
     with at(pos) 
     val tLeft = checkExpr(left)
@@ -119,6 +129,7 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
     do equate(tRight, TInt(), pos)
     TInt()
   }
+
   case DivExpr(left, right, pos) => {
     with at(pos) 
     val tLeft = checkExpr(left)
@@ -127,6 +138,7 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
     do equate(tRight, TInt(), pos)
     TInt()
   }
+
   case IfExpr(condition, thenExpr, elseExpr, pos) => {
     with at(pos) 
     val tCond = checkExpr(condition)
@@ -136,6 +148,7 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
     do equate(tThen, tElse, pos)
     tThen
   }
+
   case AndExpr(left, right, pos) => {
     with at(pos) 
     val tLeft = checkExpr(left)
@@ -144,6 +157,7 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
     do equate(tRight, TBool(), pos)
     TBool()
   }
+
   case OrExpr(left, right, pos) => {
     with at(pos) 
     val tLeft = checkExpr(left)
@@ -152,12 +166,14 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
     do equate(tRight, TBool(), pos)
     TBool()
   }
+
   case NotExpr(inner, pos) => {
     with at(pos) 
     val tInner = checkExpr(inner)
     do equate(tInner, TBool(), pos)
     TBool()
   }
+
   case Eq(left, right, pos) => {
     with at(pos) 
     val tLeft = checkExpr(left)
@@ -165,6 +181,7 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
     do equate(tLeft, tRight, pos)
     TBool()
   }
+
   case Neq(left, right, pos) => {
     with at(pos) 
     val tLeft = checkExpr(left)
@@ -172,6 +189,7 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
     do equate(tLeft, tRight, pos)
     TBool()
   }
+
   case Lt(left, right, pos) => {
     with at(pos) 
     val tLeft = checkExpr(left)
@@ -180,6 +198,7 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
     do equate(tRight, TInt(), pos)
     TBool()
   }
+
   case Gt(left, right, pos) => {
     with at(pos) 
     val tLeft = checkExpr(left)
@@ -188,6 +207,7 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
     do equate(tRight, TInt(), pos)
     TBool()
   }
+
   case LtE(left, right, pos) => {
     with at(pos) 
     val tLeft = checkExpr(left)
@@ -196,6 +216,7 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
     do equate(tRight, TInt(), pos)
     TBool()
   }
+
   case GtE(left, right, pos) => {
     with at(pos) 
     val tLeft = checkExpr(left)
@@ -204,10 +225,9 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
     do equate(tRight, TInt(), pos)
     TBool()
   }
-  
 }
 
-/// Translate an optional Type annotation into a TypingType
+/// translate an optional Type annotation into a TypingType
 def translateType(t: Option[Type]): TypingType / Typing = t match {
   case Some(IntType()) => TInt()
   case Some(BoolType()) => TBool()

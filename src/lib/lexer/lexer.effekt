@@ -1,7 +1,7 @@
+module src/lib/lexer/lexer
+
 import scanner
 import io/filesystem
-import buffer
-import exception
 import src/lib/lexer/tokens
 import src/lib/utils/errors
 import src/lib/utils/effects
@@ -10,7 +10,7 @@ import src/lib/utils/types
 
 
 /// scanner that tracks source position
-def scanWithPos[R]() {prog: => R / { Scan[Char], Positioning } }: R / Scan[Char] = {
+def scanWithPos[R]() { prog: => R / { Scan[Char], Positioning } }: R / Scan[Char] = {
   // track current source position
   var line = 1
   var col = 1
@@ -21,7 +21,7 @@ def scanWithPos[R]() {prog: => R / { Scan[Char], Positioning } }: R / Scan[Char]
 
   def position() = Position(line, col)
 
-  // Update source position based on a consumed character
+  // update source position based on a consumed character
   def updatePos(c: Char) = {
     index = index + 1
     if (c == '\n') { 
@@ -90,7 +90,7 @@ def scanWithPos[R]() {prog: => R / { Scan[Char], Positioning } }: R / Scan[Char]
 }
 
 /// lex a single token from the input stream 
-def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], Positioning} = {
+def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], Positioning } = {
 
   def readIdentifierOrKeyword(pos: Position): Token / { Scan[Char], stop } = {
     // collect all alphanumeric chars
@@ -129,7 +129,7 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], Positioning}
 
     // disallow identifiers to start with a number
     if (hasAlphaAfter) {
-      val rest = string::collect { readWhile { c => c.isAlphanumeric }}
+      val rest = string::collect { readWhile { c => c.isAlphanumeric } }
       do raise(LexerError(), "invalid char at " ++ pos.show ++ " in " ++ "'" ++ value.show ++ rest ++ "'" )
     }
     Token(Number(value), pos)

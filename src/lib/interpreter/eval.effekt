@@ -1,3 +1,5 @@
+module src/lib/interpreter/eval
+
 import src/lib/desugar/coreAst
 import src/lib/utils/types
 import src/lib/utils/effects
@@ -5,14 +7,23 @@ import src/lib/utils/handlers
 import src/lib/utils/errors
 import src/lib/utils/helpers
 
-def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeError], Positioning} = expr match {
-  case IntLiteral(n, pos) => { with at(pos); VInt(n) }
-  case BoolLiteral(b, pos) => { with at(pos); VBool(b) }
+def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeError], Positioning } = expr match {
+  case IntLiteral(n, pos) => { 
+    with at(pos)
+    VInt(n) 
+  }
+
+  case BoolLiteral(b, pos) => { 
+    with at(pos)
+    VBool(b) 
+  }
+
   case Variable(name, pos) => { 
     with at(pos)
     val addr = do lookup(name)
     do load(addr)
   }
+
   case AddExpr(left, right, pos) => {
     with at(pos)
     val vLeft = evalExpr(left)
@@ -22,6 +33,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
       case _ => do raise(errors::RuntimeError(), "Type error in addition")
     }
   }
+
   case SubExpr(left, right, pos) => {
     with at(pos)
     val vLeft = evalExpr(left)
@@ -31,6 +43,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
       case _ => do raise(errors::RuntimeError(), "Type error in subtraction")
     }
   }
+
   case MultExpr(left, right, pos) => {
     with at(pos)
     val vLeft = evalExpr(left)
@@ -40,6 +53,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
       case _ => do raise(errors::RuntimeError(), "Type error in multiplication")
     }
   }
+
   case DivExpr(left, right, pos) => {
     with at(pos)
     val vLeft = evalExpr(left)
@@ -67,6 +81,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
         }
       case _ => do raise(errors::RuntimeError(), "Type error in if condition")}
   }
+
   case AndExpr(left, right, pos) => {
     with at(pos)
     val vLeft = evalExpr(left)
@@ -76,6 +91,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
       case _ => do raise(errors::RuntimeError(), "Type error in logical and")
     }
   }
+
   case OrExpr(left, right, pos) => {
     with at(pos)
     val vLeft = evalExpr(left)
@@ -85,6 +101,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
       case _ => do raise(errors::RuntimeError(), "Type error in logical or")
     }
   }
+
   case NotExpr(inner, pos) => {
     with at(pos)
     val vInner   = evalExpr(inner)
@@ -93,6 +110,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
       case _ => do raise(errors::RuntimeError(), "Type error in logical not")
     }
   }
+
   case Eq(left, right, pos) => {
     with at(pos)
     val vLeft = evalExpr(left)
@@ -103,6 +121,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
       case _ => do raise(errors::RuntimeError(), "Type error in equality comparison")
     }
   }
+
   case Neq(left, right, pos) => {
     with at(pos)
     val vLeft = evalExpr(left)
@@ -113,6 +132,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
       case _ => do raise(errors::RuntimeError(), "Type error in inequality comparison")
     }
   }
+
   case Lt(left, right, pos) => {
     with at(pos)
     val vLeft = evalExpr(left)
@@ -122,6 +142,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
       case _ => do raise(errors::RuntimeError(), "Type error in less-than comparison")
     }
   }
+
   case Gt(left, right, pos) => {
     with at(pos)
     val vLeft = evalExpr(left)
@@ -131,6 +152,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
       case _ => do raise(errors::RuntimeError(), "Type error in greater-than comparison")
     }
   }
+
   case LtE(left, right, pos) => {
     with at(pos)
     val vLeft = evalExpr(left)
@@ -140,6 +162,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
       case _ => do raise(errors::RuntimeError(), "Type error in less-than-equal comparison")
     }
   }
+
   case GtE(left, right, pos) => {
     with at(pos)
     val vLeft = evalExpr(left)
@@ -159,6 +182,7 @@ def evalStmt(stmt: Stmt): Value / { Context[Address], Store, Exception[RuntimeEr
     do define(name, addr)
     VUnit()
   }
+
   case VarDeclaration(name, _, value, pos) => {
     with at(pos)
     val v = evalExpr(value)
@@ -166,6 +190,7 @@ def evalStmt(stmt: Stmt): Value / { Context[Address], Store, Exception[RuntimeEr
     do define(name, addr)
     VUnit() 
   }
+
   case AssignStmt(name, value, pos) => {
     with at(pos)
     // no additional mutability check here; assume typechecker has done its job
@@ -174,6 +199,7 @@ def evalStmt(stmt: Stmt): Value / { Context[Address], Store, Exception[RuntimeEr
     do store(addr, newValue)
     VUnit()
   }
+
   case IfStmt(cond, thenBranch, elseBranch, pos) => {
     with at(pos)
     val vCond = evalExpr(cond)
@@ -182,10 +208,12 @@ def evalStmt(stmt: Stmt): Value / { Context[Address], Store, Exception[RuntimeEr
       case _ => do raise(errors::RuntimeError(), "Type error in if condition")
     }
   }
+
   case ExprStmt(expr, pos) => {
     with at(pos)
     evalExpr(expr)
   }
+  
   case InspectScope() => {
     val currentContext = do backup()
     do inspect(currentContext)
@@ -200,7 +228,7 @@ def evalBlock(stmts: List[Stmt]): Value / { Context[Address], Store, Exception[R
   lastValue
 }
 
-def evalProgram(program: Program): Value / { Exception[RuntimeError], Inspector[Address], Positioning} = {
+def evalProgram(program: Program): Value / { Exception[RuntimeError], Inspector[Address], Positioning } = {
   with handleRuntimeContext
   evalBlock(program)
 }

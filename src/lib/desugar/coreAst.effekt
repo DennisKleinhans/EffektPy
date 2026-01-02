@@ -1,3 +1,5 @@
+module src/desugar/coreAst
+
 import src/lib/utils/types
 
 type Expr {

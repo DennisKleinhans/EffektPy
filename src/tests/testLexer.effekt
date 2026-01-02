@@ -1,20 +1,20 @@
-module src/test
+module src/test/testLexer
 
 import test
 import scanner
-import src/lib/utils/testUtils
 import src/lib/lexer/lexer
-import src/lib/parser/parser
-import src/lib/desugar/sugar
 import src/lib/lexer/tokens
+import src/lib/parser/parser
 import src/lib/parser/surfaceAst
+import src/lib/desugar/sugar
+import src/lib/utils/testUtils
 import src/lib/utils/errors
 import src/lib/utils/effects
 import src/lib/utils/types
 
 def main() = mainSuite("lexer") {
 
-  def collectTokens(acc: List[Token]) { next: => Token}: List[Token] = {
+  def collectTokens(acc: List[Token]) { next: => Token }: List[Token] = {
     val t = next()
     t.kind match {
       case EOF() => acc.reverse
@@ -22,8 +22,7 @@ def main() = mainSuite("lexer") {
     }
   }
 
-  def fullLexerHandler(input: String, assertLexerError: Bool) { prog: => Unit / { Lexer[Token]}} = {
-    
+  def fullLexerHandler(input: String, assertLexerError: Bool) { prog: => Unit / { Lexer[Token] } } = {
     if (assertLexerError) {
       with feed(input)
       with scanner[Char]
@@ -219,5 +218,4 @@ def main() = mainSuite("lexer") {
     val tokens = collectTokens(Nil()) { do next() }
     assertEqual(tokens, expected)
   }
-
 }

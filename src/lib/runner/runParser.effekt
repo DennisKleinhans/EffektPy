@@ -1,14 +1,17 @@
+module src/lib/runner/runParser
+
 import scanner
 import exception
-import src/lib/parser/surfaceAst
-import src/lib/utils/types
 import src/lib/lexer/lexer
+import src/lib/utils/types
+import src/lib/utils/errors
 import src/lib/parser/parser
+import src/lib/parser/surfaceAst
 import src/lib/desugar/sugar
 import src/lib/desugar/coreAst
-import src/lib/utils/errors
 
 
+/// runs the parsing stage of the pipeline: lexing, parsing, and desugaring.
 def runParsing(input: String) : PipelineResult[Program] = {
   try {
     with string::feed(input)

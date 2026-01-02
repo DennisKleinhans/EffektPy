@@ -1,3 +1,5 @@
+module src/tests/testDesugar
+
 import test
 import src/lib/parser/surfaceAst
 import src/lib/desugar/sugar
@@ -108,5 +110,4 @@ def main() = mainSuite("desugar") {
 
     assertEqual(desugaredProgram, expectedProgram)
   }
-
 }

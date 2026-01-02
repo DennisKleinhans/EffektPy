@@ -1,11 +1,13 @@
+module src/lib/runner/runPipeline
+
 import scanner
+import src/lib/utils/types
 import src/lib/runner/runParser
 import src/lib/runner/runTypechecker
 import src/lib/runner/runInterpreter
-import src/lib/utils/types
 
+/// runs the full pipeline: parsing, typechecking, and evaluation
 def runPipeline(input: String) = {
-
   runParsing(input) match {
     case Failure(msg) => { println(msg); VUnit() }
     case PipelineResult::Success(ast) => {
@@ -20,5 +22,4 @@ def runPipeline(input: String) = {
       }
     }
   }
-
 }

@@ -1,10 +1,12 @@
+module src/lib/utils/handlers
+
 import map
 import src/lib/utils/errors
 import src/lib/utils/types
 import src/lib/utils/effects
 import src/lib/utils/helpers
 
-/// Handler for TypingContext effect that manages variable bindings and their types in a mutable map.
+/// handler for TypingContext effect that manages variable bindings and their types in a mutable map
 def handleTypingContext[R] { prog: => R / Context[TypeBinding] }: R / { Exception[NameError], Positioning } = {
   var context: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
 
@@ -32,6 +34,7 @@ def handleTypingContext[R] { prog: => R / Context[TypeBinding] }: R / { Exceptio
   }
 }
 
+/// handler for RuntimeContext effect that manages variable bindings and memory store in mutable maps
 def handleRuntimeContext[R] { prog: => R / { Context[Address], Store } }: R / {Exception[RuntimeError], Positioning } = {
   var context: Map[String, Address] = map::emptyGeneric[String, Address]()
   var heap: Map[Address, Value] = map::emptyGeneric[Address, Value]()
@@ -56,6 +59,7 @@ def handleRuntimeContext[R] { prog: => R / { Context[Address], Store } }: R / {E
       context = savedContext
       resume(())
     }
+
   } with Store {
     def allocate(value) = {
       val addr = nextAddress
@@ -76,7 +80,7 @@ def handleRuntimeContext[R] { prog: => R / { Context[Address], Store } }: R / {E
   }
 }
 
-/// Mock handler for getPos effect that always returns a fixed position (line 1, column 1).
+/// mock handler for Positioning effect that always returns a fixed position (line 1, column 1)
 def mockGetPos[R] { prog: => R / Positioning } = {
   try { prog() } with Positioning {
     def getPos() = resume(Position(0, 0)) // always return line 0, column 0
@@ -84,14 +88,14 @@ def mockGetPos[R] { prog: => R / Positioning } = {
   }
 }
 
-/// Mock handler for Inspector effect that does nothing.
+/// mock handler for Inspector effect that does nothing
 def mockInspector[R, T] { prog: => R / Inspector[T] }: R = {
   try { prog() } with Inspector[T] {
     def inspect(context) = resume(())
   }
 }
 
-/// Handler that creates a new typing scope for the duration of the action.
+/// handler that creates a new typing scope for the duration of the action
 def handleNewTypingScope[R]{ action: => R / Context[TypeBinding] }: R / Context[TypeBinding] = {
   val snapshot = do backup()
   val result = action()
@@ -99,6 +103,7 @@ def handleNewTypingScope[R]{ action: => R / Context[TypeBinding] }: R / Context[
   result
 }
 
+/// handler that creates a new runtime scope for the duration of the action
 def handleNewRuntimeScope[R]{ action: => R / Context[Address] }: R / Context[Address] = {
   val snapshot = do backup()
   val result = action()
@@ -106,6 +111,7 @@ def handleNewRuntimeScope[R]{ action: => R / Context[Address] }: R / Context[Add
   result
 }
 
+/// executes a block of code at a specific source code position
 def at[R](p: Position) { block: => R / Positioning }: R / Positioning = {
   val old = do getPos()
   do setPos(p)

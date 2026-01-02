@@ -1,10 +1,12 @@
+module src/lib/utils/surfaceTestUtils
+
 import src/lib/parser/surfaceAst
 import src/lib/lexer/tokens
 import src/lib/utils/types
 
 val d = Position(0, 0)
 
-// --- Expressions ---
+
 def sLit(n: Int)    = IntLiteral(n, d)
 def sLit(b: Bool)   = BoolLiteral(b, d)
 def sV(name: String) = Variable(name, d)
@@ -29,7 +31,7 @@ def sGtE(l: Expr, r: Expr) = GtE(l, r, d)
 def sChain(f: Expr, r: List[(TokenKind, Expr)]) = CompareChain(f, r, d)
 def sIf(c: Expr, t: Expr, e: Expr)             = IfExpr(c, t, e, d)
 
-// --- Statements ---
+
 def sVal(n: String, t: Option[Type], v: Expr) = ValDeclaration(n, t, v, d)
 def sVar(n: String, t: Option[Type], v: Expr) = VarDeclaration(n, t, v, d)
 def sAssign(n: String, v: Expr)                = AssignStmt(n, v, d)

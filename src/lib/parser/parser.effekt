@@ -1,3 +1,5 @@
+module src/lib/parser/parser
+
 import src/lib/lexer/tokens
 import src/lib/parser/surfaceAst
 import src/lib/utils/effects
@@ -8,7 +10,7 @@ import src/lib/utils/types
 /// parsePrimary parses the smallest expression forms: literals, variables,
 /// and parenthesized expressions. It does not handle binary operators.\n
 /// Parentheses are handled here so that ( ... ) produces a nested expression.
-def parsePrimary(): Expr / { Lexer[Token], Positioning, Exception[ParseError]} = {
+def parsePrimary(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
   val token = do peek()
   val pos = do getPos()
   token.kind match {
@@ -60,7 +62,7 @@ def parseUnary(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = 
 /// Implements parsing for `and` which has higher precedence than `or`.
 /// This function uses a common pattern: parse the higher-precedence operand
 def parseAnd(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
-  def go(left: Expr): Expr / { Lexer[Token], Positioning} = {
+  def go(left: Expr): Expr / { Lexer[Token], Positioning } = {
     val token = do peek()
     val pos = do getPos()
     token.kind match {
@@ -225,8 +227,6 @@ def parseExpression(): Expr / { Lexer[Token], Positioning, Exception[ParseError]
   parseIfExpression()
 }
 
-
-
 /// parseStmt handles three cases:
 ///  - variable declarations starting with `val`
 ///  - an `if` statement with parens and braces
@@ -263,7 +263,7 @@ def parseStmt(): Stmt / { Lexer[Token], Positioning, Exception[ParseError] } = {
       val value = parseExpression()
       ValDeclaration(name, typeAnnotation, value, pos)
     }
-
+    
     case Var() => {
       do next()
       val nameToken = do next()

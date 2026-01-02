@@ -5,7 +5,6 @@ import src/lib/utils/types
 
 val d = Position(0, 0)
 
-
 def cLit(n: Int)  = IntLiteral(n, d)
 def cLit(b: Bool) = BoolLiteral(b, d)
 def cV(n: String) = Variable(n, d)

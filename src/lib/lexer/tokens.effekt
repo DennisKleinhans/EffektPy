@@ -1,3 +1,5 @@
+module src/lib/lexer/tokens
+
 import src/lib/utils/types
 
 type TokenKind {

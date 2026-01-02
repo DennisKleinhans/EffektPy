@@ -1,3 +1,5 @@
+module src/lib/utils/errors
+
 
 record ParseError()
 record LexerError()

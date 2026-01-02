@@ -1,3 +1,5 @@
+module src/lib/typechecker/unification
+
 import map
 import src/lib/utils/errors
 import src/lib/utils/types
@@ -8,7 +10,7 @@ import src/lib/utils/handlers
 
 type Substitution = Map[Int, TypingType]
 
-/// Applies a substitution to a typing type
+/// applies a substitution to a typing type
 def applySubstitution(t: TypingType, subst: Substitution): TypingType = t match {
   case TInt() => TInt()
   case TBool() => TBool()
@@ -21,25 +23,7 @@ def applySubstitution(t: TypingType, subst: Substitution): TypingType = t match 
   }
 }
 
-/// Checks if two typing types are equal
-def equal(t1: TypingType, t2: TypingType): Bool = {
-  (t1, t2) match {
-    case (TInt(), TInt()) => true
-    case (TBool(), TBool()) => true
-    case (TVar(id1), TVar(id2)) => id1 == id2
-    case _ => false
-  }
-}
-
-/// Pretty prints a typing type
-def show(t: TypingType): String = t match {
-  case TInt() => "Int"
-  case TBool() => "Bool"
-  case TUnit() => "Unit"
-  case TVar(id) => "TVar(" ++ id.show ++ ")"
-}
-
-/// Checks if a type variable occurs in a typing type 
+/// checks if a type variable occurs in a typing type 
 def occursCheck(id: Int, t: TypingType): Bool = t match {
   case TInt() => false
   case TBool() => false
@@ -47,7 +31,7 @@ def occursCheck(id: Int, t: TypingType): Bool = t match {
   case TVar(otherId) => id == otherId
 }
 
-/// Unification algorithm for typing types
+/// unification algorithm for typing types
 def unify(eqs: List[TypeEquation], subst: Substitution): Substitution / { Exception[TypeError], Positioning } = {
   eqs match {
     case Nil() => subst
@@ -67,7 +51,7 @@ def unify(eqs: List[TypeEquation], subst: Substitution): Substitution / { Except
   }
 }
   
-/// Helper function to bind a type variable to a typing type during unification
+/// helper function to bind a type variable to a typing type during unification
 def bind(id: Int, t: TypingType, rest: List[TypeEquation], subst: Substitution): Substitution / { Exception[TypeError], Positioning } = {
   if (occursCheck(id, t)) {
     do raise(TypeError(), "occurs check failed for variable " ++ id.show ++ " at " ++ do getPos().show)
@@ -86,7 +70,5 @@ def bind(id: Int, t: TypingType, rest: List[TypeEquation], subst: Substitution):
   }
 }
 
-/// Solves a list of typing type equations and returns the resulting substitution
-def solve(equations: List[TypeEquation]): Substitution / { Exception[TypeError], Positioning } = {  
-  unify(equations, map::emptyGeneric())
-}
+/// solves a list of typing type equations and returns the resulting substitution
+def solve(equations: List[TypeEquation]): Substitution / { Exception[TypeError], Positioning } = unify(equations, map::emptyGeneric())

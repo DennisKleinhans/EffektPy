@@ -1,3 +1,5 @@
+module src/lib/utils/types
+
 type Type {
   IntType()
   BoolType()

@@ -1,18 +1,21 @@
+module src/test/testTypechecker
+
 import test
 import map
+import src/lib/desugar/coreAst
 import src/lib/typechecker/typecheck
 import src/lib/typechecker/unification
-import src/lib/desugar/coreAst
 import src/lib/utils/types
 import src/lib/utils/errors
 import src/lib/utils/effects
 import src/lib/utils/handlers
+import src/lib/utils/helpers
 import src/lib/utils/testUtils
 import src/lib/utils/coreTestUtils
 
 def main() = mainSuite("typechecker") {
 
-  def typeMapscEqual(m1: Map[String, TypingType], m2: Map[String, TypingType]): Bool = {
+  def typeMapsEqual(m1: Map[String, TypingType], m2: Map[String, TypingType]): Bool = {
       if (m1.size() != m2.size()) {
         false
       } else {
@@ -28,7 +31,7 @@ def main() = mainSuite("typechecker") {
     }
   }
 
-  def typeMapscEqual(m1: Map[String, TypeBinding], m2: Map[String, TypeBinding]): Bool = {
+  def typeMapsEqual(m1: Map[String, TypeBinding], m2: Map[String, TypeBinding]): Bool = {
       if (m1.size() != m2.size()) {
         false
       } else {
@@ -64,8 +67,8 @@ def main() = mainSuite("typechecker") {
       ("x", TInt())
     ])
 
-    assertTrue(typeMapscEqual(result, expected))
-    assertTrue(typeMapscEqual(resultWithAnnotation, expected))
+    assertTrue(typeMapsEqual(result, expected))
+    assertTrue(typeMapsEqual(resultWithAnnotation, expected))
   }
 
   test("typechecker throws error on wrong type assignment") {
@@ -96,7 +99,7 @@ def main() = mainSuite("typechecker") {
       ("x", TInt())
     ])
 
-    assertTrue(typeMapscEqual(result, expected))
+    assertTrue(typeMapsEqual(result, expected))
   }
 
   test("typechecker throws error on type mismatch in expression") {
@@ -155,7 +158,7 @@ def main() = mainSuite("typechecker") {
       ("u", TBool())
     ])
 
-    assertTrue(typeMapscEqual(result, expected))
+    assertTrue(typeMapsEqual(result, expected))
   }
 
   test("typechecker throws error on comparison with wrong types") {
@@ -194,7 +197,7 @@ def main() = mainSuite("typechecker") {
       ("d", TBool())
     ])
 
-    assertTrue(typeMapscEqual(result, expected))
+    assertTrue(typeMapsEqual(result, expected))
   }
 
   test("typechecker throws error on undefined variable") {
@@ -227,7 +230,7 @@ def main() = mainSuite("typechecker") {
       ("counter", TInt())
     ])
 
-    assertTrue(typeMapscEqual(result, expected))
+    assertTrue(typeMapsEqual(result, expected))
   }
 
   test("typechecker throws error on assigning wrong type to mutable variable") {
@@ -263,7 +266,7 @@ def main() = mainSuite("typechecker") {
       ("maxVal", TInt())
     ])
 
-    assertTrue(typeMapscEqual(result, expected))
+    assertTrue(typeMapsEqual(result, expected))
   }
 
   test("typechecker throws error on if expression with wrong types") {
@@ -302,7 +305,7 @@ def main() = mainSuite("typechecker") {
       ("maxVal", TInt())
     ])
 
-    assertTrue(typeMapscEqual(result, expected))
+    assertTrue(typeMapsEqual(result, expected))
   }
 
   test("typechecker throws error on nested if with type mismatch") {
@@ -364,8 +367,8 @@ def main() = mainSuite("typechecker") {
     ])
 
     with on[OutOfBounds].panic
-    assertTrue(typeMapscEqual(capturedContexts.get(1), expectedThenContext))
-    assertTrue(typeMapscEqual(capturedContexts.get(0), expectedElseContext))
+    assertTrue(typeMapsEqual(capturedContexts.get(1), expectedThenContext))
+    assertTrue(typeMapsEqual(capturedContexts.get(0), expectedElseContext))
   }
 
   test("typechecker throws error on if statement with type mismatch") {
@@ -467,8 +470,8 @@ def main() = mainSuite("typechecker") {
         resume(())
       }
     }
-    assertTrue(typeMapscEqual(innerContext, expectedInnerContext))
-    assertTrue(typeMapscEqual(outerContext, expectedOuterContext))
+    assertTrue(typeMapsEqual(innerContext, expectedInnerContext))
+    assertTrue(typeMapsEqual(outerContext, expectedOuterContext))
   }
 
   test("typechecker infers types correctly in complex program") {
@@ -520,7 +523,7 @@ def main() = mainSuite("typechecker") {
       ("comparison", TBool())
     ])
 
-    assertTrue(typeMapscEqual(result, expected))
+    assertTrue(typeMapsEqual(result, expected))
   }
 
   test("typechecker handles nested if statements with shadowing") {
@@ -581,8 +584,8 @@ def main() = mainSuite("typechecker") {
       ("z", TInt())
     ])
 
-    assertTrue(typeMapscEqual(innerContext1, expectedInnerContext1))
-    assertTrue(typeMapscEqual(innerContext2, expectedInnerContext2))
-    assertTrue(typeMapscEqual(outerContext, expectedOuterContext))
+    assertTrue(typeMapsEqual(innerContext1, expectedInnerContext1))
+    assertTrue(typeMapsEqual(innerContext2, expectedInnerContext2))
+    assertTrue(typeMapsEqual(outerContext, expectedOuterContext))
   }
 }

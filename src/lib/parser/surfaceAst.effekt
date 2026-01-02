@@ -1,3 +1,5 @@
+module src/lib/parser/surfaceAst
+
 import src/lib/lexer/tokens
 import src/lib/utils/types
 

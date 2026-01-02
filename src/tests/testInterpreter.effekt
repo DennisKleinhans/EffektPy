@@ -1,20 +1,16 @@
+module src/test/testInterpreter
+
 import test
-import src/lib/utils/testUtils
 import src/lib/interpreter/eval
+import src/lib/desugar/coreAst
+import src/lib/utils/testUtils
 import src/lib/utils/handlers
 import src/lib/utils/errors
-import src/lib/desugar/coreAst
 import src/lib/utils/types
 import src/lib/utils/coreTestUtils
+import src/lib/utils/helpers
 
 def main() = mainSuite("interpreter") {
-
-  def equal(v1: Value, v2: Value): Bool = (v1, v2) match {
-    case (VInt(n1), VInt(n2)) => n1 == n2
-    case (VBool(b1), VBool(b2)) => b1 == b2
-    case (VUnit(), VUnit()) => true
-    case _ => false
-  }
 
   val mockedPos = Position(1, 1)
 
@@ -267,6 +263,4 @@ def main() = mainSuite("interpreter") {
     val result = evalProgram(prog)
     assertTrue(result.equal(VInt(50)))
   }
-  
-
 }

@@ -1,28 +1,29 @@
+module src/lib/utils/effects
+
+import map
 import src/lib/lexer/tokens
 import src/lib/utils/types
-import map
 
-/// Effect for getting the current position in the source code (line and column)
-// effect getPos(): Position
+/// effect for getting and setting the current position in the source code (line and column)
 interface Positioning {
   def getPos(): Position
   def setPos(p: Position): Unit
 }
 
-/// Effect for lexing tokens from the input source code stream 
+/// effect for lexing tokens from the input source code stream 
 interface Lexer[R] {
   def peek(): R
   def peek2(): R
   def next(): R
 }
 
-/// Effect for generating fresh type variables and equating types
+/// effect for generating fresh type variables and equating types
 interface Typing {
   def fresh(): TypingType
   def equate(t1: TypingType, t2: TypingType, pos: Position): Unit
 }
 
-/// Effect for managing some context mapping from names to values of type R
+/// effect for managing some context mapping from names to values of type R
 interface Context[R] {
   def lookup(name: String): R
   def define(name: String, value: R): Unit
@@ -30,13 +31,14 @@ interface Context[R] {
   def restore(context: Map[String, R]): Unit
 }
 
+/// effect for managing a simple store mapping addresses to values
 interface Store {
   def allocate(value: Value): Address
   def load(addr: Address): Value
   def store(addr: Address, value: Value): Unit
 }
 
-/// Effect for inspecting the current typing context (for debugging)
+/// effect for inspecting the current context (for debugging)
 interface Inspector[R] {
   def inspect(context: Map[String, R]): Unit
 }

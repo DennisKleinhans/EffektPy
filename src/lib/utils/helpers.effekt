@@ -1,25 +1,26 @@
+module src/lib/utils/helpers
+
 import src/lib/lexer/tokens
 import src/lib/parser/surfaceAst
 import src/lib/utils/effects
 import src/lib/utils/errors
 import src/lib/utils/types
 
-/// Consume the next token and assert it has the expected kind. If not, raise a ParseError.
-def expect(expected: TokenKind): Unit / { Lexer[Token], Exception[ParseError]} = {
+/// consume the next token and assert it has the expected kind. If not, raise a ParseError.
+def expect(expected: TokenKind): Unit / { Lexer[Token], Exception[ParseError] } = {
   val token = do next()
   if (not(token.kind.equal(expected))) {
     do raise(ParseError(), "expected " ++ expected.show ++ " at Position " ++ token.position.show ++ " but got " ++ token.kind.show)
   }
 }
 
-/// Peek at the next token and return whether it matches `kind`.\n
-/// This does not consume the token
+/// peek at the next token and return whether it matches `kind`. This does not consume the token.
 def check(kind: TokenKind) : Bool / Lexer[Token] = {
   val token = do peek()
   token.kind.equal(kind)
 }
 
-/// Helper function to create comparison expressions based on the operator token.
+/// helper function to create comparison expressions based on the operator token
 def makeCmp(op: TokenKind, left: surfaceAst::Expr, right: surfaceAst::Expr, pos: Position): surfaceAst::Expr / Exception[ParseError]  = {
   op match {
     case TokenKind::Equal() => Eq(left, right, pos)
@@ -32,7 +33,7 @@ def makeCmp(op: TokenKind, left: surfaceAst::Expr, right: surfaceAst::Expr, pos:
   }
 }
 
-/// Helper function to check whether a token kind is a comparison operator.
+/// helper function to check whether a token kind is a comparison operator
 def isComparisonOp(kind: TokenKind): Bool = {
   kind match {
     case TokenKind::Equal() => true
@@ -45,7 +46,7 @@ def isComparisonOp(kind: TokenKind): Bool = {
   }
 }
 
-/// Peek at the token after the next one and return whether it is an assignment.
+/// peek at the token after the next one and return whether it is an assignment
 def isAssignmentFollowUp(): Bool / Lexer[Token] = {
   val nextNextToken = do peek2()
   nextNextToken.kind match {
@@ -54,8 +55,7 @@ def isAssignmentFollowUp(): Bool / Lexer[Token] = {
   }
 }
 
-/// Extracts a Type from a string representation. Raises ParseError if the
-/// string does not correspond to a known type.
+/// extracts a Type from a string representation. Raises ParseError if the string does not correspond to a known type.
 def extractType(input: String): Type / Exception[ParseError] = {
   input match {
     case "Int" => IntType()
@@ -65,8 +65,10 @@ def extractType(input: String): Type / Exception[ParseError] = {
   }
 }
 
-
+/// pretty prints a position
 def show(pos: Position): String = "line: " ++ pos.line.show ++ " column: " ++ pos.column.show
+
+/// pretty prints a token kind
 def show(tokenKind: TokenKind): String = tokenKind match {
   case LowerIdentifier(id) => "LowerIdentifier: " ++ id
   case UpperIdentifier(id) => "UpperIdentifier: " ++ id
@@ -100,19 +102,68 @@ def show(tokenKind: TokenKind): String = tokenKind match {
   case EOF() => "EndOfFile"
   case Colon() => "Colon"
 }
+
+/// pretty prints a token
 def show(token: Token): String = token.kind.show
 
-
-def equal(x: TokenKind, y: TokenKind): Bool = {
-  x.show == y.show
+/// pretty prints a typing type
+def show(t: TypingType): String = t match {
+  case TInt() => "Int"
+  case TBool() => "Bool"
+  case TUnit() => "Unit"
+  case TVar(id) => "TVar(" ++ id.show ++ ")"
 }
 
-def equal(v1: Value, v2: Value): Bool = {
-  (v1, v2) match {
-    case (VInt(n1), VInt(n2)) => n1 == n2
-    case (VBool(b1), VBool(b2)) => b1 == b2
-    case (VUnit(), VUnit()) => true
-    case _ => false
-  }
+/// checks if two token kinds are equal
+def equal(t1: TokenKind, t2: TokenKind): Bool = (t1, t2) match {
+  case (LowerIdentifier(id1), LowerIdentifier(id2)) => id1 == id2
+  case (UpperIdentifier(id1), UpperIdentifier(id2)) => id1 == id2
+  case (Number(n1), Number(n2)) => n1 == n2
+  case (Boolean(b1), Boolean(b2)) => b1 == b2
+  case (Val(), Val()) => true
+  case (Var(), Var()) => true
+  case (If(), If()) => true
+  case (Else(), Else()) => true
+  case (Then(), Then()) => true
+  case (Assign(), Assign()) => true
+  case (TokenKind::Equal(), TokenKind::Equal()) => true
+  case (NotEqual(), NotEqual()) => true
+  case (TokenKind::Less(), TokenKind::Less()) => true
+  case (TokenKind::Greater(), TokenKind::Greater()) => true
+  case (LessEqual(), LessEqual()) => true
+  case (GreaterEqual(), GreaterEqual()) => true
+  case (Plus(), Plus()) => true
+  case (Minus(), Minus()) => true
+  case (PlusAssign(), PlusAssign()) => true
+  case (MinusAssign(), MinusAssign()) => true
+  case (Mult(), Mult()) => true
+  case (Div(), Div()) => true
+  case (And(), And()) => true
+  case (Or(), Or()) => true
+  case (Not(), Not()) => true
+  case (LParen(), LParen()) => true
+  case (RParen(), RParen()) => true
+  case (LBrace(), LBrace()) => true
+  case (RBrace(), RBrace()) => true
+  case (EOF(), EOF()) => true
+  case (Colon(), Colon()) => true
+  case _ => false
 }
+
+/// checks if two values are equal
+def equal(v1: Value, v2: Value): Bool = (v1, v2) match {
+  case (VInt(n1), VInt(n2)) => n1 == n2
+  case (VBool(b1), VBool(b2)) => b1 == b2
+  case (VUnit(), VUnit()) => true
+  case _ => false
+}
+
+/// checks if two typing types are equal
+def equal(t1: TypingType, t2: TypingType): Bool = (t1, t2) match {
+  case (TInt(), TInt()) => true
+  case (TBool(), TBool()) => true
+  case (TVar(id1), TVar(id2)) => id1 == id2
+  case _ => false
+}
+
 
