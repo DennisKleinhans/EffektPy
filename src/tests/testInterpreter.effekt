@@ -263,4 +263,44 @@ def main() = mainSuite("interpreter") {
     val result = evalProgram(prog)
     assertTrue(result.equal(VInt(50)))
   }
+
+  test("while statement: increment counter") {
+    val prog = [
+      cVar("x", None(), cLit(0)),
+      cWhile(
+        cLt(cV("x"), cLit(5)),
+        [
+          cAssign("x", cAdd(cV("x"), cLit(1)))
+        ]
+      ),
+      cExpr(cV("x"))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+
+    val result = evalProgram(prog)
+    assertTrue(result.equal(VInt(5)))
+  }
+
+  test("while statement: block does not execute when condition is false") {
+    val prog = [
+      cVar("x", None(), cLit(0)),
+      cWhile(
+        cLt(cV("x"), cLit(0)),
+        [
+          cAssign("x", cAdd(cV("x"), cLit(1)))
+        ]
+      ),
+      cExpr(cV("x"))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+
+    val result = evalProgram(prog)
+    assertTrue(result.equal(VInt(0)))
+  }
 }

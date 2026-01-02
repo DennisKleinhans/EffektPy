@@ -396,4 +396,28 @@ def main() = mainSuite("parser") {
    
     assertEqual(obtained, expected)
   }
+
+  test("parser parses while-statements") {
+    val input = "while (x < 10) { x += 1 }"
+
+    val expected = [
+      sWhile(
+        sLt(sV("x"), sLit(10)),
+        [sCAssign("x", PlusAssign(), sLit(1))]
+      )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with mockGetPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
 }

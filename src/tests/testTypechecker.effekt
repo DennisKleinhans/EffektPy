@@ -588,4 +588,102 @@ def main() = mainSuite("typechecker") {
     assertTrue(typeMapsEqual(innerContext2, expectedInnerContext2))
     assertTrue(typeMapsEqual(outerContext, expectedOuterContext))
   }
+
+  test("typecheck while statement") {
+    val prog = [
+      cVar("counter", Some(IntType()), cLit(0)),
+      cWhile(cLt(cV("counter"), cLit(10)),
+        [
+          cAssign("counter", cAdd(cV("counter"), cLit(1)))
+        ]
+      )
+    ]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("counter", TInt())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker throws on non boolean condition in while statement") {
+    val prog = [
+      cVar("counter", None(), cLit(0)),
+      cWhile(cLit(5),
+        [
+          cAssign("counter", cAdd(cV("counter"), cLit(1)))
+        ]
+      )
+    ]
+
+    with assertThrows[TypeError]
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+  }
+
+  test("typechecker handles nested while stmt correctly") { 
+    val prog = [
+      cVal("x", None(), cLit(0)),
+      cWhile(cLt(cV("x"), cLit(1)),
+        [
+          cVal("x", None(), cLit(true)),
+          cWhile(cV("x"),
+            [
+              cVal("x", None(), cLit(10)),
+              cVal("y", None(), cV("x")),
+              InspectScope()
+            ]
+          ),
+          InspectScope()
+        ]
+      ),
+      cVal("z", None(), cAdd(cV("x"), cLit(1)))
+    ]
+
+    var innerContext1: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
+    var innerContext2: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
+    var outerContext: Map[String, TypingType] = map::emptyGeneric[String, TypingType]()
+    var inspectCount = 0
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    try { outerContext = typecheck(prog) } with Inspector[TypeBinding] {
+      def inspect(context) = {
+        if (inspectCount == 0) {
+          innerContext1 = context
+        } else if (inspectCount == 1) {
+          innerContext2 = context
+        }
+        inspectCount = inspectCount + 1
+        resume(())
+      }
+    }
+
+    val expectedInnerContext1 = map::fromListGeneric[String, TypeBinding]([
+      ("x", TypeBinding(TInt(), false)),
+      ("y", TypeBinding(TInt(), false))
+    ])
+
+    val expectedInnerContext2 = map::fromListGeneric[String, TypeBinding]([
+      ("x", TypeBinding(TBool(), false))
+    ])
+
+    val expectedOuterContext = map::fromListGeneric[String, TypingType]([
+      ("x", TInt()),
+      ("z", TInt())
+    ])
+
+    assertTrue(typeMapsEqual(innerContext1, expectedInnerContext1))
+    assertTrue(typeMapsEqual(innerContext2, expectedInnerContext2))
+    assertTrue(typeMapsEqual(outerContext, expectedOuterContext))
+  }
 }

@@ -85,6 +85,13 @@ def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspecto
     checkExpr(expr)
     TUnit()
   }
+
+  case WhileStmt(condition, body, pos) => {
+    with at(pos) 
+    do equate(checkExpr(condition), TBool(), pos)
+    checkBlock(body)
+    TUnit()
+  }
 }
 
 def checkBlock(stmts: List[Stmt]): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning } = {

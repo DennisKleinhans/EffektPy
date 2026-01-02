@@ -108,6 +108,7 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], Positioning 
       case "and" => And()
       case "or" => Or()
       case "not" => Not()
+      case "while" => While()
       case _ => {
         with on[OutOfBounds].panic
         if (name.charAt(0).isUpper) UpperIdentifier(name) else LowerIdentifier(name)

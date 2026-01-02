@@ -213,7 +213,28 @@ def evalStmt(stmt: Stmt): Value / { Context[Address], Store, Exception[RuntimeEr
     with at(pos)
     evalExpr(expr)
   }
-  
+
+  case WhileStmt(condition, body, pos) => {
+    with at(pos)
+    var vCond = evalExpr(condition)
+    
+    vCond match {
+      case VBool(b) => {
+        var cond = b
+        while (cond) {
+          evalBlock(body)
+          vCond = evalExpr(condition)
+          vCond match {
+            case VBool(b2) => cond = b2
+            case _ => do raise(errors::RuntimeError(), "Type error in while condition")
+          }
+        }
+      }
+      case _ => do raise(errors::RuntimeError(), "Type error in while condition")
+    }
+    VUnit()
+  }
+
   case InspectScope() => {
     val currentContext = do backup()
     do inspect(currentContext)

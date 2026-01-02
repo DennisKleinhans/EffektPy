@@ -101,6 +101,7 @@ def show(tokenKind: TokenKind): String = tokenKind match {
   case RBrace() => "Punctuation: }"
   case EOF() => "EndOfFile"
   case Colon() => "Colon"
+  case While() => "Keyword: while"
 }
 
 /// pretty prints a token
