@@ -1,0 +1,402 @@
+module src/lib/parser/parser
+
+import src/lib/lexer/tokens
+import src/lib/parser/surfaceAst
+import src/lib/utils/effects
+import src/lib/utils/errors
+import src/lib/utils/helpers
+import src/lib/utils/types
+
+/// parsePrimary parses the smallest expression forms: literals, variables,
+/// and parenthesized expressions. It does not handle binary operators.\n
+/// Parentheses are handled here so that ( ... ) produces a nested expression.
+def parsePrimary(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
+  val token = do peek()
+  val pos = do getPos()
+  token.kind match {
+    case Number(n) => {
+      do next()
+      IntLiteral(n, pos)
+    }
+    case Boolean(b) => {
+      do next()
+      BoolLiteral(b, pos)
+    }
+    case LowerIdentifier(id) => {
+      do next()
+      Variable(id, pos)
+    }
+    case LParen() => {
+      do next()
+      val expr = parseExpression()
+      expect(RParen())
+      expr
+    }
+    case _ => do raise(ParseError(), "expected expression at position " ++ token.position.show ++ " but got " ++ token.kind.show)
+  }
+}
+
+/// Implements parsing for unary `not` operator and unary `-`.
+/// This function checks for a leading `not` token, and if found, parses
+/// another unary expression as its operand (right-associative). If no `not` or `-` is found,
+/// it falls back to parsePrimary().
+def parseUnary(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
+  val token = do peek()
+  val pos = do getPos()
+  token.kind match {
+    case Not() => { 
+      do next()
+      val inside = parseUnary()
+      NotExpr(inside, pos) 
+    } // right-assoc for chains of not
+    case Minus() => {
+      do next()
+      val inside = parseUnary()
+      UnaryMinus(inside, pos)
+    }
+
+    case _ => parsePrimary()
+  }
+}
+
+/// Implements parsing for `and` which has higher precedence than `or`.
+/// This function uses a common pattern: parse the higher-precedence operand
+def parseAnd(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
+  def go(left: Expr): Expr / { Lexer[Token], Positioning } = {
+    val token = do peek()
+    val pos = do getPos()
+    token.kind match {
+      case And() => { 
+        do next()
+        val right = parseComparison()
+        go(AndExpr(left, right, pos)) 
+      }
+      case _ => left
+    }
+  }
+  val first = parseComparison()
+  go(first)
+}
+
+/// Implements parsing for `or` which has lower precedence than `and`.
+/// This function uses a common pattern: parse the higher-precedence operand
+def parseOr(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
+  def go(left: Expr): Expr / { Lexer[Token], Positioning } = {
+    val token = do peek()
+    val pos = do getPos()
+    token.kind match {
+      case Or() => { 
+        do next()
+        val right = parseAnd()
+        go(OrExpr(left, right, pos))
+      }
+      case _ => left
+    }
+  }
+  val first = parseAnd()
+  go(first)
+}
+
+/// Implements parsing for * and / which have higher precedence than + and -.
+/// This function uses a common pattern: parse the higher-precedence operand
+/// (parsePrimary) then loop (via local go()) to consume any * or / that follow.\n
+/// That loop builds left-associative binary trees:
+///   a * b * c  -> MultExpr(MultExpr(a,b), c)
+def parseMultiplicative(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
+  
+  def go(left: Expr): Expr / { Lexer[Token], Positioning } = {
+    val token = do peek()
+    val pos = do getPos()
+    token.kind match {
+      case Mult() => {
+        do next()
+        val right = parseUnary() 
+        go(MultExpr(left, right, pos))
+      }
+      case Div() => {
+        do next()
+        val right = parseUnary()
+        go(DivExpr(left, right, pos))
+      }
+      case _ => left // no more * or / => return current left
+    }
+  }
+  
+  val first = parseUnary()
+  go(first)
+}
+
+/// Parses + and - operators. Note that it calls parseMultiplicative() for
+/// operands, which enforces that * and / bind tighter than + and -.\n
+/// The same left-associative looping pattern is used to allow chaining.
+def parseAdditive(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
+
+  def go(left: Expr): Expr / { Lexer[Token], Positioning } = {
+    val token = do peek()
+    val pos = do getPos()
+    token.kind match {
+      case Plus() => {
+        do next()
+        val right = parseMultiplicative()
+        go(AddExpr(left, right, pos))
+      }
+      case Minus() => {
+        do next()
+        val right = parseMultiplicative()
+        go(SubExpr(left, right, pos))
+      }
+      case _ => left
+    }
+  }
+
+  val first = parseMultiplicative()
+  go(first) 
+}
+
+/// Parses comparison expressions: ==, !=, <, >, <=, >=.
+/// This function also handles chained comparisons by collecting them into
+/// a CompareChain node.
+def parseComparison(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
+  val left = parseAdditive()
+  val token = do peek()
+  val pos = do getPos()
+  
+  // no comparison operator: return left as is
+  if (not(isComparisonOp(token.kind))){
+    left
+  } else {
+  
+    // first comparison
+    val op1 = token.kind
+    do next()
+    val right1 = parseAdditive()
+
+    // collect further comparisons into a list
+    def collect(acc: List[(TokenKind, Expr)]): List[(TokenKind, Expr)] / Lexer[Token] = {
+      val t = do peek()
+      if (isComparisonOp(t.kind)) {
+        val op = t.kind
+        do next()
+        val rhs = parseAdditive()
+        collect(Cons((op, rhs), acc))
+      } else {
+        acc.reverse
+      }
+    }
+
+    val rest = collect(Nil())
+
+    // single comparison
+    if (rest is Nil()) {
+      makeCmp(op1, left, right1, pos)
+    }
+    // chained comparisons
+    else {
+      CompareChain(left, Cons((op1, right1), rest), pos)
+    }
+  }
+}
+
+/// Handles expressions of the form: 'thenExpr `if` condition `else` elseExpr'\n
+/// Important: the code first parses a full comparison-level expression as the
+/// "then" expression, then checks whether an `If` token follows. If so, it
+/// parses the condition and the else expression. This means the "if-expression"
+/// has the lowest precedence: it wraps whatever expression came before it.\n
+/// Example: `42 if x > 0 else -1`
+def parseIfExpression(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
+  val token = do peek()
+  val pos = do getPos()
+  token.kind match {
+    case If() => {
+      do next()
+      val condition = parseOr()
+      expect(Then())
+      val thenExpr = parseOr()
+      expect(Else())
+      val elseExpr = parseOr()
+      IfExpr(condition, thenExpr, elseExpr, pos)
+    }
+    case _ => parseOr()
+  }
+}
+
+/// The entry point for all expressions. Currently `parseExpression` simply
+/// forwards to parseIfExpression, which already covers comparisons,
+/// additive and multiplicative expressions via composition.
+def parseExpression(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
+  parseIfExpression()
+}
+
+/// parseStmt handles three cases:
+///  - variable declarations starting with `val`
+///  - an `if` statement with parens and braces
+///  - a fallback expression statement
+///
+/// Notes:
+///  - variable declarations allow an optional type annotation after a colon.
+///  - `expect` and `check` are used to require or optionally accept tokens.
+///  - `parseBlock` is used to parse the lists of statements inside braces.
+def parseStmt(): Stmt / { Lexer[Token], Positioning, Exception[ParseError] } = {
+  val token = do peek()
+  val pos = do getPos()
+  token.kind match {
+    case Val() => {
+      do next()
+      val nameToken = do next()
+      val name = nameToken.kind match {
+        case LowerIdentifier(id) => id
+        case UpperIdentifier(id) => raise(ParseError(), "variable name at position " ++ nameToken.position.show ++ " must start with a lower case char: '" ++ id ++ "'")
+        case _ => raise(ParseError(), "expected variable name after 'val' at position " ++ nameToken.position.show)
+      }
+
+      // optional type annotation (looks for ': TypeName')
+      val typeAnnotation = {
+        if (check(Colon())) {
+          do next()
+          Some(parseType())
+        } else {
+          None()
+        }
+      }
+
+      expect(Assign())
+      val value = parseExpression()
+      ValDeclaration(name, typeAnnotation, value, pos)
+    }
+    
+    case Var() => {
+      do next()
+      val nameToken = do next()
+      val name = nameToken.kind match {
+        case LowerIdentifier(id) => id
+        case UpperIdentifier(id) => raise(ParseError(), "variable name at position " ++ nameToken.position.show ++ " must start with a lower case char: '" ++ id ++ "'")
+        case _ => raise(ParseError(), "expected variable name after 'var' at position " ++ nameToken.position.show)
+      }
+
+      // optional type annotation (looks for ': TypeName')
+      val typeAnnotation = {
+        if (check(Colon())) {
+          do next()
+          Some(parseType())
+        } else {
+          None()
+        }
+      }
+
+      expect(Assign())
+      val value = parseExpression()
+      VarDeclaration(name, typeAnnotation, value, pos)
+    }
+
+    case If() => {
+      val nextToken = do peek2()
+      nextToken.kind match {
+        case LParen() => {
+          do next()
+          expect(LParen())
+          val condition = parseExpression()
+          expect(RParen())
+          expect(LBrace())
+          val thenBranch = parseBlock()
+          expect(RBrace())
+
+          // optional else branch enclosed in braces
+          val elseBranch = {
+            if (check(Else())) {
+              do next()
+              expect(LBrace())
+              val elseBlock = parseBlock()
+              expect(RBrace())
+              elseBlock
+            } else {
+              Nil()
+            }
+          }
+          IfStmt(condition, thenBranch, elseBranch, pos)
+        }
+        case _ => ExprStmt(parseExpression(), pos)
+      }
+    }
+
+    case LowerIdentifier(id) => {
+      // assignment statement: <varName> = <expr>
+      val nextToken = do peek2()
+      nextToken.kind match {
+        case Assign() => {
+          do next() // consume var name
+          do next() // consume '='
+          val value = parseExpression()
+          AssignStmt(id, value, pos)
+        }
+        case PlusAssign()  => {
+          do next() // consume var name
+          do next() // consume '+=' or '-='
+          val value = parseExpression()
+          CompoundAssignStmt(id, PlusAssign(), value, pos)
+        }
+        case MinusAssign()  => {
+          do next() // consume var name
+          do next() // consume '+=' or '-='
+          val value = parseExpression()
+          CompoundAssignStmt(id, MinusAssign(), value, pos)
+        }
+      case _ => {
+        // fallback: parse an expression and wrap it as an ExprStmt
+        val expr = parseExpression()
+        ExprStmt(expr, pos)
+        }
+      }
+    }
+
+    case _ => {
+      // fallback: parse an expression and wrap it as an ExprStmt
+      val expr = parseExpression()
+      ExprStmt(expr, pos)
+    }
+  }
+}
+
+/// parseType expects a single UpperIdentifier as a type name (e.g. Int, Bool).
+/// It reports an error if a lowercase identifier is used for a type.
+def parseType(): Type / { Lexer[Token], Exception[ParseError] } = {
+  val token = do next()
+  token.kind match {
+    case UpperIdentifier(id) => extractType(id)
+    case LowerIdentifier(id) => raise(ParseError(), "syntax error at position " ++ token.position.show ++ ": type annotations must start with upper case char")
+    case _ => raise(ParseError(), "expected type name (UpperIdentifier) at position " ++ token.position.show ++ " but got " ++ token.kind.show)
+  }
+}
+
+/// parseBlock collects statements until a closing '}' or EOF.
+/// It uses an accumulator and returns the statements in the correct order.\n
+/// Important detail: go accumulates statements in reverse (Cons(stmt, acc))
+/// and returns acc.reverse at the end so that statements keep their original order.
+def parseBlock(): List[Stmt] / { Lexer[Token], Positioning, Exception[ParseError] } = {
+  def go(acc: List[Stmt]): List[Stmt] / Lexer[Token] = {
+    val token = do peek()
+    token.kind match {
+      case RBrace() => acc.reverse // end of block: return statements in original order
+      case EOF() => acc.reverse // defensive: EOF inside block -> return what we have
+      case _ => {
+        val stmt = parseStmt()
+        go(Cons(stmt, acc))
+      }
+    }
+  }
+  go(Nil())
+}
+
+/// parses a full program as a list of statements until EOF.
+def parseProgram(): Program / {Lexer[Token], Positioning, Exception[ParseError]} = {
+  def go(acc: List[Stmt]): List[Stmt] / Lexer[Token] = {
+    val token = do peek()
+    token.kind match {
+      case EOF() => acc.reverse
+      case _ => {
+        val stmt = parseStmt()
+        go(Cons(stmt, acc))
+      }
+    }
+  }
+  go(Nil())
+}

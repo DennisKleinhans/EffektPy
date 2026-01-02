@@ -1,0 +1,113 @@
+module src/tests/testDesugar
+
+import test
+import src/lib/parser/surfaceAst
+import src/lib/desugar/sugar
+import src/lib/desugar/coreAst
+import src/lib/lexer/tokens
+import src/lib/utils/errors
+import src/lib/utils/coreTestUtils
+import src/lib/utils/surfaceTestUtils
+
+def main() = mainSuite("desugar") {
+  
+  test("desugar comparison chain") {
+    
+    // x < 10 >= 5
+    val chain = sChain(
+      sV("x"),
+      [
+        (TokenKind::Less(), sLit(10)),
+        (TokenKind::GreaterEqual(), sLit(5))
+      ]
+    )
+
+    with on[DesugarError].panic
+    with on[ParseError].panic
+    val desugared = desugarExpr(chain)
+
+    val expected = cAnd(
+      cLt(cV("x"), cLit(10)),
+      cGtE(cLit(10), cLit(5))
+    )
+
+    assertEqual(desugared, expected)
+  }
+
+  test("desugar compound assignment") {
+    // x += 5
+    val stmt = sCAssign("x", TokenKind::PlusAssign(), sLit(5))
+
+    with on[DesugarError].panic
+    with on[ParseError].panic
+    val desugared = desugarStmt(stmt)
+
+    val expected = cAssign(
+      "x",
+      cAdd(
+        cV("x"),
+        cLit(5)
+      )
+    )
+
+    assertEqual(desugared, expected)
+  }
+
+  test("desugar unary minus") {
+    // -x
+    val expr = sUminus(sV("x"))
+
+    with on[DesugarError].panic
+    with on[ParseError].panic
+    val desugared = desugarExpr(expr)
+
+    val expected = cSub(
+      cLit(0),
+      cV("x")
+    )
+
+    assertEqual(desugared, expected)
+  }
+
+  test("desugar whole program") {
+    // val a = 10
+    // var b = 20
+    // b = a + 5
+    // b += 10
+    // b > 15 <= 30
+    val program: surfaceAst::Program = [
+      sVal("a", None(), sLit(10)),
+      sVar("b", None(), sLit(20)),
+      sCAssign("b", TokenKind::PlusAssign(), sLit(10)),
+      sAssign("b", sAdd(sV("a"), sLit(5))),
+      sExpr(
+        sChain(
+          sV("b"),
+          [
+            (TokenKind::Greater(), sLit(15)),
+            (TokenKind::LessEqual(), sLit(30))
+          ]
+        )
+      )
+    ]
+
+    with on[DesugarError].panic
+    with on[ParseError].panic
+    val desugaredProgram = desugarProgram(program)
+
+    val expectedProgram: coreAst::Program = [
+      cVal("a", None(), cLit(10)),
+      cVar("b", None(), cLit(20)),
+      cAssign("b", cAdd(cV("b"), cLit(10))),
+      cAssign("b", cAdd(cV("a"), cLit(5))),
+      cExpr(
+        cAnd(
+          cGt(cV("b"), cLit(15)),
+          cLtE(cLit(15), cLit(30))
+        )
+      )
+    ]
+
+    assertEqual(desugaredProgram, expectedProgram)
+  }
+}

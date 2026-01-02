@@ -1,5 +1,22 @@
-module main // must be named same as the file!
+module src/main 
 
-import src/lib
+import src/lib/runner/runPipeline
 
-def main(): Unit = println(helloWorld())
+
+def main(): Unit = {
+  
+  runPipeline(
+    """if (10 < 20) {
+      if (true) {
+        val x = 2
+        x
+      }
+    } else {
+      val x = 5
+      x
+    }
+    """
+  )
+  ()
+
+}

@@ -1,0 +1,399 @@
+module src/test/testParser
+
+import test
+import scanner
+import src/lib/lexer/lexer
+import src/lib/lexer/tokens
+import src/lib/parser/parser
+import src/lib/parser/surfaceAst
+import src/lib/desugar/sugar
+import src/lib/utils/testUtils
+import src/lib/utils/errors
+import src/lib/utils/effects
+import src/lib/utils/types
+import src/lib/utils/surfaceTestUtils
+import src/lib/utils/handlers
+
+def main() = mainSuite("parser") {
+
+  test("parser parses variable declaration ('val' and 'var') without type annotation (Int literal, Bool literal)") {
+    val inputs = ["val x = 2", "val x = false", "var y = 2", "var y = false"]
+    val expectedOutputs = [
+      [sVal("x", None(), sLit(2))], 
+      [sVal("x", None(), sLit(false))],
+      [sVar("y", None(), sLit(2))], 
+      [sVar("y", None(), sLit(false))]
+    ]
+    var iter = 0
+
+    while (iter < inputs.size) {
+      with on[OutOfBounds].panic
+      with feed(inputs.get(iter))
+      with scanner[Char]
+      with scanWithPos
+      with mockGetPos
+      with on[LexerError].panic
+      with lexer
+      with on[ParseError].panic
+
+      val obtained = parseProgram()
+
+      assertEqual(obtained, expectedOutputs.get(iter))
+      iter = iter + 1
+    }
+  }
+
+  test("parser parses variable declaration ('val' and 'var') with type annotation (Int literal, Bool literal)") {
+    val inputs = ["val x: Int = 2", "val x: Bool = false", "var y: Int = 2", "var y: Bool = false"]
+    val expectedOutputs = [
+      [sVal("x", Some(IntType()), sLit(2))], 
+      [sVal("x", Some(BoolType()), sLit(false))],
+      [sVar("y", Some(IntType()), sLit(2))], 
+      [sVar("y", Some(BoolType()), sLit(false))]
+    ]
+    var iter = 0
+
+    while (iter < inputs.size) {
+      with on[OutOfBounds].panic
+      with feed(inputs.get(iter))
+      with scanner[Char]
+      with scanWithPos
+      with mockGetPos
+      with on[LexerError].panic
+      with lexer
+      with on[ParseError].panic
+
+      val obtained = parseProgram()
+
+      assertEqual(obtained, expectedOutputs.get(iter))
+      iter = iter + 1
+    }
+  }
+
+  test("parser parses assignment statements") {
+    val inputs = ["x = 2", "y = false", "z = x + 1", "a = not b", "c = (d and e) or (f or not g)", "d = x < 5 <= 10"]
+    val expectedOutputs = [
+      [sAssign("x", sLit(2))],
+      [sAssign("y", sLit(false))],
+      [sAssign("z", sAdd(sV("x"), sLit(1)))],
+      [sAssign("a", sNot(sV("b")))],
+      [sAssign("c", sOr(sAnd(sV("d"), sV("e")), sOr(sV("f"), sNot(sV("g")))))],
+      [sAssign("d", sChain(sV("x"), Cons((Less(), sLit(5)), Cons((LessEqual(), sLit(10)), Nil()))))]
+    ]
+    var iter = 0
+
+    while (iter < inputs.size) {
+      with on[OutOfBounds].panic
+      with feed(inputs.get(iter))
+      with scanner[Char]
+      with scanWithPos
+      with mockGetPos
+      with on[LexerError].panic
+      with lexer
+      with on[ParseError].panic
+
+      val obtained = parseProgram()
+
+      assertEqual(obtained, expectedOutputs.get(iter))
+      iter = iter + 1
+    }
+  }
+
+  test("parser parses compound assignment statements (+=, -=)") {
+    val inputs = ["x += 2", "y -= 3"]
+    val expectedOutputs = [
+      [sCAssign("x", PlusAssign(), sLit(2))],
+      [sCAssign("y", MinusAssign(), sLit(3))]
+    ]
+    var iter = 0
+
+    while (iter < inputs.size) {
+      with on[OutOfBounds].panic
+      with feed(inputs.get(iter))
+      with scanner[Char]
+      with scanWithPos
+      with mockGetPos
+      with on[LexerError].panic
+      with lexer
+      with on[ParseError].panic
+
+      val obtained = parseProgram()
+
+      assertEqual(obtained, expectedOutputs.get(iter))
+      iter = iter + 1
+    }
+  }
+
+  test("parser parses binary math expressions (Add, Sub, Mult, Div)") {
+    val inputs = ["2 + 2", "2 - 2", "2 * 2", "2 / 2"]
+
+    val expectedOutputs = [
+      [sExpr(sAdd(sLit(2), sLit(2)))],
+      [sExpr(sSub(sLit(2), sLit(2)))],
+      [sExpr(sMult(sLit(2), sLit(2)))],
+      [sExpr(sDiv(sLit(2), sLit(2)))]
+    ]
+
+    var iter = 0
+    while (iter < inputs.size) {
+      with on[OutOfBounds].panic
+      with feed(inputs.get(iter))
+      with scanner[Char]
+      with scanWithPos
+      with mockGetPos
+      with on[LexerError].panic
+      with lexer
+      with on[ParseError].panic 
+      
+      val obtained = parseProgram()
+     
+      assertEqual(obtained, expectedOutputs.get(iter))
+      iter = iter + 1
+    }
+  }
+
+  test("parser parses binary compare expressions (Eq, Neq, Lt, Gt, LtE, GtE)") {
+    val inputs = ["2 == 2", "2 != 2", "2 < 2", "2 > 2", "2 <= 2", "2 >= 2"]
+
+    val expectedOutputs = [
+      [sExpr(sEq(sLit(2), sLit(2)))],
+      [sExpr(sNeq(sLit(2), sLit(2)))],
+      [sExpr(sLt(sLit(2), sLit(2)))],
+      [sExpr(sGt(sLit(2), sLit(2)))],
+      [sExpr(sLtE(sLit(2), sLit(2)))],
+      [sExpr(sGtE(sLit(2), sLit(2)))]
+    ]
+
+    var iter = 0
+    while (iter < inputs.size) {
+      with on[OutOfBounds].panic
+      with feed(inputs.get(iter))
+      with scanner[Char]
+      with scanWithPos
+      with mockGetPos
+      with on[LexerError].panic
+      with lexer
+      with on[ParseError].panic 
+      
+      val obtained = parseProgram()
+     
+      assertEqual(obtained, expectedOutputs.get(iter))
+      iter = iter + 1
+    }
+  }
+
+  test("parser parses chained compare expressions (a < b < c)") {
+    val inputs = ["2 < 3 < 4", "2 <= 3 <= 4", "4 > 3 > 2", "4 >= 3 >= 2", "2 == 3 == 4", "2 != 3 != 4", "2 < 3 > 4 == 5"]
+
+    val expectedOutputs = [
+      [sExpr(sChain(sLit(2), Cons((Less(), sLit(3)), Cons((Less(), sLit(4)), Nil()))))],
+      [sExpr(sChain(sLit(2), Cons((LessEqual(), sLit(3)), Cons((LessEqual(), sLit(4)), Nil()))))],
+      [sExpr(sChain(sLit(4), Cons((Greater(), sLit(3)), Cons((Greater(), sLit(2)), Nil()))))],
+      [sExpr(sChain(sLit(4), Cons((GreaterEqual(), sLit(3)), Cons((GreaterEqual(), sLit(2)), Nil()))))],
+      [sExpr(sChain(sLit(2), Cons((Equal(), sLit(3)), Cons((Equal(), sLit(4)), Nil()))))],
+      [sExpr(sChain(sLit(2), Cons((NotEqual(), sLit(3)), Cons((NotEqual(), sLit(4)), Nil()))))],
+      [sExpr(sChain(sLit(2), Cons((Less(), sLit(3)), Cons((Greater(), sLit(4)), Cons((Equal(), sLit(5)), Nil())))))]
+    ]
+    
+    var iter = 0
+    while (iter < inputs.size) {
+      with on[OutOfBounds].panic
+      with feed(inputs.get(iter))
+      with scanner[Char]
+      with scanWithPos
+      with mockGetPos
+      with on[LexerError].panic
+      with lexer
+      with on[ParseError].panic 
+      
+      val obtained = parseProgram()
+    
+      assertEqual(obtained, expectedOutputs.get(iter))
+      iter = iter + 1
+    }
+  }
+
+  test("parser parses logical expressions (and, or, not)") {
+    val inputs = [
+      "true and false",
+      "true or false",
+      "not true",
+      "not false",
+      "true and false or true",
+      "not (true or false) and true"
+    ]
+
+    val expectedOutputs = [
+      [sExpr(sAnd(sLit(true), sLit(false)))],
+      [sExpr(sOr(sLit(true), sLit(false)))],
+      [sExpr(sNot(sLit(true)))],
+      [sExpr(sNot(sLit(false)))],
+      [sExpr(sOr(sAnd(sLit(true), sLit(false)), sLit(true)))],
+      [sExpr(sAnd(sNot(sOr(sLit(true), sLit(false))), sLit(true)))]
+    ]
+
+    var iter = 0
+    while (iter < inputs.size) {
+      with on[OutOfBounds].panic
+      with feed(inputs.get(iter))
+      with scanner[Char]
+      with scanWithPos
+      with mockGetPos
+      with on[LexerError].panic
+      with lexer
+      with on[ParseError].panic 
+      
+      val obtained = parseProgram()
+     
+      assertEqual(obtained, expectedOutputs.get(iter))
+      iter = iter + 1
+    }
+  }
+
+  test("parser parses unary operators (not, -)") {
+    val inputs = [
+      "not true",
+      "not false",
+      "-5",
+      "-(2 + 3)",
+      "--5",
+      "-x * y"
+    ]
+
+    val expectedOutputs = [
+      [sExpr(sNot(sLit(true)))],
+      [sExpr(sNot(sLit(false)))],
+      [sExpr(sUminus(sLit(5)))],
+      [sExpr(sUminus(sAdd(sLit(2), sLit(3))))],
+      [sExpr(sUminus(sUminus(sLit(5))))],
+      [sExpr(sMult(sUminus(sV("x")), sV("y")))]
+    ]
+
+    var iter = 0
+    while (iter < inputs.size) {
+      with on[OutOfBounds].panic
+      with feed(inputs.get(iter))
+      with scanner[Char]
+      with scanWithPos
+      with mockGetPos
+      with on[LexerError].panic
+      with lexer
+      with on[ParseError].panic 
+      
+      val obtained = parseProgram()
+     
+      assertEqual(obtained, expectedOutputs.get(iter))
+      iter = iter + 1
+    }
+  }
+
+  test("parser parses if-expressions"){
+    val input = "val x = if true then 1 else 0"
+
+    val expected = [
+      sVal( "x", None(), sIf(sLit(true), sLit(1), sLit(0)))
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with mockGetPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
+
+  test("parser parses if-statement without else branch") {
+    val input = "if (true) { 1 }"
+
+    val expected = [
+      sIf(
+          sLit(true),
+          [sExpr(sLit(1))],
+          Nil()
+        )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with mockGetPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
+
+  test("parser parses if-statement with logical conditions") {
+    val input = "if (not false and true) { 1 } else { 0 }"
+
+    val expected = [
+      sIf(
+          sAnd(
+            sNot(sLit(false)),
+            sLit(true)),
+          [sExpr(sLit(1))],
+          [sExpr(sLit(0))]
+        )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with mockGetPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
+
+  test("parser parses complex program with variable declarations, if-statements, assignments and expressions") {
+    val input =
+    "var x: Int = 10\n" ++
+    "val y: Bool = true\n" ++
+    "if (x >= 10 and not y) {\n" ++
+    "  x = x + 1\n" ++
+    "} else {\n" ++
+    "  x = x - 1\n" ++
+    "}"
+
+    val expected = [
+      sVar("x", Some(IntType()), sLit(10)),
+      sVal("y", Some(BoolType()), sLit(true)),
+      sIf(
+        sAnd(
+          sGtE(sV("x"), sLit(10)),
+          sNot(sV("y"))
+        ),
+        [sAssign("x", sAdd(sV("x"), sLit(1)))],
+        [sAssign("x", sSub(sV("x"), sLit(1)))]
+      )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with mockGetPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
+}

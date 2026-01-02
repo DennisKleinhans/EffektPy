@@ -1,0 +1,40 @@
+module src/lib/utils/surfaceTestUtils
+
+import src/lib/parser/surfaceAst
+import src/lib/lexer/tokens
+import src/lib/utils/types
+
+val d = Position(0, 0)
+
+
+def sLit(n: Int)    = IntLiteral(n, d)
+def sLit(b: Bool)   = BoolLiteral(b, d)
+def sV(name: String) = Variable(name, d)
+
+def sAdd(l: Expr, r: Expr) = AddExpr(l, r, d)
+def sSub(l: Expr, r: Expr) = SubExpr(l, r, d)
+def sMult(l: Expr, r: Expr) = MultExpr(l, r, d)
+def sDiv(l: Expr, r: Expr) = DivExpr(l, r, d)
+
+def sAnd(l: Expr, r: Expr) = AndExpr(l, r, d)
+def sOr(l: Expr, r: Expr)  = OrExpr(l, r, d)
+def sNot(e: Expr)          = NotExpr(e, d)
+def sUminus(e: Expr)       = UnaryMinus(e, d)
+
+def sEq(l: Expr, r: Expr)  = Eq(l, r, d)
+def sNeq(l: Expr, r: Expr) = Neq(l, r, d)
+def sLt(l: Expr, r: Expr)  = Lt(l, r, d)
+def sGt(l: Expr, r: Expr)  = Gt(l, r, d)
+def sLtE(l: Expr, r: Expr) = LtE(l, r, d)
+def sGtE(l: Expr, r: Expr) = GtE(l, r, d)
+
+def sChain(f: Expr, r: List[(TokenKind, Expr)]) = CompareChain(f, r, d)
+def sIf(c: Expr, t: Expr, e: Expr)             = IfExpr(c, t, e, d)
+
+
+def sVal(n: String, t: Option[Type], v: Expr) = ValDeclaration(n, t, v, d)
+def sVar(n: String, t: Option[Type], v: Expr) = VarDeclaration(n, t, v, d)
+def sAssign(n: String, v: Expr)                = AssignStmt(n, v, d)
+def sCAssign(n: String, op: TokenKind, v: Expr) = CompoundAssignStmt(n, op, v, d)
+def sIf(c: Expr, t: List[Stmt], e: List[Stmt]) = IfStmt(c, t, e, d)
+def sExpr(e: Expr)                             = ExprStmt(e, d)

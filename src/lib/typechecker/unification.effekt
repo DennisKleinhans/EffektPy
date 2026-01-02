@@ -1,0 +1,74 @@
+module src/lib/typechecker/unification
+
+import map
+import src/lib/utils/errors
+import src/lib/utils/types
+import src/lib/utils/effects
+import src/lib/utils/helpers
+import src/lib/utils/handlers
+
+
+type Substitution = Map[Int, TypingType]
+
+/// applies a substitution to a typing type
+def applySubstitution(t: TypingType, subst: Substitution): TypingType = t match {
+  case TInt() => TInt()
+  case TBool() => TBool()
+  case TUnit() => TUnit()
+  case TVar(id) => {
+    subst.get(id) match {
+      case Some(t2) => applySubstitution(t2, subst)
+      case None() => TVar(id)
+    }
+  }
+}
+
+/// checks if a type variable occurs in a typing type 
+def occursCheck(id: Int, t: TypingType): Bool = t match {
+  case TInt() => false
+  case TBool() => false
+  case TUnit() => false
+  case TVar(otherId) => id == otherId
+}
+
+/// unification algorithm for typing types
+def unify(eqs: List[TypeEquation], subst: Substitution): Substitution / { Exception[TypeError], Positioning } = {
+  eqs match {
+    case Nil() => subst
+    case Cons(TypeEquation(left, right, pos), rest) => {
+      with at(pos)
+      val lNorm = applySubstitution(left, subst)
+      val rNorm = applySubstitution(right, subst)
+      (lNorm, rNorm) match {
+        case (t1, t2) and equal(t1, t2) => unify(rest, subst)
+        case (TVar(id), other) => bind(id, other, rest, subst)
+        case (other, TVar(id)) => bind(id, other, rest, subst)
+        case (TInt(), TInt()) => unify(rest, subst)
+        case (TBool(), TBool()) => unify(rest, subst)
+        case _ => do raise(TypeError(), "cannot unify types " ++ lNorm.show ++ " with " ++ rNorm.show ++ " at " ++ do getPos().show)
+      }
+    }
+  }
+}
+  
+/// helper function to bind a type variable to a typing type during unification
+def bind(id: Int, t: TypingType, rest: List[TypeEquation], subst: Substitution): Substitution / { Exception[TypeError], Positioning } = {
+  if (occursCheck(id, t)) {
+    do raise(TypeError(), "occurs check failed for variable " ++ id.show ++ " at " ++ do getPos().show)
+  } else {
+    val single = map::singletonGeneric(id, t)
+    val newSubst: Substitution = subst.put(id, t)
+    val newRest: List[TypeEquation] =
+      rest.map { case TypeEquation(l, r, pos) =>
+        TypeEquation(
+          applySubstitution(l, single),
+          applySubstitution(r, single),
+          pos
+        )
+      }
+    unify(newRest, newSubst)
+  }
+}
+
+/// solves a list of typing type equations and returns the resulting substitution
+def solve(equations: List[TypeEquation]): Substitution / { Exception[TypeError], Positioning } = unify(equations, map::emptyGeneric())

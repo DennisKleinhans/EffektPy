@@ -1,0 +1,49 @@
+module src/lib/lexer/tokens
+
+import src/lib/utils/types
+
+type TokenKind {
+  // keywords
+  Val()
+  Var()
+  If()
+  Else()
+  Then()
+
+  // identifier and literals
+  LowerIdentifier(id: String) // used for variables and function names like 'val someVal = 2' or 'def someFunc = {...}
+  UpperIdentifier(id: String) // used for types like "someValue: Int"
+  Number(n: Int)
+  Boolean(b: Bool)
+
+  // operators
+  Assign()
+  Equal()
+  NotEqual()
+  Less()
+  Greater()
+  LessEqual()
+  GreaterEqual()
+  Plus()
+  Minus()
+  PlusAssign()
+  MinusAssign()
+  Mult()
+  Div()
+  And()
+  Or()
+  Not()
+
+  // parentheses
+  LParen()
+  RParen()
+  LBrace()
+  RBrace()
+
+  // used for type annotation
+  Colon()
+
+  EOF()
+}
+
+record Token(kind: TokenKind, position: Position)

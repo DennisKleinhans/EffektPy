@@ -1,0 +1,28 @@
+module src/lib/runner/runTypechecker
+
+import src/lib/typechecker/typecheck
+import src/lib/desugar/coreAst
+import src/lib/utils/types
+import src/lib/utils/handlers
+import src/lib/utils/errors
+import src/lib/utils/effects
+
+/// runs the typechecker on the given program and returns either a success or failure with an error message
+def runTypecheck(prog: Program): PipelineResult[Unit]  = {
+  var currentPos = Position(1,1)
+  try {
+    with mockInspector[PipelineResult[Unit], TypeBinding]
+    typecheck(prog)
+    PipelineResult::Success(())
+  } with Exception[TypeError] {
+    def raise(exception, msg) = { Failure("TypeError: " ++ msg) }
+  } with Exception[NameError] {
+    def raise(exception, msg) = Failure("NameError: " ++ msg)
+  } with Positioning {
+    def getPos() = resume(currentPos)
+    def setPos(p) = {
+      currentPos = p
+      resume(())
+    }
+  }
+}

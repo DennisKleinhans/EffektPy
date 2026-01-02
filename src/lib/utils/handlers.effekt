@@ -1,0 +1,121 @@
+module src/lib/utils/handlers
+
+import map
+import src/lib/utils/errors
+import src/lib/utils/types
+import src/lib/utils/effects
+import src/lib/utils/helpers
+
+/// handler for TypingContext effect that manages variable bindings and their types in a mutable map
+def handleTypingContext[R] { prog: => R / Context[TypeBinding] }: R / { Exception[NameError], Positioning } = {
+  var context: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
+
+  try { prog() } with Context[TypeBinding] {
+    def define(name, value) = {
+      context = context.put(name, value)
+      resume(())
+    }
+
+    def lookup(name) = {
+      context.get(name) match {
+        case Some(binding) => resume(binding)
+        case None() => {
+          raise(NameError(), "Undefined variable '" ++ name ++ "' at " ++ do getPos().show)
+        }
+      }
+    }
+
+    def backup() = resume(context)
+
+    def restore(savedContext) = {
+      context = savedContext
+      resume(())
+    }
+  }
+}
+
+/// handler for RuntimeContext effect that manages variable bindings and memory store in mutable maps
+def handleRuntimeContext[R] { prog: => R / { Context[Address], Store } }: R / {Exception[RuntimeError], Positioning } = {
+  var context: Map[String, Address] = map::emptyGeneric[String, Address]()
+  var heap: Map[Address, Value] = map::emptyGeneric[Address, Value]()
+  var nextAddress: Address = 0
+
+  try { prog() } with Context[Address] {
+    def define(name, addr) = {
+      context = context.put(name, addr)
+      resume(())
+    }
+
+    def lookup(name) = {
+      context.get(name) match {
+        case Some(addr) => resume(addr)
+        case None() => do raise(errors::RuntimeError(), "Undefined variable '" ++ name ++ "' at " ++ do getPos().show)
+      }
+    }
+
+    def backup() = resume(context)
+
+    def restore(savedContext) = {
+      context = savedContext
+      resume(())
+    }
+
+  } with Store {
+    def allocate(value) = {
+      val addr = nextAddress
+      nextAddress = nextAddress + 1
+      heap = heap.put(addr, value)
+      resume(addr)
+    }
+
+    def load(addr) = heap.get(addr) match {
+      case Some(value) => resume(value)
+      case None() => do raise(errors::RuntimeError(), "Invalid memory access at address " ++ addr.show)
+    }
+
+    def store(addr, value) = {
+      heap = heap.put(addr, value)
+      resume(())
+    }
+  }
+}
+
+/// mock handler for Positioning effect that always returns a fixed position (line 1, column 1)
+def mockGetPos[R] { prog: => R / Positioning } = {
+  try { prog() } with Positioning {
+    def getPos() = resume(Position(0, 0)) // always return line 0, column 0
+    def setPos(p) = resume(())
+  }
+}
+
+/// mock handler for Inspector effect that does nothing
+def mockInspector[R, T] { prog: => R / Inspector[T] }: R = {
+  try { prog() } with Inspector[T] {
+    def inspect(context) = resume(())
+  }
+}
+
+/// handler that creates a new typing scope for the duration of the action
+def handleNewTypingScope[R]{ action: => R / Context[TypeBinding] }: R / Context[TypeBinding] = {
+  val snapshot = do backup()
+  val result = action()
+  do restore(snapshot)
+  result
+}
+
+/// handler that creates a new runtime scope for the duration of the action
+def handleNewRuntimeScope[R]{ action: => R / Context[Address] }: R / Context[Address] = {
+  val snapshot = do backup()
+  val result = action()
+  do restore(snapshot)
+  result
+}
+
+/// executes a block of code at a specific source code position
+def at[R](p: Position) { block: => R / Positioning }: R / Positioning = {
+  val old = do getPos()
+  do setPos(p)
+  val res = block()
+  do setPos(old)
+  res
+}
