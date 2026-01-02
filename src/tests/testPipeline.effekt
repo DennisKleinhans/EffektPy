@@ -26,6 +26,11 @@ def main() = mainSuite("pipeline") {
     assertTrue(result.equal(VInt(1)))
   }
 
+  test("if expression without assignment") {
+    val result = runPipeline("if 10 < 20 then 1 else 2")
+    assertTrue(result.equal(VInt(1)))
+  }
+
   test("nested if expression"){
     val result = runPipeline("val x = if 10 < 20 then (if 5 > 3 then 2 else 3) else 4\nx")
     assertTrue(result.equal(VInt(2)))

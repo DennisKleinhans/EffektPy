@@ -289,27 +289,33 @@ def parseStmt(): Stmt / { Lexer[Token], Positioning, Exception[ParseError] } = {
     }
 
     case If() => {
-      do next()
-      expect(LParen())
-      val condition = parseExpression()
-      expect(RParen())
-      expect(LBrace())
-      val thenBranch = parseBlock()
-      expect(RBrace())
-
-      // optional else branch enclosed in braces
-      val elseBranch = {
-        if (check(Else())) {
+      val nextToken = do peek2()
+      nextToken.kind match {
+        case LParen() => {
           do next()
+          expect(LParen())
+          val condition = parseExpression()
+          expect(RParen())
           expect(LBrace())
-          val elseBlock = parseBlock()
+          val thenBranch = parseBlock()
           expect(RBrace())
-          elseBlock
-        } else {
-          Nil()
+
+          // optional else branch enclosed in braces
+          val elseBranch = {
+            if (check(Else())) {
+              do next()
+              expect(LBrace())
+              val elseBlock = parseBlock()
+              expect(RBrace())
+              elseBlock
+            } else {
+              Nil()
+            }
+          }
+          IfStmt(condition, thenBranch, elseBranch, pos)
         }
+        case _ => ExprStmt(parseExpression(), pos)
       }
-      IfStmt(condition, thenBranch, elseBranch, pos)
     }
 
     case LowerIdentifier(id) => {
