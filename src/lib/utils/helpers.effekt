@@ -14,6 +14,15 @@ def expect(expected: TokenKind): Unit / { Lexer[Token], Exception[ParseError] } 
   }
 }
 
+/// consume the next token and return its LowerIdentifier id. If the token is not a LowerIdentifier, raise a ParseError.
+def expectLowerIdentifier(): String / { Lexer[Token], Exception[ParseError] } = {
+  val token = do next()
+  token.kind match {
+    case LowerIdentifier(id) => id
+    case _ => do raise(ParseError(), "expected LowerIdentifier at Position " ++ token.position.show ++ " but got " ++ token.kind.show)
+  }
+}
+
 /// peek at the next token and return whether it matches `kind`. This does not consume the token.
 def check(kind: TokenKind) : Bool / Lexer[Token] = {
   val token = do peek()
@@ -63,6 +72,13 @@ def extractType(input: String): Type / Exception[ParseError] = {
     case "Unit" => UnitType()
     case _ => raise(ParseError(), "type annotation '" ++ input ++ "' is not a valid type")
   }
+}
+
+/// extracts a Value from an expression. Raises ParseError if the expression is not a value.
+def extractValue(e: Expr): Value / Exception[ParseError] = e match {
+  case IntLiteral(n, _) => VInt(n)
+  case BoolLiteral(b, _) => VBool(b)
+  case _ => raise(ParseError(), "arguments must be a value not an expression")
 }
 
 /// pretty prints a position
@@ -153,6 +169,12 @@ def equal(t1: TokenKind, t2: TokenKind): Bool = (t1, t2) match {
   case (RBrace(), RBrace()) => true
   case (EOF(), EOF()) => true
   case (Colon(), Colon()) => true
+  case (While(), While()) => true
+  case (Break(), Break()) => true
+  case (Continue(), Continue()) => true
+  case (Return(), Return()) => true
+  case (Def(), Def()) => true
+  case (Comma(), Comma()) => true
   case _ => false
 }
 

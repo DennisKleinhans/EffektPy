@@ -450,4 +450,140 @@ def main() = mainSuite("parser") {
    
     assertEqual(obtained, expected)
   }
+
+  test("parser parses function definitions fully typed") {
+    val input = """
+    def add(a: Int, b: Int): Int {
+      return a + b
+    }"""
+
+    val expected = [
+      sDef(
+        "add",
+        [
+          Parameter("a", Some(IntType()), None()),
+          Parameter("b", Some(IntType()), None())
+        ],
+        Some(IntType()),
+        [
+          sReturn(Some(sAdd(sV("a"), sV("b"))))
+        ]
+      )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with mockGetPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
+
+  test("parser parses function definitions without types") {
+    val input = """
+    def add(a, b) {
+      return a + b
+    }"""
+
+    val expected = [
+      sDef(
+        "add",
+        [
+          Parameter("a", None(), None()),
+          Parameter("b", None(), None())
+        ],
+        None(),
+        [
+          sReturn(Some(sAdd(sV("a"), sV("b"))))
+        ]
+      )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with mockGetPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
+
+  test("parser parses function definitions with default arguments") {
+    val input = """
+    def add(a = 1, b = 2) {
+      return a + b
+    }"""
+
+    val expected = [
+      sDef(
+        "add",
+        [
+          Parameter("a", None(), Some(VInt(1))),
+          Parameter("b", None(), Some(VInt(2)))
+        ],
+        None(),
+        [
+          sReturn(Some(sAdd(sV("a"), sV("b"))))
+        ]
+      )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with mockGetPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
+
+  test("parser parses function definitions fully typed and with default arguments") {
+    val input = """
+    def add(a: Int = 1, b: Int = 2): Int {
+      return a + b
+    }"""
+
+    val expected = [
+      sDef(
+        "add",
+        [
+          Parameter("a", Some(IntType()), Some(VInt(1))),
+          Parameter("b", Some(IntType()), Some(VInt(2)))
+        ],
+        Some(IntType()),
+        [
+          sReturn(Some(sAdd(sV("a"), sV("b"))))
+        ]
+      )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with mockGetPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
 }
