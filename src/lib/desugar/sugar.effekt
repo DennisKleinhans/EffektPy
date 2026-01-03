@@ -127,8 +127,8 @@ def desugarStmt(s: surfaceAst::Stmt): coreAst::Stmt / { Exception[DesugarError],
 }
 
 /// desugar a block of statements by desugaring each statement
-def desugarBlock(stmts: List[surfaceAst::Stmt]): List[coreAst::Stmt] / { Exception[DesugarError], Exception[ParseError] } = {
-  stmts.map { s => desugarStmt(s) }
+def desugarBlock(block: surfaceAst::Block): coreAst::Block / { Exception[DesugarError], Exception[ParseError] } = {
+  coreAst::Block(block.statements.map { s => desugarStmt(s) }, block.finalExpr.map { e => desugarExpr(e) })
 }
 
 

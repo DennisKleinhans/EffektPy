@@ -314,8 +314,8 @@ def main() = mainSuite("parser") {
     val expected = [
       sIf(
           sLit(true),
-          [sExpr(sLit(1))],
-          Nil()
+          Block(Nil(), Some(sLit(1))),
+          Block(Nil(), None())
         )
     ]
 
@@ -341,8 +341,8 @@ def main() = mainSuite("parser") {
           sAnd(
             sNot(sLit(false)),
             sLit(true)),
-          [sExpr(sLit(1))],
-          [sExpr(sLit(0))]
+          Block(Nil(), Some(sLit(1))),
+          Block(Nil(), Some(sLit(0)))
         )
     ]
 
@@ -378,8 +378,8 @@ def main() = mainSuite("parser") {
           sGtE(sV("x"), sLit(10)),
           sNot(sV("y"))
         ),
-        [sAssign("x", sAdd(sV("x"), sLit(1)))],
-        [sAssign("x", sSub(sV("x"), sLit(1)))]
+        Block([sAssign("x", sAdd(sV("x"), sLit(1)))], None()),
+        Block([sAssign("x", sSub(sV("x"), sLit(1)))], None())
       )
     ]
 
@@ -403,7 +403,7 @@ def main() = mainSuite("parser") {
     val expected = [
       sWhile(
         sLt(sV("x"), sLit(10)),
-        [sCAssign("x", PlusAssign(), sLit(1))]
+        Block([sCAssign("x", PlusAssign(), sLit(1))], None())
       )
     ]
 
@@ -427,13 +427,13 @@ def main() = mainSuite("parser") {
     val expected = [
       sWhile(
         sLit(true),
-        [
+        Block([
           sIf(
             sGt(sV("x"), sLit(10)),
-            [sBreak()],
-            [sContinue()]
+            Block([sBreak()], None()),
+            Block([sContinue()], None())
           )
-        ]
+        ], None())
       )
     ]
 
@@ -465,9 +465,9 @@ def main() = mainSuite("parser") {
           Parameter("b", Some(IntType()), None())
         ],
         Some(IntType()),
-        [
+        Block([
           sReturn(Some(sAdd(sV("a"), sV("b"))))
-        ]
+        ], None())
       )
     ]
 
@@ -499,9 +499,9 @@ def main() = mainSuite("parser") {
           Parameter("b", None(), None())
         ],
         None(),
-        [
+        Block([
           sReturn(Some(sAdd(sV("a"), sV("b"))))
-        ]
+        ], None())
       )
     ]
 
@@ -533,9 +533,9 @@ def main() = mainSuite("parser") {
           Parameter("b", None(), Some(VInt(2)))
         ],
         None(),
-        [
+        Block([
           sReturn(Some(sAdd(sV("a"), sV("b"))))
-        ]
+        ], None())
       )
     ]
 
@@ -567,9 +567,9 @@ def main() = mainSuite("parser") {
           Parameter("b", Some(IntType()), Some(VInt(2)))
         ],
         Some(IntType()),
-        [
+        Block([
           sReturn(Some(sAdd(sV("a"), sV("b"))))
-        ]
+        ], None())
       )
     ]
 
@@ -601,9 +601,7 @@ def main() = mainSuite("parser") {
           Parameter("b", Some(IntType()), Some(VInt(2)))
         ],
         Some(IntType()),
-        [
-          sReturn(None())
-        ]
+        Block([sReturn(None())], None())
       )
     ]
 
@@ -634,9 +632,9 @@ def main() = mainSuite("parser") {
             Parameter("y", Some(IntType()), None())
           ],
           Some(IntType()),
-          [
+          Block([
             sReturn(Some(sAdd(sV("x"), sV("y"))))
-          ]
+          ], None())
         )
       )
     ]

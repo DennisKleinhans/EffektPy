@@ -332,7 +332,7 @@ def parseStmt(): Stmt / { Lexer[Token], Positioning, Exception[ParseError] } = {
               expect(RBrace())
               elseBlock
             } else {
-              Nil()
+              Block(Nil(), None())
             }
           }
           IfStmt(condition, thenBranch, elseBranch, pos)
@@ -445,12 +445,18 @@ def parseType(): Type / { Lexer[Token], Exception[ParseError] } = {
 /// It uses an accumulator and returns the statements in the correct order.\n
 /// Important detail: go accumulates statements in reverse (Cons(stmt, acc))
 /// and returns acc.reverse at the end so that statements keep their original order.
-def parseBlock(): List[Stmt] / { Lexer[Token], Positioning, Exception[ParseError] } = {
-  def go(acc: List[Stmt]): List[Stmt] / Lexer[Token] = {
+def parseBlock(): Block / { Lexer[Token], Positioning, Exception[ParseError] } = {
+  def go(acc: List[Stmt]): Block / Lexer[Token] = {
     val token = do peek()
     token.kind match {
-      case RBrace() => acc.reverse // end of block: return statements in original order
-      case EOF() => acc.reverse // defensive: EOF inside block -> return what we have
+      case RBrace() => acc match {
+          case Cons(ExprStmt(e, p), rest) => Block(rest.reverse, Some(e))
+          case _ => Block(acc.reverse, None())
+        } // end of block: return statements in original order
+      case EOF() => acc match {
+          case Cons(ExprStmt(e, p), rest) => Block(rest.reverse, Some(e))
+          case _ => Block(acc.reverse, None())
+        }// defensive: EOF inside block -> return what we have
       case _ => {
         val stmt = parseStmt()
         go(Cons(stmt, acc))

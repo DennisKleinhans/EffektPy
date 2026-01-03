@@ -24,7 +24,7 @@ type Expr {
   LtE(left: Expr, right: Expr, pos: Position)
   GtE(left: Expr, right: Expr, pos: Position)
   IfExpr(condition: Expr, thenExpr: Expr, elseExpr: Expr, pos: Position)
-  FunExpr(params: List[Parameter], retType: Option[Type], body: List[Stmt], pos: Position)
+  FunExpr(params: List[Parameter], retType: Option[Type], body: Block, pos: Position)
   CallExpr(receiver: Expr, args: List[Argument], pos: Position)
 }
 
@@ -32,9 +32,9 @@ type Stmt {
   ValDeclaration(name: String, typeAnnotation: Option[Type], value: Expr, pos: Position)
   VarDeclaration(name: String, typeAnnotation: Option[Type], value: Expr, pos: Position)
   AssignStmt(name: String, value: Expr, pos: Position)
-  IfStmt(cond: Expr, thenBranch: List[Stmt], elseBranch: List[Stmt], pos: Position)
+  IfStmt(cond: Expr, thenBranch: Block, elseBranch: Block, pos: Position)
   ExprStmt(expr: Expr, pos: Position)
-  WhileStmt(condition: Expr, body: List[Stmt], pos: Position)
+  WhileStmt(condition: Expr, body: Block, pos: Position)
   BreakStmt(pos: Position)
   ContinueStmt(pos: Position)
   ReturnStmt(value: Option[Expr], pos: Position)
@@ -43,3 +43,5 @@ type Stmt {
 }
 
 type Program = List[Stmt]
+
+record Block(statements: List[Stmt], finalExpr: Option[Expr])

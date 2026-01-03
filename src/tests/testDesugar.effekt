@@ -115,9 +115,9 @@ def main() = mainSuite("desugar") {
   test("desugar def statement into val declaration with a fun expression"){
     val program: surfaceAst::Program = [
       sDef("add", [Parameter("a", None(), None()), Parameter("b", None(), None())], None(), 
-        [
+        Block([
           sReturn(Some(sAdd(sV("a"), sV("b"))))
-        ]
+        ], None())
       )
     ]
     
@@ -127,9 +127,9 @@ def main() = mainSuite("desugar") {
 
     val expected: coreAst::Program = [
       cVal("add", None(), cFun([Parameter("a", None(), None()), Parameter("b", None(), None())], None(), 
-        [
+        Block([
           cReturn(Some(cAdd(cV("a"), cV("b"))))
-        ]
+        ], None())
       ))
     ]
 
