@@ -289,4 +289,28 @@ def main() = mainSuite("lexer") {
     val tokens = collectTokens(Nil()) { do next() }
     assertEqual(tokens, expected)
   }
+
+  test("lexer recognizes lambdas") {
+    val input = "val increment = lambda(x: Int): Int {\n return x + 1\n}"
+
+    val expected = [
+      Token(Val(), Position(1, 1)),
+      Token(LowerIdentifier("increment"), Position(1, 5)),
+      Token(Assign(), Position(1, 15)),
+      Token(Lambda(), Position(1, 17)),
+      Token(LParen(), Position(1, 23)),
+      Token(LowerIdentifier("x"), Position(1, 24)),
+      Token(Colon(), Position(1, 25)),
+      Token(UpperIdentifier("Int"), Position(1, 27)),
+      Token(RParen(), Position(1, 30)),
+      Token(Colon(), Position(1, 31)),
+      Token(UpperIdentifier("Int"), Position(1, 33)),
+      Token(LBrace(), Position(1, 37)),
+      Token(Return(), Position(2, 2)),
+      Token(LowerIdentifier("x"), Position(2, 9)),
+      Token(Plus(), Position(2, 11)),
+      Token(Number(1), Position(2, 13)),
+      Token(RBrace(), Position(3, 1))
+    ]
+  }
 }

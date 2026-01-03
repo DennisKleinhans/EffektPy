@@ -123,6 +123,7 @@ def show(tokenKind: TokenKind): String = tokenKind match {
   case Def() => "Keyword: def"
   case Return() => "Keyword: return"
   case Comma() => "Comma"
+  case Lambda() => "Keyword: lambda"
 }
 
 /// pretty prints a token
@@ -175,6 +176,7 @@ def equal(t1: TokenKind, t2: TokenKind): Bool = (t1, t2) match {
   case (Return(), Return()) => true
   case (Def(), Def()) => true
   case (Comma(), Comma()) => true
+  case (Lambda(), Lambda()) => true
   case _ => false
 }
 
