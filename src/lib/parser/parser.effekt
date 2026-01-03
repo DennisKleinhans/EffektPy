@@ -10,7 +10,7 @@ import src/lib/utils/types
 /// parsePrimary parses the smallest expression forms: literals, variables,
 /// and parenthesized expressions. It does not handle binary operators.\n
 /// Parentheses are handled here so that ( ... ) produces a nested expression.
-def parsePrimary(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
+def parsePrimaryRaw(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
   val token = do peek()
   val pos = do getPos()
   token.kind match {
@@ -18,22 +18,55 @@ def parsePrimary(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } 
       do next()
       IntLiteral(n, pos)
     }
+
     case Boolean(b) => {
       do next()
       BoolLiteral(b, pos)
     }
+
     case LowerIdentifier(id) => {
       do next()
       Variable(id, pos)
     }
+
     case LParen() => {
       do next()
       val expr = parseExpression()
       expect(RParen())
       expr
     }
+
+    case Lambda() => {
+      do next()
+      expect(LParen())
+      val params = parseCommaList { parseParameter }
+      expect(RParen())
+      val retType = if (check(Colon())) { do next(); Some(parseType()) } else { None() }
+      expect(LBrace())
+      val body = parseBlock()
+      expect(RBrace())
+      FunExpr(params, retType, body, pos)
+    }
+
     case _ => do raise(ParseError(), "expected expression at position " ++ token.position.show ++ " but got " ++ token.kind.show)
   }
+}
+
+def parsePrimary(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
+  val left = parsePrimaryRaw()
+
+  def go(current: Expr): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
+    if (check(LParen())) {
+      val callPos = do getPos()
+      do next()
+      val args = parseCommaList { parseArgument }
+      expect(RParen())
+      go(CallExpr(current, args, callPos))
+    } else {
+      current
+    }
+  }
+  go(left)
 }
 
 /// Implements parsing for unary `not` operator and unary `-`.
@@ -349,7 +382,7 @@ def parseStmt(): Stmt / { Lexer[Token], Positioning, Exception[ParseError] } = {
     case Return() => {
       do next()
       val nextToken = do peek()
-      
+
       val value = nextToken.kind match {
         case RBrace() => None() 
         case EOF() => None()

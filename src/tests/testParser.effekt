@@ -621,4 +621,37 @@ def main() = mainSuite("parser") {
     assertEqual(obtained, expected)
   }
 
+  test("parser parses lambda expressions") {
+    val input = "val f = lambda (x: Int, y: Int) : Int { return x + y }"
+
+    val expected = [
+      sVal(
+        "f",
+        None(),
+        sFun(
+          [
+            Parameter("x", Some(IntType()), None()),
+            Parameter("y", Some(IntType()), None())
+          ],
+          Some(IntType()),
+          [
+            sReturn(Some(sAdd(sV("x"), sV("y"))))
+          ]
+        )
+      )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with mockGetPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
 }
