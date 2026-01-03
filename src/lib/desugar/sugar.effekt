@@ -99,6 +99,15 @@ def desugarStmt(s: surfaceAst::Stmt): coreAst::Stmt / { Exception[DesugarError],
   }
   
   case surfaceAst::ExprStmt(expr, pos) => coreAst::ExprStmt(desugarExpr(expr), pos)
+
+  case surfaceAst::WhileStmt(condition, body, pos) => {
+    val cond = desugarExpr(condition)
+    val body = body.map {st => desugarStmt(st)}
+    coreAst::WhileStmt(cond, body, pos)
+  }
+
+  case surfaceAst::BreakStmt(pos) => coreAst::BreakStmt(pos)
+  case surfaceAst::ContinueStmt(pos) => coreAst::ContinueStmt(pos)
 }
 
 

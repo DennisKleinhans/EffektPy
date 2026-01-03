@@ -119,3 +119,12 @@ def at[R](p: Position) { block: => R / Positioning }: R / Positioning = {
   do setPos(old)
   res
 }
+
+/// Handler for LoopControl effect that raises an error when break/continue is used outside a loop.
+/// This should never happen, because the typesystem avoids the usage of break/continue outside loops.
+def handleDefaultLoopControl[R] { action: => R / LoopControl}: R / Exception[RuntimeError] = {
+  try { action() } with LoopControl {
+    def breakLoop() = raise(errors::RuntimeError(), "break statement not within a loop")
+    def continueLoop() = raise(errors::RuntimeError(), "continue statement not within a loop")
+  }
+} 

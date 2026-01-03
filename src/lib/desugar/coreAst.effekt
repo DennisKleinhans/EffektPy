@@ -32,6 +32,9 @@ type Stmt {
   AssignStmt(name: String, value: Expr, pos: Position)
   IfStmt(cond: Expr, thenBranch: List[Stmt], elseBranch: List[Stmt], pos: Position)
   ExprStmt(expr: Expr, pos: Position)
+  WhileStmt(condition: Expr, body: List[Stmt], pos: Position)
+  BreakStmt(pos: Position)
+  ContinueStmt(pos: Position)
   // for debugging purposes
   InspectScope()
 }

@@ -137,7 +137,7 @@ def main() = mainSuite("pipeline") {
     assertTrue(result.equal(VInt(30)))
   }
 
-  test("complex program") {
+  test("complex program: nested ifs and assignments") {
     val result = runPipeline("""
       var x = 5
       var y = 10
@@ -154,5 +154,132 @@ def main() = mainSuite("pipeline") {
       x + y
     """)
     assertTrue(result.equal(VInt(50)))
+  }
+
+  test("while loop") {
+    val result = runPipeline("""
+      var x = 0
+      while (x < 5) {
+        x += 1
+      }
+      x
+    """)
+    assertTrue(result.equal(VInt(5)))
+  }
+
+  test("while loop with if statement inside") {
+    val result = runPipeline("""
+      var x = 0
+      var y = 0
+      while (x < 5) {
+        if (x == 2) {
+          y += 3
+        }
+        x += 1
+      }
+      y + x
+    """)
+    assertTrue(result.equal(VInt(8)))
+  }
+
+  test("while loop with nested if statements") {
+    val result = runPipeline("""
+      var x = 0
+      var y = 0
+      while (x < 5) {
+        if (x < 3) {
+          if (x == 1) {
+            y += 10
+          } else {
+            y += 1
+          }
+        }
+        x += 1
+      }
+      y + x
+    """)
+    assertTrue(result.equal(VInt(17)))
+  }
+
+  test("full feature program: annotations, chains, shadowing, loops") {
+    val result = runPipeline("""
+      val base: Int = 3 * 2 + 1 
+      var acc: Int = base 
+      var counter = 0
+      var guard: Bool = true
+      val chainOk: Bool = 0 < base < 10
+
+      while (counter < 5) {
+        if (counter == 2 or not chainOk) {
+          val shadow = acc
+          acc = shadow + counter
+        } else {
+          var bump = counter * 2
+          acc = acc + bump
+        }
+        counter += 1
+      }
+
+      while (guard and (counter >= 5)) {
+        if (0 < acc < 100) {
+          acc -= 3
+          guard = false
+        } else {
+          acc += 1
+        }
+      }
+
+      val finalVal = if guard then -acc else acc / 2
+      finalVal + acc
+    """)
+    assertTrue(result.equal(VInt(33)))
+  }
+
+  test("full feature program: break and continue in loops") {
+    val result = runPipeline("""
+      var x: Int = 0
+      var sum: Int = 0
+      var multiplier: Int = 1
+      val limit: Bool = 10 < 20
+
+      while (x < 10) {
+        if (x == 3) {
+          x += 1
+          continue
+        }
+
+        if (x == 7 and limit) {
+          break
+        }
+
+        if (x > 0 and x < 6) {
+          sum = sum + x
+          multiplier = multiplier * 2
+        }
+
+        x += 1
+      }
+
+      var result: Int = 0
+      var iter: Int = 0
+      while (iter < 3) {
+        if (iter == 1) {
+          val skipped = 100
+          iter += 1
+          continue
+        }
+
+        if (iter == 2) {
+          result = result + 50
+          break
+        }
+
+        result = result + 10
+        iter += 1
+      }
+
+      sum + result + multiplier
+    """)
+    assertTrue(result.equal(VInt(88)))
   }
 }

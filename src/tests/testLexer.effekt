@@ -218,4 +218,45 @@ def main() = mainSuite("lexer") {
     val tokens = collectTokens(Nil()) { do next() }
     assertEqual(tokens, expected)
   }
+
+  test("lexer recognizes while loops") {
+    val input = "while (x < 10) {\n x += 1\n}"
+
+    val expected = [
+      Token(While(), Position(1, 1)),
+      Token(LParen(), Position(1, 7)),
+      Token(LowerIdentifier("x"), Position(1, 8)),
+      Token(Less(), Position(1, 10)),
+      Token(Number(10), Position(1, 12)),
+      Token(RParen(), Position(1, 14)),
+      Token(LBrace(), Position(1, 16)),
+      Token(LowerIdentifier("x"), Position(2, 2)),
+      Token(PlusAssign(), Position(2, 4)),
+      Token(Number(1), Position(2, 7)),
+      Token(RBrace(), Position(3, 1))
+    ]
+
+    with fullLexerHandler(input, false)
+    val tokens = collectTokens(Nil()) { do next() }
+    assertEqual(tokens, expected)
+  }
+
+  test("lexer recognizes break and continue statements") {
+    val input = "while (true) {\n break\n continue\n}"
+
+    val expected = [
+      Token(While(), Position(1, 1)),
+      Token(LParen(), Position(1, 7)),
+      Token(Boolean(true), Position(1, 8)),
+      Token(RParen(), Position(1, 12)),
+      Token(LBrace(), Position(1, 14)),
+      Token(Break(), Position(2, 2)),
+      Token(Continue(), Position(3, 2)),
+      Token(RBrace(), Position(4, 1))
+    ]
+
+    with fullLexerHandler(input, false)
+    val tokens = collectTokens(Nil()) { do next() }
+    assertEqual(tokens, expected)
+  }
 }

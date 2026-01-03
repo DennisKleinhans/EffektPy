@@ -42,3 +42,14 @@ interface Store {
 interface Inspector[R] {
   def inspect(context: Map[String, R]): Unit
 }
+
+/// effect for controlling loop execution (break/continue)
+interface LoopControl {
+  def breakLoop(): Unit
+  def continueLoop(): Unit
+}
+
+/// effect for tracking whether we are currently inside a loop (or not)
+interface LoopContext {
+  def isInLoop(): Bool
+}

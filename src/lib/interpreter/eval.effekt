@@ -174,7 +174,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
   }
 }
 
-def evalStmt(stmt: Stmt): Value / { Context[Address], Store, Exception[RuntimeError], Inspector[Address], Positioning } = stmt match {
+def evalStmt(stmt: Stmt): Value / { Context[Address], Store, Exception[RuntimeError], Inspector[Address], Positioning, LoopControl } = stmt match {
   case ValDeclaration(name, _, value, pos) => {
     with at(pos)
     val v = evalExpr(value)
@@ -213,7 +213,44 @@ def evalStmt(stmt: Stmt): Value / { Context[Address], Store, Exception[RuntimeEr
     with at(pos)
     evalExpr(expr)
   }
-  
+
+  case WhileStmt(condition, body, pos) => {
+    with at(pos)
+    
+    def runLoop(): Unit = {
+      var vCond = evalExpr(condition)
+      var cond = vCond match {
+        case VBool(b) => b
+        case _ => false
+      }
+      if (cond) {
+        try {
+          evalBlock(body)
+          runLoop()
+        } with LoopControl {
+          def breakLoop() = ()
+          def continueLoop() = runLoop()
+        }
+      } else {
+        ()
+      }
+    }
+    runLoop()
+    VUnit()
+  }
+
+  case BreakStmt(pos) => {
+    with at(pos)
+    do breakLoop()
+    VUnit()
+  }
+
+  case ContinueStmt(pos) => {
+    with at(pos)
+    do continueLoop()
+    VUnit()
+  }
+
   case InspectScope() => {
     val currentContext = do backup()
     do inspect(currentContext)
@@ -221,7 +258,7 @@ def evalStmt(stmt: Stmt): Value / { Context[Address], Store, Exception[RuntimeEr
   }
 }
 
-def evalBlock(stmts: List[Stmt]): Value / { Context[Address], Store, Exception[RuntimeError], Inspector[Address], Positioning } = {
+def evalBlock(stmts: List[Stmt]): Value / { Context[Address], Store, Exception[RuntimeError], Inspector[Address], Positioning, LoopControl } = {
   var lastValue = VUnit()
   with handleNewRuntimeScope
   stmts.foreach { stmt => lastValue = evalStmt(stmt) }
@@ -230,5 +267,6 @@ def evalBlock(stmts: List[Stmt]): Value / { Context[Address], Store, Exception[R
 
 def evalProgram(program: Program): Value / { Exception[RuntimeError], Inspector[Address], Positioning } = {
   with handleRuntimeContext
+  with handleDefaultLoopControl
   evalBlock(program)
 }
