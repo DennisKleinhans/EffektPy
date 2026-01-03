@@ -348,7 +348,15 @@ def parseStmt(): Stmt / { Lexer[Token], Positioning, Exception[ParseError] } = {
 
     case Return() => {
       do next()
-      ReturnStmt(Some(parseExpression()), pos)
+      val nextToken = do peek()
+      
+      val value = nextToken.kind match {
+        case RBrace() => None() 
+        case EOF() => None()
+        case _ => Some(parseExpression())
+      }
+
+      ReturnStmt(value, pos)
     }
 
     case LowerIdentifier(id) => {

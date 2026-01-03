@@ -586,4 +586,39 @@ def main() = mainSuite("parser") {
    
     assertEqual(obtained, expected)
   }
+
+  test("parser parses function definition with empty return") {
+    val input = """
+    def add(a: Int = 1, b: Int = 2): Int {
+      return 
+    }"""
+
+    val expected = [
+      sDef(
+        "add",
+        [
+          Parameter("a", Some(IntType()), Some(VInt(1))),
+          Parameter("b", Some(IntType()), Some(VInt(2)))
+        ],
+        Some(IntType()),
+        [
+          sReturn(None())
+        ]
+      )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with mockGetPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
+
 }
