@@ -234,4 +234,52 @@ def main() = mainSuite("pipeline") {
     """)
     assertTrue(result.equal(VInt(33)))
   }
+
+  test("full feature program: break and continue in loops") {
+    val result = runPipeline("""
+      var x: Int = 0
+      var sum: Int = 0
+      var multiplier: Int = 1
+      val limit: Bool = 10 < 20
+
+      while (x < 10) {
+        if (x == 3) {
+          x += 1
+          continue
+        }
+
+        if (x == 7 and limit) {
+          break
+        }
+
+        if (x > 0 and x < 6) {
+          sum = sum + x
+          multiplier = multiplier * 2
+        }
+
+        x += 1
+      }
+
+      var result: Int = 0
+      var iter: Int = 0
+      while (iter < 3) {
+        if (iter == 1) {
+          val skipped = 100
+          iter += 1
+          continue
+        }
+
+        if (iter == 2) {
+          result = result + 50
+          break
+        }
+
+        result = result + 10
+        iter += 1
+      }
+
+      sum + result + multiplier
+    """)
+    assertTrue(result.equal(VInt(88)))
+  }
 }

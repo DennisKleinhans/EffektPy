@@ -36,11 +36,13 @@ def typecheck(prog: Program): Map[String, TypingType] / { Exception[TypeError], 
       equations = Cons(TypeEquation(t1, t2, pos), equations)
       resume(())
     }
+  } with LoopContext {
+    def isInLoop() = resume(false)
   }
 }
 
 /// typecheck a single statement
-def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning } = stmt match {
+def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning, LoopContext } = stmt match {
   case ValDeclaration(name, typeAnno, value, pos) => {
     with at(pos) 
     val tExpr = checkExpr(value)
@@ -89,12 +91,30 @@ def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspecto
   case WhileStmt(condition, body, pos) => {
     with at(pos) 
     do equate(checkExpr(condition), TBool(), pos)
-    checkBlock(body)
+    try {
+      checkBlock(body)
+    } with LoopContext {
+      def isInLoop() = resume(true)
+    }
+    TUnit()
+  }
+
+  case BreakStmt(pos) => {
+    if (not(do isInLoop())) {
+      raise(TypeError(), "'break' is only allowed inside a loop " ++ pos.show)
+    }
+    TUnit()
+  }
+
+  case ContinueStmt(pos) => {
+    if (not(do isInLoop())) {
+      raise(TypeError(), "'continue' is only allowed inside a loop " ++ pos.show)
+    }
     TUnit()
   }
 }
 
-def checkBlock(stmts: List[Stmt]): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning } = {
+def checkBlock(stmts: List[Stmt]): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning, LoopContext} = {
   var lastType: TypingType = TUnit()
   with handleNewTypingScope
   stmts.foreach { stmt => lastType = checkStmt(stmt) }

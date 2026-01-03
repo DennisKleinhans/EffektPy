@@ -303,4 +303,60 @@ def main() = mainSuite("interpreter") {
     val result = evalProgram(prog)
     assertTrue(result.equal(VInt(0)))
   }
+
+  test("break statement leaves the while loop") {
+    val prog = [
+      cVar("x", None(), cLit(0)),
+      cWhile(
+        cLt(cV("x"), cLit(5)),
+        [
+          cAssign("x", cAdd(cV("x"), cLit(1))),
+          cIf(
+            cEq(cV("x"), cLit(2)),
+            [
+              cBreak()
+            ], 
+            Nil()
+          )
+        ]
+      ),
+      cExpr(cV("x"))
+    ] 
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(2)))
+  }
+
+  test("continue statement skips to next iteration") {
+    val prog = [
+      cVar("x", None(), cLit(0)),
+      cVar("y", None(), cLit(0)),
+      cWhile(
+        cLt(cV("x"), cLit(5)),
+        [
+          cAssign("x", cAdd(cV("x"), cLit(1))),
+          cIf(
+            cEq(cV("x"), cLit(2)),
+            [
+              cContinue()
+            ], 
+            Nil()
+          ),
+          cAssign("y", cAdd(cV("y"), cLit(1)))
+        ]
+      ),
+      cExpr(cV("y"))
+    ] 
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(4)))
+  }
 }

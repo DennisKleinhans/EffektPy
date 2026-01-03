@@ -39,3 +39,5 @@ def sCAssign(n: String, op: TokenKind, v: Expr) = CompoundAssignStmt(n, op, v, d
 def sIf(c: Expr, t: List[Stmt], e: List[Stmt]) = IfStmt(c, t, e, d)
 def sExpr(e: Expr) = ExprStmt(e, d)
 def sWhile(c: Expr, b: List[Stmt]) = WhileStmt(c, b, d)
+def sBreak() = BreakStmt(d)
+def sContinue() = ContinueStmt(d)

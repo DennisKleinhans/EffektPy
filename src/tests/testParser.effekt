@@ -420,4 +420,34 @@ def main() = mainSuite("parser") {
    
     assertEqual(obtained, expected)
   }
+
+  test("parser parses break and continue statements inside while-loops") {
+    val input = "while (true) { if (x > 10) { break } else { continue } }"
+
+    val expected = [
+      sWhile(
+        sLit(true),
+        [
+          sIf(
+            sGt(sV("x"), sLit(10)),
+            [sBreak()],
+            [sContinue()]
+          )
+        ]
+      )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with mockGetPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
 }

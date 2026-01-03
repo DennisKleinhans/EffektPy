@@ -10,6 +10,8 @@ type TokenKind {
   Else()
   Then()
   While()
+  Break()
+  Continue()
 
   // identifier and literals
   LowerIdentifier(id: String) // used for variables and function names like 'val someVal = 2' or 'def someFunc = {...}

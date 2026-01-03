@@ -38,6 +38,8 @@ type Stmt {
   IfStmt(cond: Expr, thenBranch: List[Stmt], elseBranch: List[Stmt], pos: Position)
   ExprStmt(expr: Expr, pos: Position)
   WhileStmt(condition: Expr, body: List[Stmt], pos: Position)
+  BreakStmt(pos: Position)
+  ContinueStmt(pos: Position)
 }
 
 type Program = List[Stmt]

@@ -102,6 +102,8 @@ def show(tokenKind: TokenKind): String = tokenKind match {
   case EOF() => "EndOfFile"
   case Colon() => "Colon"
   case While() => "Keyword: while"
+  case Break() => "Keyword: break"
+  case Continue() => "Keyword: continue"
 }
 
 /// pretty prints a token

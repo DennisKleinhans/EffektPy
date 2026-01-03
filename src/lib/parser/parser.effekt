@@ -329,6 +329,16 @@ def parseStmt(): Stmt / { Lexer[Token], Positioning, Exception[ParseError] } = {
       WhileStmt(condition, body, pos)
     }
 
+    case Break() => {
+      do next()
+      BreakStmt(pos)
+    }
+
+    case Continue() => {
+      do next()
+      ContinueStmt(pos)
+    }
+
     case LowerIdentifier(id) => {
       // assignment statement: <varName> = <expr>
       val nextToken = do peek2()

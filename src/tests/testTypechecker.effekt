@@ -686,4 +686,49 @@ def main() = mainSuite("typechecker") {
     assertTrue(typeMapsEqual(innerContext2, expectedInnerContext2))
     assertTrue(typeMapsEqual(outerContext, expectedOuterContext))
   }
+
+  test("typechecker throws on break outside loop") {
+    val prog = [
+      cVal("x", None(), cLit(5)),
+      cIf(cLt(cV("x"), cLit(10)),
+        [
+          cVar("y", None(), cLit(1)),
+          cBreak()
+        ],
+        [
+          cVar("z", None(), cLit(2))
+        ]
+      )
+    ]
+
+    with assertThrows[TypeError]
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+    ()
+  }
+
+  test("typechecker throws on continue outside loop") {
+    val prog = [
+      cVal("x", None(), cLit(5)),
+      cIf(cLt(cV("x"), cLit(10)),
+        [
+          cVar("y", None(), cLit(1)),
+          cContinue()
+        ],
+        [
+          cVar("z", None(), cLit(2))
+        ]
+      )
+    ]
+
+    with assertThrows[TypeError]
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+    ()
+  }
+
 }
