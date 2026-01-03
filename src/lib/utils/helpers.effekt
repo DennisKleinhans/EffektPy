@@ -104,6 +104,9 @@ def show(tokenKind: TokenKind): String = tokenKind match {
   case While() => "Keyword: while"
   case Break() => "Keyword: break"
   case Continue() => "Keyword: continue"
+  case Def() => "Keyword: def"
+  case Return() => "Keyword: return"
+  case Comma() => "Comma"
 }
 
 /// pretty prints a token

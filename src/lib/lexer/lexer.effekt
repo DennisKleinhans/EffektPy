@@ -111,6 +111,8 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], Positioning 
       case "while" => While()
       case "break" => Break()
       case "continue" => Continue()
+      case "def" => Def()
+      case "return" => Return()
       case _ => {
         with on[OutOfBounds].panic
         if (name.charAt(0).isUpper) UpperIdentifier(name) else LowerIdentifier(name)
@@ -224,6 +226,9 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], Positioning 
   } else if (c == ':') {
     do Scan::skip()
     Token(Colon(), pos)
+  } else if (c == ',') {
+    do Scan::skip()
+    Token(Comma(), pos)
   } else {
     do raise(LexerError(), "can not tokenize char: " ++ "'" ++ c.show ++ "'" ++ " at " ++ pos.show)
   }

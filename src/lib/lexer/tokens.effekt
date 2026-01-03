@@ -12,6 +12,8 @@ type TokenKind {
   While()
   Break()
   Continue()
+  Def()
+  Return()
 
   // identifier and literals
   LowerIdentifier(id: String) // used for variables and function names like 'val someVal = 2' or 'def someFunc = {...}
@@ -45,6 +47,8 @@ type TokenKind {
 
   // used for type annotation
   Colon()
+  // used for separating function arguments
+  Comma()
 
   EOF()
 }

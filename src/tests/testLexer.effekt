@@ -259,4 +259,34 @@ def main() = mainSuite("lexer") {
     val tokens = collectTokens(Nil()) { do next() }
     assertEqual(tokens, expected)
   }
+
+  test("lexer recognizes function definitions and return statements") {
+    val input = "def add(a: Int, b: Int): Int {\n return a + b\n}"
+
+    val expected = [
+      Token(Def(), Position(1, 1)),
+      Token(LowerIdentifier("add"), Position(1, 5)),
+      Token(LParen(), Position(1, 8)),
+      Token(LowerIdentifier("a"), Position(1, 9)),
+      Token(Colon(), Position(1, 10)),
+      Token(UpperIdentifier("Int"), Position(1, 12)),
+      Token(Comma(), Position(1, 15)),
+      Token(LowerIdentifier("b"), Position(1, 17)),
+      Token(Colon(), Position(1, 18)),
+      Token(UpperIdentifier("Int"), Position(1, 20)),
+      Token(RParen(), Position(1, 23)),
+      Token(Colon(), Position(1, 24)),
+      Token(UpperIdentifier("Int"), Position(1, 26)),
+      Token(LBrace(), Position(1, 30)),
+      Token(Return(), Position(2, 2)),
+      Token(LowerIdentifier("a"), Position(2, 9)),
+      Token(Plus(), Position(2, 11)),
+      Token(LowerIdentifier("b"), Position(2, 13)),
+      Token(RBrace(), Position(3, 1))
+    ]
+
+    with fullLexerHandler(input, false)
+    val tokens = collectTokens(Nil()) { do next() }
+    assertEqual(tokens, expected)
+  }
 }
