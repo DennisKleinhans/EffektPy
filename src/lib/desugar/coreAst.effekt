@@ -24,6 +24,8 @@ type Expr {
   LtE(left: Expr, right: Expr, pos: Position)
   GtE(left: Expr, right: Expr, pos: Position)
   IfExpr(condition: Expr, thenExpr: Expr, elseExpr: Expr, pos: Position)
+  FunExpr(params: List[Parameter], retType: Option[Type], body: List[Stmt], pos: Position)
+  CallExpr(receiver: Expr, args: List[Argument], pos: Position)
 }
 
 type Stmt {
@@ -35,6 +37,7 @@ type Stmt {
   WhileStmt(condition: Expr, body: List[Stmt], pos: Position)
   BreakStmt(pos: Position)
   ContinueStmt(pos: Position)
+  ReturnStmt(value: Option[Expr], pos: Position)
   // for debugging purposes
   InspectScope()
 }

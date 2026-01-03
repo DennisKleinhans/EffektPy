@@ -28,6 +28,9 @@ type Expr {
   // chained comparison (preserve source structure until desugaring)
   CompareChain(first: Expr, rest: List[(TokenKind, Expr)], pos: Position)
   IfExpr(condition: Expr, thenExpr: Expr, elseExpr: Expr, pos: Position)
+  // first-class functions are always an expression 
+  FunExpr(params: List[Parameter], retType: Option[Type], body: List[Stmt], pos: Position)
+  CallExpr(receiver: Expr, args: List[Argument], pos: Position)
 }
 
 type Stmt {
@@ -40,6 +43,8 @@ type Stmt {
   WhileStmt(condition: Expr, body: List[Stmt], pos: Position)
   BreakStmt(pos: Position)
   ContinueStmt(pos: Position)
+  DefStmt(name: String, params: List[Parameter], retType: Option[Type], body: List[Stmt], pos: Position)
+  ReturnStmt(value: Option[Expr], pos: Position)
 }
 
 type Program = List[Stmt]
