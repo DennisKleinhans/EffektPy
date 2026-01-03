@@ -48,6 +48,7 @@ def desugarExpr(e: surfaceAst::Expr): coreAst::Expr / { Exception[DesugarError],
   case surfaceAst::LtE(l, r, pos) => coreAst::LtE(desugarExpr(l), desugarExpr(r), pos)
   case surfaceAst::GtE(l, r, pos) => coreAst::GtE(desugarExpr(l), desugarExpr(r), pos)
   case surfaceAst::IfExpr(thenE, cond, elseE, pos) => coreAst::IfExpr(desugarExpr(thenE), desugarExpr(cond), desugarExpr(elseE), pos)
+
   case surfaceAst::CompareChain(first, pairs, pos) => {
     // desugar the leftmost expr
     val coreLeft = desugarExpr(first)
@@ -72,6 +73,14 @@ def desugarExpr(e: surfaceAst::Expr): coreAst::Expr / { Exception[DesugarError],
       combineWithAnd(comps, pos)
     }
   }
+
+  case surfaceAst::FunExpr(params, retType, body, pos) => {
+    val desugaredBody = desugarBlock(body)
+    coreAst::FunExpr(params, retType, desugaredBody, pos)
+  }
+
+  case surfaceAst::CallExpr(receiver, args, pos) => coreAst::CallExpr(desugarExpr(receiver), args, pos)
+  
 }
 
 
@@ -93,21 +102,33 @@ def desugarStmt(s: surfaceAst::Stmt): coreAst::Stmt / { Exception[DesugarError],
 
   case surfaceAst::IfStmt(cond, thenB, elseB, pos) => {
     val cond2 = desugarExpr(cond)
-    val then2 = thenB.map {st => desugarStmt(st)}
-    val else2 = elseB.map {st => desugarStmt(st)}
-    coreAst::IfStmt(cond2, then2, else2, pos)
+    coreAst::IfStmt(cond2, desugarBlock(thenB), desugarBlock(elseB), pos)
   }
   
   case surfaceAst::ExprStmt(expr, pos) => coreAst::ExprStmt(desugarExpr(expr), pos)
 
   case surfaceAst::WhileStmt(condition, body, pos) => {
     val cond = desugarExpr(condition)
-    val body = body.map {st => desugarStmt(st)}
-    coreAst::WhileStmt(cond, body, pos)
+    coreAst::WhileStmt(cond, desugarBlock(body), pos)
   }
 
   case surfaceAst::BreakStmt(pos) => coreAst::BreakStmt(pos)
   case surfaceAst::ContinueStmt(pos) => coreAst::ContinueStmt(pos)
+
+  case surfaceAst::DefStmt(name, params, retType, body, pos) => {
+    val lambda = coreAst::FunExpr(params, retType, desugarBlock(body), pos)
+    coreAst::ValDeclaration(name, None(), lambda, pos)
+  }
+
+  case surfaceAst::ReturnStmt(value, pos) => value match {
+    case Some(expr) => coreAst::ReturnStmt(Some(desugarExpr(expr)), pos)
+    case None() => coreAst::ReturnStmt(None(), pos)
+  }
+}
+
+/// desugar a block of statements by desugaring each statement
+def desugarBlock(stmts: List[surfaceAst::Stmt]): List[coreAst::Stmt] / { Exception[DesugarError], Exception[ParseError] } = {
+  stmts.map { s => desugarStmt(s) }
 }
 
 
