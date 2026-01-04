@@ -21,6 +21,12 @@ def applySubstitution(t: TypingType, subst: Substitution): TypingType = t match 
       case None() => TVar(id)
     }
   }
+
+  case TFun(params, ret) => {
+    val newParams = params.map { p => applySubstitution(p, subst) }
+    val newRet = applySubstitution(ret, subst)
+    TFun(newParams, newRet)
+  }
 }
 
 /// checks if a type variable occurs in a typing type 
@@ -29,6 +35,12 @@ def occursCheck(id: Int, t: TypingType): Bool = t match {
   case TBool() => false
   case TUnit() => false
   case TVar(otherId) => id == otherId
+
+  case TFun(params, ret) => {
+    val inParams = params.any { p => occursCheck(id, p) }
+    val inRet = occursCheck(id, ret)
+    inParams || inRet
+  }
 }
 
 /// unification algorithm for typing types
@@ -45,6 +57,16 @@ def unify(eqs: List[TypeEquation], subst: Substitution): Substitution / { Except
         case (other, TVar(id)) => bind(id, other, rest, subst)
         case (TInt(), TInt()) => unify(rest, subst)
         case (TBool(), TBool()) => unify(rest, subst)
+        
+        case (TFun(p1, r1), TFun(p2, r2)) => {
+          if(p1.size != p2.size) {
+            raise(TypeError(), "cannot unify functions with different number of parameters at " ++ pos.show)
+          }
+
+          val paramEqs = p1.zip(p2).map { case (a, b) => TypeEquation(a, b, pos) }
+          val newEqs = Cons(TypeEquation(r1, r2, pos), paramEqs.append(rest))
+          unify(newEqs, subst)
+        }
         case _ => do raise(TypeError(), "cannot unify types " ++ lNorm.show ++ " with " ++ rNorm.show ++ " at " ++ do getPos().show)
       }
     }

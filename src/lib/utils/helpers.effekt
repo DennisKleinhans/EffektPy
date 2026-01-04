@@ -137,7 +137,11 @@ def show(t: TypingType): String = t match {
   case TVar(id) => "TVar(" ++ id.show ++ ")"
   case TFun(params, ret) => {
     val paramStrs = params.map { p => show(p) }
-    "TFun(" ++ paramStrs.join(", ") ++ ") -> " ++ show(ret)
+    paramStrs match {
+      case Nil() => "TFun() -> " ++ show(ret)
+      case _ => "TFun(" ++ paramStrs.join(", ") ++ ") -> " ++ show(ret)
+    }
+    
   }
 }
 
@@ -203,7 +207,7 @@ def equal(t1: TypingType, t2: TypingType): Bool = (t1, t2) match {
     if (p1.size != p2.size) {
       return false 
     } else {
-      val paramsEqual = p1.zip(p2).any { case (a, b) => a.equal(b)}
+      val paramsEqual = p1.zip(p2).all { case (a, b) => a.equal(b)}
       val returnEqual = r1.equal(r2)
       paramsEqual && returnEqual
     }

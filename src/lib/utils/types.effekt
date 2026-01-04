@@ -11,6 +11,7 @@ type TypingType {
   TBool()
   TUnit()
   TVar(id: Int)
+  TFun(params: List[TypingType], ret: TypingType)
 }
 
 type Value {
@@ -30,5 +31,3 @@ record TypeEquation(left: TypingType, right: TypingType, pos: Position)
 record TypeBinding(tpe: TypingType, isMutable: Bool)
 record ValueBinding(value: Value, isMutable: Bool)
 record Position (line: Int, column: Int)
-record Parameter(name: String, tpe: Option[Type], defaultValue: Option[Value])
-record Argument(name: Option[String], value: Value)

@@ -53,3 +53,8 @@ interface LoopControl {
 interface LoopContext {
   def isInLoop(): Bool
 }
+
+/// effect for getting the expected return type in a function context
+interface ReturnContext {
+  def getExpectedType(): TypingType
+}

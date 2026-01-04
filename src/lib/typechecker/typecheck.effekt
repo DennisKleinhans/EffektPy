@@ -38,11 +38,13 @@ def typecheck(prog: Program): Map[String, TypingType] / { Exception[TypeError], 
     }
   } with LoopContext {
     def isInLoop() = resume(false)
+  } with ReturnContext {
+    def getExpectedType() = raise(TypeError(), "Return statement outside of function context")
   }
 }
 
 /// typecheck a single statement
-def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning, LoopContext } = stmt match {
+def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning, LoopContext, ReturnContext } = stmt match {
   case ValDeclaration(name, typeAnno, value, pos) => {
     with at(pos) 
     val tExpr = checkExpr(value)
@@ -72,8 +74,8 @@ def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspecto
   case IfStmt(cond, thenBranch, elseBranch, pos) => {
     with at(pos) 
     do equate(checkExpr(cond), TBool(), pos)
-    checkBlock(thenBranch)
-    checkBlock(elseBranch)
+    handleNewTypingScope { checkBlock(thenBranch) }
+    handleNewTypingScope { checkBlock(elseBranch) }
   }
 
   case InspectScope() => {
@@ -91,6 +93,8 @@ def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspecto
   case WhileStmt(condition, body, pos) => {
     with at(pos) 
     do equate(checkExpr(condition), TBool(), pos)
+
+    with handleNewTypingScope
     try {
       checkBlock(body)
     } with LoopContext {
@@ -112,17 +116,31 @@ def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspecto
     }
     TUnit()
   }
+
+  case ReturnStmt(maybeExpr, pos) => {
+    with at(pos)
+    val expectedType = do getExpectedType()
+
+    val actualType = maybeExpr match {
+      case Some(expr) => checkExpr(expr)
+      case None() => TUnit()
+    }
+
+    do equate(actualType, expectedType, pos)
+    TUnit()
+  }
 }
 
-def checkBlock(stmts: List[Stmt]): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning, LoopContext} = {
-  var lastType: TypingType = TUnit()
-  with handleNewTypingScope
-  stmts.foreach { stmt => lastType = checkStmt(stmt) }
-  lastType
+def checkBlock(block: Block): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning, LoopContext, ReturnContext} = {
+  block.statements.foreach { stmt => checkStmt(stmt); () }
+  block.finalExpr match {
+    case Some(expr) => checkExpr(expr)
+    case None() => TUnit()
+  }
 }
 
 /// Typecheck an expression and return its inferred type
-def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Positioning } = expr match {
+def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Positioning, Exception[TypeError], Inspector[TypeBinding], LoopContext } = expr match {
   case IntLiteral(value, pos) => { with at(pos); TInt()}
   case BoolLiteral(value, pos) => { with at(pos); TBool()}
   case Variable(name, pos) => {
@@ -251,6 +269,37 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
     do equate(tLeft, TInt(), pos)
     do equate(tRight, TInt(), pos)
     TBool()
+  }
+
+  case FunExpr(params, retAnno, body, pos) => {
+    with at(pos) 
+    val paramTypes = params.map { param => translateType(param.tpe) }
+    val retType = translateType(retAnno)
+
+    handleNewTypingScope {
+      params.zip(paramTypes).foreach { case (p, t) => 
+        do define(p.name, TypeBinding(t, false))
+      }
+      
+      val tBody = try {
+        checkBlock(body)
+      } with ReturnContext {
+        def getExpectedType() = resume(retType)
+      }
+      
+      do equate(tBody, retType, pos)
+    }
+    TFun(paramTypes, retType)
+  }
+
+  case CallExpr(receiver, args, pos) => {
+    with at(pos) 
+    val tReceiver = checkExpr(receiver)
+    val argTypes = args.map { arg => checkExpr(arg.value) }
+
+    val retType = do fresh()
+    do equate(tReceiver, TFun(argTypes, retType), pos)
+    retType
   }
 }
 

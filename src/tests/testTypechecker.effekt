@@ -330,14 +330,14 @@ def main() = mainSuite("typechecker") {
       cVal("x", None(), cLit(5)),
       cVal("y", None(), cLit(10)),
       cIf(cLt(cV("x"), cV("y")),
-        [
+        Block([
           cVar("z", None(), cAdd(cV("x"), cLit(2))),
           InspectScope()
-        ],
-        [
+        ], None()),
+        Block([
           cVar("z", None(), cLt(cV("y"), cLit(2))),
           InspectScope()
-        ]
+        ], None())
       )
     ]
 
@@ -376,12 +376,12 @@ def main() = mainSuite("typechecker") {
       cVal("x", None(), cLit(5)),
       cVal("y", None(), cLit(10)),
       cIf(cLt(cV("x"), cV("y")),
-        [
+        Block([
           cVar("z", None(), cAdd(cV("x"), cLit(true)))
-        ],
-        [
+        ], None()),
+        Block([
           cVar("z", None(), cLt(cV("y"), cLit(2)))
-        ]
+        ], None())
       )
     ]
 
@@ -398,12 +398,12 @@ def main() = mainSuite("typechecker") {
       cVal("x", None(), cLit(5)),
       cVal("y", None(), cLit(10)),
       cIf(cAdd(cV("x"), cV("y")),
-        [
+        Block([
           cVar("z", None(), cAdd(cV("x"), cLit(2)))
-        ],
-        [
+        ], None()),
+        Block([
           cVar("z", None(), cLt(cV("y"), cLit(2)))
-        ]
+        ], None())
       )
     ]
 
@@ -418,12 +418,12 @@ def main() = mainSuite("typechecker") {
   test("typechecker throws error on accessing variable out of scope") {
     val prog = [
       cIf(cLit(true),
-        [
+        Block([
           cVar("x", None(), cLit(5))
-        ],
-        [
+        ], None()),
+        Block([
           cVar("y", None(), cLit(10))
-        ]
+        ], None())
       ),
       cVal("z", None(), cAdd(cV("x"), cV("y")))
     ]
@@ -440,11 +440,12 @@ def main() = mainSuite("typechecker") {
     val prog = [
       cVal("x", None(), cLit(5)),
       cIf(cLit(true), 
-        [
+        Block([
           cVal("x", None(), cLit(true)),
           cVal("y", None(), cV("x")),
           InspectScope()
-        ], Nil()),
+        ], None()), 
+        Block(Nil(), None())),
       cVal("z", None(), cV("x"))
     ]
 
@@ -480,30 +481,30 @@ def main() = mainSuite("typechecker") {
       cVar("b", None(), cLit(20)),
       cVal("c", None(), cLit(true)),
       cIf(cAnd(cGt(cV("b"), cV("a")), cV("c")),
-        [
+        Block([
           cVar("maxVal", None(), cV("b")),
           cAssign("a", cAdd(cV("a"), cLit(5))),
           cIf(cLt(cV("a"), cLit(25)),
-            [
+            Block([
               cAssign("b", cMult(cV("b"), cLit(2)))
-            ],
-            [
+            ], None()),
+            Block([
               cAssign("b", cSub(cV("b"), cLit(3)))
-            ]
+            ], None())
           )
-        ],
-        [
+        ], None()),
+        Block([
           cVar("maxVal", None(), cV("a")),
           cAssign("b", cSub(cV("b"), cLit(5))),
           cIf(cEq(cV("b"), cLit(15)),
-            [
+            Block([
               cAssign("a", cLit(15))
-            ],
-            [
+            ], None()),
+            Block([
               cAssign("a", cAdd(cV("b"), cLit(10)))
-            ]
+            ], None())
           )
-        ]
+        ], None())
       ),
       cVal("result", None(), cMult(cAdd(cV("a"), cV("b")), cLit(2))),
       cVal("comparison", None(), cGtE(cV("result"), cLit(100)))
@@ -530,20 +531,20 @@ def main() = mainSuite("typechecker") {
     val prog = [
       cVal("x", None(), cLit(5)),
       cIf(cLit(true),
-        [
+        Block([
           cVal("x", None(), cLit(true)),
           cIf(cLit(false),
-            [
+            Block([
               cVal("y", None(), cV("x")),
               InspectScope()
-            ],
-            [
+            ], None()),
+            Block([
               cVal("y", None(), cLit(10)),
               InspectScope()
-            ]
+            ], None())
           )
-        ],
-        Nil()
+        ], None()),
+        Block(Nil(), None())
       ),
       cVal("z", None(), cV("x"))
     ]
@@ -593,9 +594,9 @@ def main() = mainSuite("typechecker") {
     val prog = [
       cVar("counter", Some(IntType()), cLit(0)),
       cWhile(cLt(cV("counter"), cLit(10)),
-        [
+        Block([
           cAssign("counter", cAdd(cV("counter"), cLit(1)))
-        ]
+        ], None())
       )
     ]
 
@@ -616,9 +617,9 @@ def main() = mainSuite("typechecker") {
     val prog = [
       cVar("counter", None(), cLit(0)),
       cWhile(cLit(5),
-        [
+        Block([
           cAssign("counter", cAdd(cV("counter"), cLit(1)))
-        ]
+        ], None())
       )
     ]
 
@@ -633,17 +634,17 @@ def main() = mainSuite("typechecker") {
     val prog = [
       cVal("x", None(), cLit(0)),
       cWhile(cLt(cV("x"), cLit(1)),
-        [
+        Block([
           cVal("x", None(), cLit(true)),
           cWhile(cV("x"),
-            [
+            Block([
               cVal("x", None(), cLit(10)),
               cVal("y", None(), cV("x")),
               InspectScope()
-            ]
+            ], None())
           ),
           InspectScope()
-        ]
+        ], None())
       ),
       cVal("z", None(), cAdd(cV("x"), cLit(1)))
     ]
@@ -691,13 +692,13 @@ def main() = mainSuite("typechecker") {
     val prog = [
       cVal("x", None(), cLit(5)),
       cIf(cLt(cV("x"), cLit(10)),
-        [
+        Block([
           cVar("y", None(), cLit(1)),
           cBreak()
-        ],
-        [
+        ], None()),
+        Block([
           cVar("z", None(), cLit(2))
-        ]
+        ], None())
       )
     ]
 
@@ -713,13 +714,13 @@ def main() = mainSuite("typechecker") {
     val prog = [
       cVal("x", None(), cLit(5)),
       cIf(cLt(cV("x"), cLit(10)),
-        [
+        Block([
           cVar("y", None(), cLit(1)),
           cContinue()
-        ],
-        [
+        ], None()),
+        Block([
           cVar("z", None(), cLit(2))
-        ]
+        ], None())
       )
     ]
 
@@ -730,5 +731,438 @@ def main() = mainSuite("typechecker") {
     val result = typecheck(prog)
     ()
   }
+
+  test("typechecker infers types of functions") {
+    val prog = [
+      cVal("f", None(), cFun([Parameter("x", None(), None())], None(), Block(Nil(), Some(cAdd(cV("x"), cLit(1)))))),
+      cVal("res", None(), cCall(cV("f"), [Argument(None(), cLit(10))]))
+    ]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+    
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("f", TFun([TInt()], TInt())),
+      ("res", TInt())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker infers types of functions with multiple parameters") {
+    val prog = [
+      cVal("add", None(), cFun([Parameter("x", None(), None()), Parameter("y", None(), None())], None(), Block(Nil(), Some(cAdd(cV("x"), cV("y")))))),
+      cVal("result", None(), cCall(cV("add"), [Argument(None(), cLit(5)), Argument(None(), cLit(10))]))
+    ]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+    
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("add", TFun([TInt(), TInt()], TInt())),
+      ("result", TInt())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker infers boolean return type from function") {
+    val prog = [
+      cVal("isGreater", None(), cFun([Parameter("x", None(), None()), Parameter("y", None(), None())], None(), Block(Nil(), Some(cGt(cV("x"), cV("y")))))),
+      cVal("res", None(), cCall(cV("isGreater"), [Argument(None(), cLit(10)), Argument(None(), cLit(5))]))
+    ]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+    
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("isGreater", TFun([TInt(), TInt()], TBool())),
+      ("res", TBool())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker validates function with type annotations") {
+    val prog = [
+      cVal("f", None(), cFun([Parameter("x", Some(IntType()), None())], Some(IntType()), Block(Nil(), Some(cMult(cV("x"), cLit(2)))))),
+      cVal("res", None(), cCall(cV("f"), [Argument(None(), cLit(7))]))
+    ]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+    
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("f", TFun([TInt()], TInt())),
+      ("res", TInt())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker throws error on wrong return type annotation") {
+    val prog = [
+      cVal("f", None(), cFun([Parameter("x", None(), None())], Some(BoolType()), Block(Nil(), Some(cAdd(cV("x"), cLit(1))))))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker throws error on wrong parameter type annotation") {
+    val prog = [
+      cVal("f", None(), cFun([Parameter("x", Some(BoolType()), None())], None(), Block(Nil(), Some(cAdd(cV("x"), cLit(1)))))),
+      cVal("res", None(), cCall(cV("f"), [Argument(None(), cLit(true))]))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker throws error on wrong argument type in function call") {
+    val prog = [
+      cVal("f", None(), cFun([Parameter("x", None(), None())], None(), Block(Nil(), Some(cAdd(cV("x"), cLit(1)))))),
+      cVal("res", None(), cCall(cV("f"), [Argument(None(), cLit(true))]))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker throws error on wrong number of arguments") {
+    val prog = [
+      cVal("f", None(), cFun([Parameter("x", None(), None()), Parameter("y", None(), None())], None(), Block(Nil(), Some(cAdd(cV("x"), cV("y")))))),
+      cVal("res", None(), cCall(cV("f"), [Argument(None(), cLit(5))]))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker handles nested function calls") {
+    val prog = [
+      cVal("double", None(), cFun([Parameter("x", None(), None())], None(), Block(Nil(), Some(cMult(cV("x"), cLit(2)))))),
+      cVal("addOne", None(), cFun([Parameter("x", None(), None())], None(), Block(Nil(), Some(cAdd(cV("x"), cLit(1)))))),
+      cVal("result", None(), cCall(cV("double"), [Argument(None(), cCall(cV("addOne"), [Argument(None(), cLit(5))]))]))
+    ]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+    
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("double", TFun([TInt()], TInt())),
+      ("addOne", TFun([TInt()], TInt())),
+      ("result", TInt())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker throws error on type mismatch in nested function calls") {
+    val prog = [
+      cVal("negate", None(), cFun([Parameter("x", None(), None())], None(), Block(Nil(), Some(cNot(cV("x")))))),
+      cVal("double", None(), cFun([Parameter("x", None(), None())], None(), Block(Nil(), Some(cMult(cV("x"), cLit(2)))))),
+      cVal("result", None(), cCall(cV("double"), [Argument(None(), cCall(cV("negate"), [Argument(None(), cLit(true))]))]))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker handles functions with statements in body") {
+    val prog = [
+      cVal("compute", None(), cFun([Parameter("x", None(), None())], None(), Block([
+        cVar("temp", None(), cMult(cV("x"), cLit(2))),
+        cAssign("temp", cAdd(cV("temp"), cLit(5)))
+      ], Some(cV("temp"))))),
+      cVal("res", None(), cCall(cV("compute"), [Argument(None(), cLit(10))]))
+    ]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+    
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("compute", TFun([TInt()], TInt())),
+      ("res", TInt())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker handles functions with if expressions in body") {
+    val prog = [
+      cVal("maxFunc", None(), cFun([Parameter("a", None(), None()), Parameter("b", None(), None())], None(), Block(Nil(), Some(cIf(cGt(cV("a"), cV("b")), cV("a"), cV("b")))))),
+      cVal("res", None(), cCall(cV("maxFunc"), [Argument(None(), cLit(15)), Argument(None(), cLit(10))]))
+    ]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+    
+    val expected =  map::fromListGeneric[String, TypingType]([
+      ("maxFunc", TFun([TInt(), TInt()], TInt())),
+      ("res", TInt())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker throws error on undefined variable in function body") {
+    val prog = [
+      cVal("f", None(), cFun([Parameter("x", None(), None())], None(), Block(Nil(), Some(cAdd(cV("y"), cLit(1))))))
+    ]
+
+    with on[TypeError].panic
+    with assertThrows[NameError]
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker handles function accessing outer scope variables") {
+    val prog = [
+      cVal("y", None(), cLit(10)),
+      cVal("f", None(), cFun([Parameter("x", None(), None())], None(), Block(Nil(), Some(cAdd(cV("x"), cV("y")))))),
+      cVal("res", None(), cCall(cV("f"), [Argument(None(), cLit(5))]))
+    ]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+    
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("y", TInt()),
+      ("f", TFun([TInt()], TInt())),
+      ("res", TInt())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker throws error on calling non-function value") {
+    val prog = [
+      cVal("x", None(), cLit(42)),
+      cVal("res", None(), cCall(cV("x"), [Argument(None(), cLit(10))]))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker handles functions with multiple statements and control flow") {
+    val prog = [
+      cVal("absFunc", None(), cFun([Parameter("x", None(), None())], None(), Block([
+        cVar("result", None(), cV("x")),
+        cIf(cLt(cV("x"), cLit(0)),
+          Block([
+            cAssign("result", cMult(cV("x"), cLit(-1)))
+          ], None()),
+          Block(Nil(), None())
+        )
+      ], Some(cV("result"))))),
+      cVal("res", None(), cCall(cV("absFunc"), [Argument(None(), cLit(-5))]))
+    ]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+    
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("absFunc", TFun([TInt()], TInt())),
+      ("res", TInt())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker handles higher-order functions returning functions") {
+    val prog = [
+      cVal("makeAdder", None(), cFun([Parameter("x", None(), None())], None(), Block(Nil(), Some(cFun([Parameter("y", None(), None())], None(), Block(Nil(), Some(cAdd(cV("x"), cV("y"))))))))),
+      cVal("add5", None(), cCall(cV("makeAdder"), [Argument(None(), cLit(5))])),
+      cVal("result", None(), cCall(cV("add5"), [Argument(None(), cLit(10))]))
+    ]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+    
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("makeAdder", TFun([TInt()], TFun([TInt()], TInt()))),
+      ("add5", TFun([TInt()], TInt())),
+      ("result", TInt())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker handles functions taking functions as arguments") {
+    val prog = [
+      cVal("double", None(), cFun([Parameter("x", None(), None())], None(), Block(Nil(), Some(cMult(cV("x"), cLit(2)))))),
+      cVal("apply", None(), cFun([Parameter("f", None(), None()), Parameter("x", None(), None())], None(), Block(Nil(), Some(cCall(cV("f"), [Argument(None(), cV("x"))]))))),
+      cVal("result", None(), cCall(cV("apply"), [Argument(None(), cV("double")), Argument(None(), cLit(5))]))
+    ]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+    
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("double", TFun([TInt()], TInt())),
+      ("apply", TFun([TFun([TInt()], TInt()), TInt()], TInt())),
+      ("result", TInt())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker throws error on passing wrong function type") {
+    val prog = [
+      cVal("negate", None(), cFun([Parameter("x", None(), None())], None(), Block(Nil(), Some(cNot(cV("x")))))),
+      cVal("apply", None(), cFun([Parameter("f", None(), None()), Parameter("x", None(), None())], None(), Block(Nil(), Some(cCall(cV("f"), [Argument(None(), cV("x"))]))))),
+      cVal("result", None(), cCall(cV("apply"), [Argument(None(), cV("negate")), Argument(None(), cLit(5))]))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker handles complex nested higher-order functions") {
+    val prog = [
+      cVal("compose", None(), cFun([Parameter("f", None(), None()), Parameter("g", None(), None())], None(), Block(Nil(), Some(cFun([Parameter("x", None(), None())], None(), Block(Nil(), Some(cCall(cV("f"), [Argument(None(), cCall(cV("g"), [Argument(None(), cV("x"))]))])))))))),
+      cVal("addOne", None(), cFun([Parameter("x", None(), None())], None(), Block(Nil(), Some(cAdd(cV("x"), cLit(1)))))),
+      cVal("double", None(), cFun([Parameter("x", None(), None())], None(), Block(Nil(), Some(cMult(cV("x"), cLit(2)))))),
+      cVal("combined", None(), cCall(cV("compose"), [Argument(None(), cV("double")), Argument(None(), cV("addOne"))])),
+      cVal("result", None(), cCall(cV("combined"), [Argument(None(), cLit(5))]))
+    ]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+    
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("compose", TFun([TFun([TInt()], TInt()), TFun([TInt()], TInt())], TFun([TInt()], TInt()))),
+      ("addOne", TFun([TInt()], TInt())),
+      ("double", TFun([TInt()], TInt())),
+      ("combined", TFun([TInt()], TInt())),
+      ("result", TInt())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker handles functions with no parameters") {
+    val prog = [
+      cVal("getConstant", None(), cFun(Nil(), None(), Block(Nil(), Some(cLit(42))))),
+      cVal("res", None(), cCall(cV("getConstant"), Nil()))
+    ]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+    
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("getConstant", TFun(Nil(), TInt())),
+      ("res", TInt())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker throws error when calling zero-parameter function with arguments") {
+    val prog = [
+      cVal("getConstant", None(), cFun(Nil(), None(), Block(Nil(), Some(cLit(42))))),
+      cVal("res", None(), cCall(cV("getConstant"), [Argument(None(), cLit(5))]))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker handles functions returning boolean with complex logic") {
+    val prog = [
+      cVal("inRange", None(), cFun([Parameter("x", None(), None()), Parameter("min", None(), None()), Parameter("max", None(), None())], None(), Block(Nil(), Some(cAnd(cGtE(cV("x"), cV("min")), cLtE(cV("x"), cV("max"))))))),
+      cVal("res", None(), cCall(cV("inRange"), [Argument(None(), cLit(5)), Argument(None(), cLit(0)), Argument(None(), cLit(10))]))
+    ]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+    
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("inRange", TFun([TInt(), TInt(), TInt()], TBool())),
+      ("res", TBool())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  
 
 }
