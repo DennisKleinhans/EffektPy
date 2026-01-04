@@ -76,10 +76,15 @@ def desugarExpr(e: surfaceAst::Expr): coreAst::Expr / { Exception[DesugarError],
 
   case surfaceAst::FunExpr(params, retType, body, pos) => {
     val desugaredBody = desugarBlock(body)
-    coreAst::FunExpr(params, retType, desugaredBody, pos)
+    val desugaredParams = params.map { p => desugarParameter(p) }
+    coreAst::FunExpr(desugaredParams, retType, desugaredBody, pos)
   }
 
-  case surfaceAst::CallExpr(receiver, args, pos) => coreAst::CallExpr(desugarExpr(receiver), args, pos)
+  case surfaceAst::CallExpr(receiver, args, pos) => {
+    val desugaredReceiver = desugarExpr(receiver)
+    val desugaredArgs = args.map { a => desugarArgument(a) }
+    coreAst::CallExpr(desugaredReceiver, desugaredArgs, pos)
+  }
   
 }
 
@@ -116,7 +121,8 @@ def desugarStmt(s: surfaceAst::Stmt): coreAst::Stmt / { Exception[DesugarError],
   case surfaceAst::ContinueStmt(pos) => coreAst::ContinueStmt(pos)
 
   case surfaceAst::DefStmt(name, params, retType, body, pos) => {
-    val lambda = coreAst::FunExpr(params, retType, desugarBlock(body), pos)
+    val desugaredParams = params.map { p => desugarParameter(p) }
+    val lambda = coreAst::FunExpr(desugaredParams, retType, desugarBlock(body), pos)
     coreAst::ValDeclaration(name, None(), lambda, pos)
   }
 
@@ -129,6 +135,18 @@ def desugarStmt(s: surfaceAst::Stmt): coreAst::Stmt / { Exception[DesugarError],
 /// desugar a block of statements by desugaring each statement
 def desugarBlock(block: surfaceAst::Block): coreAst::Block / { Exception[DesugarError], Exception[ParseError] } = {
   coreAst::Block(block.statements.map { s => desugarStmt(s) }, block.finalExpr.map { e => desugarExpr(e) })
+}
+
+/// desugar a parameter by desugaring its default value if present
+def desugarParameter(param: surfaceAst::Parameter): coreAst::Parameter / { Exception[DesugarError], Exception[ParseError] } = {
+  val defValue = param.defaultValue.map { dv => desugarExpr(dv) }
+  coreAst::Parameter(param.name, param.tpe, defValue)
+}
+
+/// desugar an argument by desugaring its value
+def desugarArgument(arg: surfaceAst::Argument): coreAst::Argument / { Exception[DesugarError], Exception[ParseError] } = {
+  val value = desugarExpr(arg.value)
+  coreAst::Argument(arg.name, value)
 }
 
 
