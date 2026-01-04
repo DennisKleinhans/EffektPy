@@ -135,6 +135,10 @@ def show(t: TypingType): String = t match {
   case TBool() => "Bool"
   case TUnit() => "Unit"
   case TVar(id) => "TVar(" ++ id.show ++ ")"
+  case TFun(params, ret) => {
+    val paramStrs = params.map { p => show(p) }
+    "TFun(" ++ paramStrs.join(", ") ++ ") -> " ++ show(ret)
+  }
 }
 
 /// checks if two token kinds are equal
@@ -193,6 +197,18 @@ def equal(t1: TypingType, t2: TypingType): Bool = (t1, t2) match {
   case (TInt(), TInt()) => true
   case (TBool(), TBool()) => true
   case (TVar(id1), TVar(id2)) => id1 == id2
+  case (TUnit(), TUnit()) => true
+
+  case (TFun(p1, r1), TFun(p2, r2)) => {
+    if (p1.size != p2.size) {
+      return false 
+    } else {
+      val paramsEqual = p1.zip(p2).any { case (a, b) => a.equal(b)}
+      val returnEqual = r1.equal(r2)
+      paramsEqual && returnEqual
+    }
+  }
+
   case _ => false
 }
 
