@@ -5,13 +5,13 @@ import map
 import src/lib/desugar/coreAst
 import src/lib/typechecker/typecheck
 import src/lib/typechecker/unification
-import src/lib/utils/types
 import src/lib/utils/errors
 import src/lib/utils/effects
 import src/lib/utils/handlers
 import src/lib/utils/helpers
 import src/lib/utils/testUtils
 import src/lib/utils/coreTestUtils
+import src/lib/typechecker/types
 
 def main() = mainSuite("typechecker") {
 

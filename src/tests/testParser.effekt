@@ -10,9 +10,9 @@ import src/lib/desugar/sugar
 import src/lib/utils/testUtils
 import src/lib/utils/errors
 import src/lib/utils/effects
-import src/lib/utils/types
 import src/lib/utils/surfaceTestUtils
 import src/lib/utils/handlers
+import src/lib/typechecker/types
 
 def main() = mainSuite("parser") {
 

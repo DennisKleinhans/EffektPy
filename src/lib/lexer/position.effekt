@@ -1,0 +1,9 @@
+module src/lib/lexer/position
+
+record Position (line: Int, column: Int)
+
+/// effect for getting and setting the current position in the source code (line and column)
+interface Positioning {
+  def getPos(): Position
+  def setPos(p: Position): Unit
+}

@@ -10,7 +10,7 @@ import src/lib/desugar/sugar
 import src/lib/utils/testUtils
 import src/lib/utils/errors
 import src/lib/utils/effects
-import src/lib/utils/types
+import src/lib/lexer/position
 
 def main() = mainSuite("lexer") {
 

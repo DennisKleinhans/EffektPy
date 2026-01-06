@@ -2,7 +2,8 @@ module src/lib/utils/surfaceTestUtils
 
 import src/lib/parser/surfaceAst
 import src/lib/lexer/tokens
-import src/lib/utils/types
+import src/lib/lexer/position
+import src/lib/typechecker/types
 
 val d = Position(0, 0)
 

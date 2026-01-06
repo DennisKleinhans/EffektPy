@@ -8,7 +8,6 @@ import src/lib/lexer/tokens
 import src/lib/utils/errors
 import src/lib/utils/coreTestUtils
 import src/lib/utils/surfaceTestUtils
-import src/lib/utils/types
 
 def main() = mainSuite("desugar") {
   

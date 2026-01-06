@@ -2,9 +2,11 @@ module src/lib/utils/handlers
 
 import map
 import src/lib/utils/errors
-import src/lib/utils/types
 import src/lib/utils/effects
 import src/lib/utils/helpers
+import src/lib/typechecker/types
+import src/lib/lexer/position
+import src/lib/interpreter/values
 
 /// handler for TypingContext effect that manages variable bindings and their types in a mutable map
 def handleTypingContext[R] { prog: => R / Context[TypeBinding] }: R / { Exception[NameError], Positioning } = {

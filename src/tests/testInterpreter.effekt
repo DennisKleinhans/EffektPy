@@ -6,7 +6,6 @@ import src/lib/desugar/coreAst
 import src/lib/utils/testUtils
 import src/lib/utils/handlers
 import src/lib/utils/errors
-import src/lib/utils/types
 import src/lib/utils/coreTestUtils
 import src/lib/utils/helpers
 

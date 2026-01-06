@@ -4,10 +4,22 @@ import map
 import src/lib/desugar/coreAst
 import src/lib/typechecker/unification
 import src/lib/utils/errors
-import src/lib/utils/types
 import src/lib/utils/effects
 import src/lib/utils/helpers
 import src/lib/utils/handlers
+import src/lib/typechecker/types
+import src/lib/lexer/position
+
+/// effect for generating fresh type variables and equating types
+interface Typing {
+  def fresh(): TypingType
+  def equate(t1: TypingType, t2: TypingType, pos: Position): Unit
+}
+
+/// effect for getting the expected return type in a function context
+interface ReturnContext {
+  def getExpectedType(): TypingType
+}
 
 /// typechecks a program and returns a mapping from variable names to their inferred types
 def typecheck(prog: Program): Map[String, TypingType] / { Exception[TypeError], Exception[NameError], Inspector[TypeBinding], Positioning } = {

@@ -1,0 +1,15 @@
+module src/lib/interpreter/values
+
+import map
+import src/lib/desugar/coreAst
+
+type Value {
+  VInt(value: Int)
+  VBool(value: Bool)
+  VUnit()
+  VClosure(params: List[Parameter], body: Block, env: Map[String, Address])
+}
+
+type Address = Int
+
+record ValueBinding(value: Value, isMutable: Bool)

@@ -6,8 +6,7 @@ import src/lib/lexer/tokens
 import src/lib/utils/errors
 import src/lib/utils/effects
 import src/lib/utils/helpers
-import src/lib/utils/types
-
+import src/lib/lexer/position
 
 /// scanner that tracks source position
 def scanWithPos[R]() { prog: => R / { Scan[Char], Positioning } }: R / Scan[Char] = {

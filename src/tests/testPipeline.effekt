@@ -3,7 +3,6 @@ module src/tests/testPipeline
 import test
 import src/lib/runner/runPipeline
 import src/lib/utils/testUtils
-import src/lib/utils/types
 import src/lib/utils/helpers
 
 def main() = mainSuite("pipeline") {

@@ -1,0 +1,20 @@
+module src/lib/typechecker/types
+
+import src/lib/lexer/position
+
+type Type {
+  IntType()
+  BoolType()
+  UnitType()
+}
+
+type TypingType {
+  TInt()
+  TBool()
+  TUnit()
+  TVar(id: Int)
+  TFun(params: List[TypingType], ret: TypingType)
+}
+
+record TypeEquation(left: TypingType, right: TypingType, pos: Position)
+record TypeBinding(tpe: TypingType, isMutable: Bool)

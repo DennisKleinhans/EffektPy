@@ -4,7 +4,9 @@ import src/lib/lexer/tokens
 import src/lib/parser/surfaceAst
 import src/lib/utils/effects
 import src/lib/utils/errors
-import src/lib/utils/types
+import src/lib/lexer/position
+import src/lib/typechecker/types
+import src/lib/interpreter/values
 
 /// consume the next token and assert it has the expected kind. If not, raise a ParseError.
 def expect(expected: TokenKind): Unit / { Lexer[Token], Exception[ParseError] } = {

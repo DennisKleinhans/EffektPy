@@ -2,25 +2,13 @@ module src/lib/utils/effects
 
 import map
 import src/lib/lexer/tokens
-import src/lib/utils/types
-
-/// effect for getting and setting the current position in the source code (line and column)
-interface Positioning {
-  def getPos(): Position
-  def setPos(p: Position): Unit
-}
+import src/lib/interpreter/values
 
 /// effect for lexing tokens from the input source code stream 
 interface Lexer[R] {
   def peek(): R
   def peek2(): R
   def next(): R
-}
-
-/// effect for generating fresh type variables and equating types
-interface Typing {
-  def fresh(): TypingType
-  def equate(t1: TypingType, t2: TypingType, pos: Position): Unit
 }
 
 /// effect for managing some context mapping from names to values of type R
@@ -52,9 +40,4 @@ interface LoopControl {
 /// effect for tracking whether we are currently inside a loop (or not)
 interface LoopContext {
   def isInLoop(): Bool
-}
-
-/// effect for getting the expected return type in a function context
-interface ReturnContext {
-  def getExpectedType(): TypingType
 }

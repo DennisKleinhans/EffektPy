@@ -1,7 +1,8 @@
 module src/lib/utils/coreTestUtils
 
 import src/lib/desugar/coreAst
-import src/lib/utils/types
+import src/lib/lexer/position
+import src/lib/typechecker/types
 
 val d = Position(0, 0)
 

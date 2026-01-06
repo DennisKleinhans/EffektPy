@@ -5,7 +5,8 @@ import src/lib/parser/surfaceAst
 import src/lib/utils/effects
 import src/lib/utils/errors
 import src/lib/utils/helpers
-import src/lib/utils/types
+import src/lib/lexer/position
+import src/lib/typechecker/types
 
 /// parsePrimary parses the smallest expression forms: literals, variables,
 /// and parenthesized expressions. It does not handle binary operators.\n

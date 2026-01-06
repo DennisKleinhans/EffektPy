@@ -1,11 +1,13 @@
 module src/lib/interpreter/eval
 
 import src/lib/desugar/coreAst
-import src/lib/utils/types
 import src/lib/utils/effects
 import src/lib/utils/handlers
 import src/lib/utils/errors
 import src/lib/utils/helpers
+import src/lib/interpreter/values
+import src/lib/lexer/position
+
 
 def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeError], Positioning } = expr match {
   case IntLiteral(n, pos) => { 
@@ -258,15 +260,16 @@ def evalStmt(stmt: Stmt): Value / { Context[Address], Store, Exception[RuntimeEr
   }
 }
 
-def evalBlock(stmts: List[Stmt]): Value / { Context[Address], Store, Exception[RuntimeError], Inspector[Address], Positioning, LoopControl } = {
+def evalBlock(block: Block): Value / { Context[Address], Store, Exception[RuntimeError], Inspector[Address], Positioning, LoopControl } = {
   var lastValue = VUnit()
   with handleNewRuntimeScope
-  stmts.foreach { stmt => lastValue = evalStmt(stmt) }
+  block.statements.foreach { stmt => lastValue = evalStmt(stmt) }
   lastValue
 }
 
 def evalProgram(program: Program): Value / { Exception[RuntimeError], Inspector[Address], Positioning } = {
   with handleRuntimeContext
   with handleDefaultLoopControl
-  evalBlock(program)
+  // evalBlock(program)
+  VInt(0) // TODO: replace with actual evalProgram implementation
 }

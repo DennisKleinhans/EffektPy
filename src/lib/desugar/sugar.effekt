@@ -5,8 +5,7 @@ import src/lib/desugar/coreAst
 import src/lib/lexer/tokens
 import src/lib/utils/errors
 import src/lib/utils/helpers
-import src/lib/utils/types
-
+import src/lib/lexer/position
 
 /// combine a list of expressions into a chain of AndExpr
 def combineWithAnd(comps: List[coreAst::Expr], pos: Position): coreAst::Expr / Exception[DesugarError] = comps match {

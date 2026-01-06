@@ -3,7 +3,7 @@ module src/lib/runner/runInterpreter
 import src/lib/interpreter/eval
 import src/lib/desugar/coreAst
 import src/lib/utils/errors
-import src/lib/utils/types
+import src/lib/runner/result
 import src/lib/utils/handlers
 import src/lib/utils/effects
 
