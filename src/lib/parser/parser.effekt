@@ -473,7 +473,7 @@ def parseParameter(): Parameter / { Lexer[Token], Positioning, Exception[ParseEr
   val tpe = if (check(Colon())) { do next(); Some(parseType()) } else { None() }
   val defaultValue = if (check(Assign())) {
     do next()
-    Some(extractValue(parseExpression()))
+    Some(parseExpression())
   } else {
     None()
   }
@@ -488,9 +488,9 @@ def parseArgument(): Argument / { Lexer[Token], Positioning, Exception[ParseErro
   if (token.kind is LowerIdentifier(_) and next.kind is Assign()) {
     val name = expectLowerIdentifier()
     do next()
-    Argument(Some(name), extractValue(parseExpression()))
+    Argument(Some(name), parseExpression())
   } else {
-    Argument(None(), extractValue(parseExpression()))
+    Argument(None(), parseExpression())
   }
 }
 

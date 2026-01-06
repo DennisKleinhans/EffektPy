@@ -74,12 +74,6 @@ def extractType(input: String): Type / Exception[ParseError] = {
   }
 }
 
-/// extracts a Value from an expression. Raises ParseError if the expression is not a value.
-def extractValue(e: Expr): Value / Exception[ParseError] = e match {
-  case IntLiteral(n, _) => VInt(n)
-  case BoolLiteral(b, _) => VBool(b)
-  case _ => raise(ParseError(), "arguments must be a value not an expression")
-}
 
 /// pretty prints a position
 def show(pos: Position): String = "line: " ++ pos.line.show ++ " column: " ++ pos.column.show

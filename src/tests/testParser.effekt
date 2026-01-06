@@ -529,8 +529,8 @@ def main() = mainSuite("parser") {
       sDef(
         "add",
         [
-          Parameter("a", None(), Some(VInt(1))),
-          Parameter("b", None(), Some(VInt(2)))
+          Parameter("a", None(), Some(sLit(1))),
+          Parameter("b", None(), Some(sLit(2)))
         ],
         None(),
         Block([
@@ -563,8 +563,8 @@ def main() = mainSuite("parser") {
       sDef(
         "add",
         [
-          Parameter("a", Some(IntType()), Some(VInt(1))),
-          Parameter("b", Some(IntType()), Some(VInt(2)))
+          Parameter("a", Some(IntType()), Some(sLit(1))),
+          Parameter("b", Some(IntType()), Some(sLit(2)))
         ],
         Some(IntType()),
         Block([
@@ -597,8 +597,8 @@ def main() = mainSuite("parser") {
       sDef(
         "add",
         [
-          Parameter("a", Some(IntType()), Some(VInt(1))),
-          Parameter("b", Some(IntType()), Some(VInt(2)))
+          Parameter("a", Some(IntType()), Some(sLit(1))),
+          Parameter("b", Some(IntType()), Some(sLit(2)))
         ],
         Some(IntType()),
         Block([sReturn(None())], None())
