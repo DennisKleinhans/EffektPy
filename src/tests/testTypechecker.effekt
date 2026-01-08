@@ -1163,6 +1163,52 @@ def main() = mainSuite("typechecker") {
     assertTrue(typeMapsEqual(result, expected))
   }
 
-  
+  test("typechecker handles functions with function type annotations") {
+    val prog = [
+      cVal("applyTwice", None(), cFun([Parameter("f", Some(FunType([IntType()], IntType())), None()), Parameter("x", Some(IntType()), None())], Some(IntType()), Block(Nil(), Some(cCall(cV("f"), [Argument(None(), cCall(cV("f"), [Argument(None(), cV("x"))]))])))))
+    ]
 
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+    
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("applyTwice", TFun([TFun([TInt()], TInt()), TInt()], TInt()))
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker throws error on function type annotation mismatch") {
+    val prog = [
+      cVal("applyTwice", None(), cFun([Parameter("f", Some(FunType([BoolType()], IntType())), None()), Parameter("x", Some(IntType()), None())], Some(IntType()), Block(Nil(), Some(cCall(cV("f"), [Argument(None(), cCall(cV("f"), [Argument(None(), cV("x"))]))])))))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker handles functions with function type annotations with multiple argument types") {
+    val prog = [
+      cVal("applyFunc", None(), cFun([Parameter("f", Some(FunType([IntType(), IntType()], IntType())), None()), Parameter("x", Some(IntType()), None()), Parameter("y", Some(IntType()), None())], Some(IntType()), Block(Nil(), Some(cCall(cV("f"), [Argument(None(), cV("x")), Argument(None(), cV("y"))])))))
+    ]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+    
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("applyFunc", TFun([TFun([TInt(), TInt()], TInt()), TInt(), TInt()], TInt()))
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
 }

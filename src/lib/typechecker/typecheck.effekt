@@ -320,5 +320,12 @@ def translateType(t: Option[Type]): TypingType / Typing = t match {
   case Some(IntType()) => TInt()
   case Some(BoolType()) => TBool()
   case Some(UnitType()) => TUnit()
+
+  case Some(FunType(paramTypes, returnType)) => {
+    val tParams = paramTypes.map { pt => translateType(Some(pt)) }
+    val tReturn = translateType(Some(returnType))
+    TFun(tParams, tReturn)
+  }
+
   case None() => do fresh() // generate a fresh type variable
 }
