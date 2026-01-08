@@ -433,12 +433,40 @@ def parseStmt(): Stmt / { Lexer[Token], Positioning, Exception[ParseError] } = {
 
 /// parseType expects a single UpperIdentifier as a type name (e.g. Int, Bool).
 /// It reports an error if a lowercase identifier is used for a type.
-def parseType(): Type / { Lexer[Token], Exception[ParseError] } = {
-  val token = do next()
-  token.kind match {
-    case UpperIdentifier(id) => extractType(id)
+def parseType(): Type / { Lexer[Token], Exception[ParseError], Positioning } = {
+  val token = do peek()
+
+  val paramTypes = token.kind match {
+    case LParen() => {
+      // function type with multiple parameters
+      do next()
+      val types = parseCommaList { parseType }
+      expect(RParen())
+      types
+    }
+
+    case UpperIdentifier(id) => {
+      // single type
+      do next()
+      [extractType(id)]
+    }
+
     case LowerIdentifier(id) => raise(ParseError(), "syntax error at position " ++ token.position.show ++ ": type annotations must start with upper case char")
+
     case _ => raise(ParseError(), "expected type name (UpperIdentifier) at position " ++ token.position.show ++ " but got " ++ token.kind.show)
+  }
+
+  val nextToken = do peek()
+  nextToken.kind match {
+    case Arrow() => {
+      do next()
+      val returnType = parseType()
+      FunType(paramTypes, returnType)
+    }
+    case _ => paramTypes match {
+      case Cons(single, Nil()) => single
+      case _ => raise(ParseError(), "expected '->' for function type at position " ++ nextToken.position.show)
+    }
   }
 }
 

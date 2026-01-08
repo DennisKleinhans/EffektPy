@@ -652,4 +652,71 @@ def main() = mainSuite("parser") {
    
     assertEqual(obtained, expected)
   }
+
+  test("parser parses function type annotations") {
+    val input = "val f: Int -> Int = lambda (x: Int) : Int { return x + 1 }"
+
+    val expected = [
+      sVal(
+        "f",
+        Some(FunType([IntType()], IntType())),
+        sFun(
+          [
+            Parameter("x", Some(IntType()), None())
+          ],
+          Some(IntType()),
+          Block([
+            sReturn(Some(sAdd(sV("x"), sLit(1))))
+          ], None())
+        )
+      )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with mockGetPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
+
+  test("parser parses function type annotations with multiple parameters") {
+    val input = "val f: (Int, Bool) -> Int = lambda (x: Int, y: Bool) : Int { return x + 1 }"
+
+    val expected = [
+      sVal(
+        "f",
+        Some(FunType([IntType(), BoolType()], IntType())),
+        sFun(
+          [
+            Parameter("x", Some(IntType()), None()),
+            Parameter("y", Some(BoolType()), None())
+          ],
+          Some(IntType()),
+          Block([
+            sReturn(Some(sAdd(sV("x"), sLit(1))))
+          ], None())
+        )
+      )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with mockGetPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
 }

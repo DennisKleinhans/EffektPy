@@ -5,6 +5,7 @@ import src/lib/lexer/position
 type Type {
   IntType()
   BoolType()
+  FunType(paramTypes: List[Type], returnType: Type)
   UnitType()
 }
 
