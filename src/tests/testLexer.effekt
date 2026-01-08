@@ -313,4 +313,37 @@ def main() = mainSuite("lexer") {
       Token(RBrace(), Position(3, 1))
     ]
   }
+
+  test("lexer recognizes arrow in function types") {
+    val input = "def apply(f: Int -> Int, x: Int): Int {\n return f(x)\n}"
+
+    val expected = [
+      Token(Def(), Position(1, 1)),
+      Token(LowerIdentifier("apply"), Position(1, 5)),
+      Token(LParen(), Position(1, 10)),
+      Token(LowerIdentifier("f"), Position(1, 11)),
+      Token(Colon(), Position(1, 12)),
+      Token(UpperIdentifier("Int"), Position(1, 14)),
+      Token(Arrow(), Position(1, 18)),
+      Token(UpperIdentifier("Int"), Position(1, 21)),
+      Token(Comma(), Position(1, 24)),
+      Token(LowerIdentifier("x"), Position(1, 26)),
+      Token(Colon(), Position(1, 27)),
+      Token(UpperIdentifier("Int"), Position(1, 29)),
+      Token(RParen(), Position(1, 32)),
+      Token(Colon(), Position(1, 33)),
+      Token(UpperIdentifier("Int"), Position(1, 35)),
+      Token(LBrace(), Position(1, 39)),
+      Token(Return(), Position(2, 2)),
+      Token(LowerIdentifier("f"), Position(2, 9)),
+      Token(LParen(), Position(2, 10)),
+      Token(LowerIdentifier("x"), Position(2, 11)),
+      Token(RParen(), Position(2, 12)),
+      Token(RBrace(), Position(3, 1))
+    ]
+
+    with fullLexerHandler(input, false)
+    val tokens = collectTokens(Nil()) { do next() }
+    assertEqual(tokens, expected)
+  }
 }

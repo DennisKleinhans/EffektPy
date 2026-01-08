@@ -202,6 +202,9 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], Positioning 
     if (next == '=') {
       do Scan::skip()
       Token(MinusAssign(), pos)
+    } else if (next == '>') {
+      do Scan::skip()
+      Token(Arrow(), pos)
     } else {
       Token(Minus(), pos)
     }

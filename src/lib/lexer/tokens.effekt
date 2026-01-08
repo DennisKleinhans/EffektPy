@@ -48,6 +48,7 @@ type TokenKind {
 
   // used for type annotation
   Colon()
+  Arrow()
   // used for separating function arguments
   Comma()
 
