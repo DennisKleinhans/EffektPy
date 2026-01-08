@@ -41,3 +41,7 @@ interface LoopControl {
 interface LoopContext {
   def isInLoop(): Bool
 }
+
+interface ReturnControl {
+  def returnValue(value: Value): Unit
+}
