@@ -5,6 +5,7 @@ import src/lib/runner/result
 import src/lib/runner/runParser
 import src/lib/runner/runTypechecker
 import src/lib/runner/runInterpreter
+import src/lib/interpreter/values
 
 /// runs the full pipeline: parsing, typechecking, and evaluation
 def runPipeline(input: String) = {
