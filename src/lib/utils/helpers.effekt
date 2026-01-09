@@ -142,6 +142,13 @@ def show(t: TypingType): String = t match {
   }
 }
 
+def show(v: Value): String = v match {
+  case VInt(n) => n.show
+  case VBool(b) => b.show
+  case VUnit() => "Unit"
+  case VClosure(params, body, env) => "<function>"
+}
+
 /// checks if two token kinds are equal
 def equal(t1: TokenKind, t2: TokenKind): Bool = (t1, t2) match {
   case (LowerIdentifier(id1), LowerIdentifier(id2)) => id1 == id2
