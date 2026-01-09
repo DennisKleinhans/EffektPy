@@ -3,8 +3,12 @@ module src/lib/runner/runRepl
 import map
 import src/lib/runner/runParser
 import src/lib/runner/runTypechecker
+import src/lib/runner/runInterpreter
 import src/lib/runner/result
 import src/lib/typechecker/types
+import src/lib/interpreter/values
+import src/lib/utils/helpers
+
 
 interface REPLConsole {
   def readLine(): String
@@ -56,6 +60,8 @@ namespace js {
 def startRepl() = {
 
   var typeEnv = map::emptyGeneric[String, TypeBinding]()
+  var runtimeEnv = map::emptyGeneric[String, Address]()
+  var store = map::emptyGeneric[Address, Value]()
   var continueRepl = true
 
   with consoleRepl
@@ -76,7 +82,18 @@ def startRepl() = {
         case PipelineResult::Success(ast) => {
           runTypecheckIncremental(ast, typeEnv) match {
             case Failure(msg) => do writeLine(msg)
-            case PipelineResult::Success(newTypeEnv) => typeEnv = newTypeEnv; do writeLine("Typecheck successful!")
+            case PipelineResult::Success(newTypeEnv) => { 
+              typeEnv = newTypeEnv
+              do writeLine("Typecheck successful!")
+              runEvalIncremental(ast, runtimeEnv, store) match {
+                case Failure(msg) => do writeLine(msg)
+                case PipelineResult::Success(evalState) => {
+                  runtimeEnv = evalState.env
+                  store = evalState.store
+                  do writeLine("Result: " ++ evalState.value.show)
+                }
+              }
+            }
           }
         }
       }
