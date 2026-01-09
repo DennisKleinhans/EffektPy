@@ -9,8 +9,8 @@ import src/lib/lexer/position
 import src/lib/interpreter/values
 
 /// handler for TypingContext effect that manages variable bindings and their types in a mutable map
-def handleTypingContext[R] { prog: => R / Context[TypeBinding] }: R / { Exception[NameError], Positioning } = {
-  var context: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
+def handleTypingContext[R](initialContext: Map[String, TypeBinding]) { prog: => R / Context[TypeBinding] }: R / { Exception[NameError], Positioning } = {
+  var context: Map[String, TypeBinding] = initialContext
 
   try { prog() } with Context[TypeBinding] {
     def define(name, value) = {

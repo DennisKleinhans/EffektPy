@@ -1,5 +1,6 @@
 module src/lib/runner/runTypechecker
 
+import map
 import src/lib/typechecker/typecheck
 import src/lib/desugar/coreAst
 import src/lib/runner/result
@@ -16,6 +17,25 @@ def runTypecheck(prog: Program): PipelineResult[Unit]  = {
     with mockInspector[PipelineResult[Unit], TypeBinding]
     typecheck(prog)
     PipelineResult::Success(())
+  } with Exception[TypeError] {
+    def raise(exception, msg) = { Failure("TypeError: " ++ msg) }
+  } with Exception[NameError] {
+    def raise(exception, msg) = Failure("NameError: " ++ msg)
+  } with Positioning {
+    def getPos() = resume(currentPos)
+    def setPos(p) = {
+      currentPos = p
+      resume(())
+    }
+  }
+}
+
+def runTypecheckIncremental(prog: Program, initialEnv: Map[String, TypeBinding]): PipelineResult[Map[String, TypeBinding]]  = {
+  var currentPos = Position(1,1)
+  try {
+    with mockInspector[PipelineResult[Map[String, TypeBinding]], TypeBinding]
+    val newEnv = typecheckIncremental(prog, initialEnv)
+    PipelineResult::Success(newEnv)
   } with Exception[TypeError] {
     def raise(exception, msg) = { Failure("TypeError: " ++ msg) }
   } with Exception[NameError] {
