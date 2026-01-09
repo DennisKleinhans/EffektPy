@@ -37,8 +37,8 @@ def handleTypingContext[R](initialContext: Map[String, TypeBinding]) { prog: => 
 }
 
 /// handler for RuntimeContext effect that manages variable bindings and memory store in mutable maps
-def handleRuntimeContext[R](initEnv: Option[Map[String, Address]]) { prog: => R / { Context[Address] } }: R / {Exception[RuntimeError], Positioning } = {
-  var context: Map[String, Address] = initEnv.getOrElse { map::emptyGeneric[String, Address]() }
+def handleRuntimeContext[R](initEnv: Map[String, Address]) { prog: => R / { Context[Address] } }: R / {Exception[RuntimeError], Positioning } = {
+  var context: Map[String, Address] = initEnv
 
   try { prog() } with Context[Address] {
     def define(name, addr) = {
@@ -62,9 +62,9 @@ def handleRuntimeContext[R](initEnv: Option[Map[String, Address]]) { prog: => R 
   } 
 }
 
-def handleStore[R] { prog: => R / Store }: R / Exception[RuntimeError] = {
-  var store: Map[Address, Value] = map::emptyGeneric[Address, Value]()
-  var nextAddress: Address = 0
+def handleStore[R](initialData: Map[Address, Value]) { prog: => R / Store }: R / Exception[RuntimeError] = {
+  var store: Map[Address, Value] = initialData
+  var nextAddress: Address = initialData.size
 
   try { prog() } with Store {
     def allocate(value) = {
@@ -83,6 +83,8 @@ def handleStore[R] { prog: => R / Store }: R / Exception[RuntimeError] = {
       store = store.put(addr, value)
       resume(())
     }
+
+    def dump() = resume(store)
   }
 } 
 
