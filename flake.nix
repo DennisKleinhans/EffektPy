@@ -28,6 +28,8 @@
           "src/tests/testParser.effekt"
           "src/tests/testDesugar.effekt"
           "src/tests/testTypechecker.effekt"
+          "src/tests/testInterpreter.effekt"
+          "src/tests/testPipeline.effekt"
         ]; # relative paths to tests (as a string)
 
         ## Effekt configuration
