@@ -285,12 +285,26 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
 
   case FunExpr(params, retAnno, body, pos) => {
     with at(pos) 
-    val paramTypes = params.map { param => translateType(param.tpe) }
+    val paramTypes = params.map { p => 
+      val pType = translateType(p.tpe)
+
+      // validate default value if present
+      p.defaultValue match {
+        case Some(defaultExpr) => {
+          val tDefault = checkExpr(defaultExpr)
+          // make sure default value matches parameter type
+          do equate(tDefault, pType, pos)
+        }
+        case None() => ()
+      } 
+      TypingParam(pType, p.defaultValue.isDefined())
+    }
+
     val retType = translateType(retAnno)
 
     handleNewTypingScope {
-      params.zip(paramTypes).foreach { case (p, t) => 
-        do define(p.name, TypeBinding(t, false))
+      params.zip(paramTypes).foreach { case (p, tp) => 
+        do define(p.name, TypeBinding(tp.tpe, false))
       }
       
       val tBody = try {
@@ -308,9 +322,28 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
     with at(pos) 
     val tReceiver = checkExpr(receiver)
     val argTypes = args.map { arg => checkExpr(arg.value) }
-
     val retType = do fresh()
-    do equate(tReceiver, TFun(argTypes, retType), pos)
+
+    // construct function type from argument types and return type
+    val tCall = TFun(argTypes.map { t => TypingParam(t, false) }, retType)
+
+    do equate(tReceiver, tCall, pos)
+
+    // check for correct number of arguments
+    tReceiver match {
+      case TFun(definedParams, _) => {
+        val minArgs = definedParams.filter { p => not(p.isOptional) }.size
+        val maxArgs = definedParams.size
+
+        if (argTypes.size < minArgs) {
+          raise(TypeError(), "Too few arguments at " ++ pos.show ++ ". Expected at least " ++ minArgs.show)
+        }
+        if (argTypes.size > maxArgs) {
+          raise(TypeError(), "Too many arguments at " ++ pos.show ++ ". Expected at most " ++ maxArgs.show)
+        }
+      }
+      case _ => ()
+    }
     retType
   }
 }
@@ -322,7 +355,7 @@ def translateType(t: Option[Type]): TypingType / Typing = t match {
   case Some(UnitType()) => TUnit()
 
   case Some(FunType(paramTypes, returnType)) => {
-    val tParams = paramTypes.map { pt => translateType(Some(pt)) }
+    val tParams = paramTypes.map { pt => TypingParam(translateType(Some(pt)), false) }
     val tReturn = translateType(Some(returnType))
     TFun(tParams, tReturn)
   }

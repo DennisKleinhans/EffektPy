@@ -745,7 +745,7 @@ def main() = mainSuite("typechecker") {
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
-      ("f", TFun([TInt()], TInt())),
+      ("f", TFun([TypingParam(TInt(), false)], TInt())),
       ("res", TInt())
     ])
 
@@ -765,7 +765,7 @@ def main() = mainSuite("typechecker") {
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
-      ("add", TFun([TInt(), TInt()], TInt())),
+      ("add", TFun([TypingParam(TInt(), false), TypingParam(TInt(), false)], TInt())),
       ("result", TInt())
     ])
 
@@ -785,7 +785,7 @@ def main() = mainSuite("typechecker") {
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
-      ("isGreater", TFun([TInt(), TInt()], TBool())),
+      ("isGreater", TFun([TypingParam(TInt(), false), TypingParam(TInt(), false)], TBool())),
       ("res", TBool())
     ])
 
@@ -805,7 +805,7 @@ def main() = mainSuite("typechecker") {
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
-      ("f", TFun([TInt()], TInt())),
+      ("f", TFun([TypingParam(TInt(), false)], TInt())),
       ("res", TInt())
     ])
 
@@ -881,8 +881,8 @@ def main() = mainSuite("typechecker") {
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
-      ("double", TFun([TInt()], TInt())),
-      ("addOne", TFun([TInt()], TInt())),
+      ("double", TFun([TypingParam(TInt(), false)], TInt())),
+      ("addOne", TFun([TypingParam(TInt(), false)], TInt())),
       ("result", TInt())
     ])
 
@@ -920,7 +920,7 @@ def main() = mainSuite("typechecker") {
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
-      ("compute", TFun([TInt()], TInt())),
+      ("compute", TFun([TypingParam(TInt(), false)], TInt())),
       ("res", TInt())
     ])
 
@@ -940,7 +940,7 @@ def main() = mainSuite("typechecker") {
     val result = typecheck(prog)
     
     val expected =  map::fromListGeneric[String, TypingType]([
-      ("maxFunc", TFun([TInt(), TInt()], TInt())),
+      ("maxFunc", TFun([TypingParam(TInt(), false), TypingParam(TInt(), false)], TInt())),
       ("res", TInt())
     ])
 
@@ -975,7 +975,7 @@ def main() = mainSuite("typechecker") {
     
     val expected = map::fromListGeneric[String, TypingType]([
       ("y", TInt()),
-      ("f", TFun([TInt()], TInt())),
+      ("f", TFun([TypingParam(TInt(), false)], TInt())),
       ("res", TInt())
     ])
 
@@ -1017,7 +1017,7 @@ def main() = mainSuite("typechecker") {
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
-      ("absFunc", TFun([TInt()], TInt())),
+      ("absFunc", TFun([TypingParam(TInt(), false)], TInt())),
       ("res", TInt())
     ])
 
@@ -1038,8 +1038,8 @@ def main() = mainSuite("typechecker") {
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
-      ("makeAdder", TFun([TInt()], TFun([TInt()], TInt()))),
-      ("add5", TFun([TInt()], TInt())),
+      ("makeAdder", TFun([TypingParam(TInt(), false)], TFun([TypingParam(TInt(), false)], TInt()))),
+      ("add5", TFun([TypingParam(TInt(), false)], TInt())),
       ("result", TInt())
     ])
 
@@ -1060,8 +1060,8 @@ def main() = mainSuite("typechecker") {
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
-      ("double", TFun([TInt()], TInt())),
-      ("apply", TFun([TFun([TInt()], TInt()), TInt()], TInt())),
+      ("double", TFun([TypingParam(TInt(), false)], TInt())),
+      ("apply", TFun([TypingParam(TFun([TypingParam(TInt(), false)], TInt()), false), TypingParam(TInt(), false)], TInt())),
       ("result", TInt())
     ])
 
@@ -1099,10 +1099,10 @@ def main() = mainSuite("typechecker") {
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
-      ("compose", TFun([TFun([TInt()], TInt()), TFun([TInt()], TInt())], TFun([TInt()], TInt()))),
-      ("addOne", TFun([TInt()], TInt())),
-      ("double", TFun([TInt()], TInt())),
-      ("combined", TFun([TInt()], TInt())),
+      ("compose", TFun([TypingParam(TFun([TypingParam(TInt(), false)], TInt()), false), TypingParam(TFun([TypingParam(TInt(), false)], TInt()), false)], TFun([TypingParam(TInt(), false)], TInt()))),
+      ("addOne", TFun([TypingParam(TInt(), false)], TInt())),
+      ("double", TFun([TypingParam(TInt(), false)], TInt())),
+      ("combined", TFun([TypingParam(TInt(), false)], TInt())),
       ("result", TInt())
     ])
 
@@ -1156,7 +1156,7 @@ def main() = mainSuite("typechecker") {
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
-      ("inRange", TFun([TInt(), TInt(), TInt()], TBool())),
+      ("inRange", TFun([TypingParam(TInt(), false), TypingParam(TInt(), false), TypingParam(TInt(), false)], TBool())),
       ("res", TBool())
     ])
 
@@ -1175,7 +1175,7 @@ def main() = mainSuite("typechecker") {
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
-      ("applyTwice", TFun([TFun([TInt()], TInt()), TInt()], TInt()))
+      ("applyTwice", TFun([TypingParam(TFun([TypingParam(TInt(), false)], TInt()), false), TypingParam(TInt(), false)], TInt()))
     ])
 
     assertTrue(typeMapsEqual(result, expected))
@@ -1206,7 +1206,98 @@ def main() = mainSuite("typechecker") {
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
-      ("applyFunc", TFun([TFun([TInt(), TInt()], TInt()), TInt(), TInt()], TInt()))
+      ("applyFunc", TFun([TypingParam(TFun([TypingParam(TInt(), false), TypingParam(TInt(), false)], TInt()), false), TypingParam(TInt(), false), TypingParam(TInt(), false)], TInt()))
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker handles functions with multiple default arguments") {
+    val prog = [
+      cVal("add", None(), cFun([Parameter("x", None(), None()), Parameter("y", None(), Some(cLit(10))), Parameter("z", None(), Some(cLit(5)))], None(), Block(Nil(), Some(cAdd(cAdd(cV("x"), cV("y")), cV("z")))))),
+      cVal("res1", None(), cCall(cV("add"), [Argument(None(), cLit(1)), Argument(None(), cLit(2)), Argument(None(), cLit(3))])),
+      cVal("res2", None(), cCall(cV("add"), [Argument(None(), cLit(1)), Argument(None(), cLit(2))])),
+      cVal("res3", None(), cCall(cV("add"), [Argument(None(), cLit(1))]))
+    ]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+    
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("add", TFun([TypingParam(TInt(), false), TypingParam(TInt(), true), TypingParam(TInt(), true)], TInt())),
+      ("res1", TInt()),
+      ("res2", TInt()),
+      ("res3", TInt())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker infers default argument types correctly") {
+    val prog = [
+      cVal("withDefault", None(), cFun([Parameter("x", None(), None()), Parameter("useDefault", None(), Some(cLit(true)))], None(), Block(Nil(), Some(cIf(cV("useDefault"), cLit(100), cV("x")))))),
+      cVal("res", None(), cCall(cV("withDefault"), [Argument(None(), cLit(50))]))
+    ]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+    
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("withDefault", TFun([TypingParam(TInt(), false), TypingParam(TBool(), true)], TInt())),
+      ("res", TInt())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker throws error on type mismatch in default argument value") {
+    val prog = [
+      cVal("f", None(), cFun([Parameter("x", Some(IntType()), Some(cLit(true)))], None(), Block(Nil(), Some(cV("x")))))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker throws error on wrong argument type when using default") {
+    val prog = [
+      cVal("f", None(), cFun([Parameter("x", None(), None()), Parameter("y", None(), Some(cLit(10)))], None(), Block(Nil(), Some(cAdd(cV("x"), cV("y")))))),
+      cVal("res", None(), cCall(cV("f"), [Argument(None(), cLit(true))]))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker validates default arguments with type annotations") {
+    val prog = [
+      cVal("compute", None(), cFun([Parameter("base", Some(IntType()), None()), Parameter("multiplier", Some(IntType()), Some(cLit(2))), Parameter("offset", Some(IntType()), Some(cLit(0)))], Some(IntType()), Block(Nil(), Some(cAdd(cMult(cV("base"), cV("multiplier")), cV("offset")))))),
+      cVal("res", None(), cCall(cV("compute"), [Argument(None(), cLit(5))]))
+    ]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+    
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("compute", TFun([TypingParam(TInt(), false), TypingParam(TInt(), true), TypingParam(TInt(), true)], TInt())),
+      ("res", TInt())
     ])
 
     assertTrue(typeMapsEqual(result, expected))

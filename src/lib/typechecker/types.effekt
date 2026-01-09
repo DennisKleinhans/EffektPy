@@ -14,8 +14,9 @@ type TypingType {
   TBool()
   TUnit()
   TVar(id: Int)
-  TFun(params: List[TypingType], ret: TypingType)
+  TFun(params: List[TypingParam], ret: TypingType)
 }
 
 record TypeEquation(left: TypingType, right: TypingType, pos: Position)
 record TypeBinding(tpe: TypingType, isMutable: Bool)
+record TypingParam(tpe: TypingType, isOptional: Bool)
