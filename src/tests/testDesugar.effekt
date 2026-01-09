@@ -110,4 +110,28 @@ def main() = mainSuite("desugar") {
 
     assertEqual(desugaredProgram, expectedProgram)
   }
+
+  test("desugar def statement into val declaration with a fun expression"){
+    val program: surfaceAst::Program = [
+      sDef("add", [Parameter("a", None(), None()), Parameter("b", None(), None())], None(), 
+        Block([
+          sReturn(Some(sAdd(sV("a"), sV("b"))))
+        ], None())
+      )
+    ]
+    
+    with on[DesugarError].panic
+    with on[ParseError].panic
+    val desugaredProgram = desugarProgram(program)
+
+    val expected: coreAst::Program = [
+      cVal("add", None(), cFun([Parameter("a", None(), None()), Parameter("b", None(), None())], None(), 
+        Block([
+          cReturn(Some(cAdd(cV("a"), cV("b"))))
+        ], None())
+      ))
+    ]
+
+    assertEqual(desugaredProgram, expected)
+  }
 }

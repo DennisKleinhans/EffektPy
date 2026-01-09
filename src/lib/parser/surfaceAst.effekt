@@ -1,7 +1,8 @@
 module src/lib/parser/surfaceAst
 
 import src/lib/lexer/tokens
-import src/lib/utils/types
+import src/lib/lexer/position
+import src/lib/typechecker/types
 
 type Expr {
   // literals
@@ -28,6 +29,9 @@ type Expr {
   // chained comparison (preserve source structure until desugaring)
   CompareChain(first: Expr, rest: List[(TokenKind, Expr)], pos: Position)
   IfExpr(condition: Expr, thenExpr: Expr, elseExpr: Expr, pos: Position)
+  // first-class functions are always an expression 
+  FunExpr(params: List[Parameter], retType: Option[Type], body: Block, pos: Position)
+  CallExpr(receiver: Expr, args: List[Argument], pos: Position)
 }
 
 type Stmt {
@@ -35,14 +39,20 @@ type Stmt {
   VarDeclaration(name: String, typeAnnotation: Option[Type], value: Expr, pos: Position)
   AssignStmt(name: String, value: Expr, pos: Position)
   CompoundAssignStmt(name: String, operator: TokenKind, value: Expr, pos: Position)
-  IfStmt(cond: Expr, thenBranch: List[Stmt], elseBranch: List[Stmt], pos: Position)
+  IfStmt(cond: Expr, thenBranch: Block, elseBranch: Block, pos: Position)
   ExprStmt(expr: Expr, pos: Position)
-  WhileStmt(condition: Expr, body: List[Stmt], pos: Position)
+  WhileStmt(condition: Expr, body: Block, pos: Position)
   BreakStmt(pos: Position)
   ContinueStmt(pos: Position)
+  DefStmt(name: String, params: List[Parameter], retType: Option[Type], body: Block, pos: Position)
+  ReturnStmt(value: Option[Expr], pos: Position)
 }
 
 type Program = List[Stmt]
+
+record Block(statements: List[Stmt], finalExpr: Option[Expr])
+record Parameter(name: String, tpe: Option[Type], defaultValue: Option[Expr])
+record Argument(name: Option[String], value: Expr)
 
 
 

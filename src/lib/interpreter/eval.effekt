@@ -1,13 +1,16 @@
 module src/lib/interpreter/eval
 
+import map
 import src/lib/desugar/coreAst
-import src/lib/utils/types
 import src/lib/utils/effects
 import src/lib/utils/handlers
 import src/lib/utils/errors
 import src/lib/utils/helpers
+import src/lib/interpreter/values
+import src/lib/lexer/position
 
-def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeError], Positioning } = expr match {
+
+def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeError], Positioning, Inspector[Address], LoopControl } = expr match {
   case IntLiteral(n, pos) => { 
     with at(pos)
     VInt(n) 
@@ -172,9 +175,88 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
       case _ => do raise(errors::RuntimeError(), "Type error in greater-than-equal comparison")
     }
   }
+
+  case FunExpr(params, _, body, pos) => {
+    with at(pos)
+    val capturedEnv = do backup()
+    VClosure(params, body, capturedEnv)
+  }
+
+  case CallExpr(receiver, args, pos) => {
+    with at(pos)
+    val vFunc = evalExpr(receiver)
+    val evaluatedArgs = args.map { arg => (arg.name, evalExpr(arg.value)) }
+
+    vFunc match {
+      case VClosure(params, body, capturedEnv) => {
+        var assignments = map::emptyGeneric[String, Value]
+        var positionalIndex = 0
+
+        // assign arguments to parameters
+        evaluatedArgs.foreach { case (maybeName, value) => 
+          maybeName match {
+            // positional argument
+            case None() => {
+              if (positionalIndex >= params.size) {
+                raise(errors::RuntimeError(), "Too many arguments provided. Expected " ++ params.size.show)
+              }
+              with on[OutOfBounds].panic
+              val param = params.get(positionalIndex)
+
+              // check for duplicate assignment
+              if (assignments.contains(param.name)) {
+                raise(errors::RuntimeError(), "Parameter '" ++ param.name ++ "' is assigned twice.")
+              }
+
+              assignments = assignments.put(param.name, value)
+              positionalIndex = positionalIndex + 1
+            }
+            // named argument
+            case Some(name) => {
+              val paramExists = params.any { p => p.name == name }
+              if (not(paramExists)) {
+                raise(errors::RuntimeError(), "Unknown argument name: " ++ name)
+              }
+              // check for duplicate assignment
+              if (assignments.contains(name)) {
+                raise(errors::RuntimeError(), "Parameter '" ++ name ++ "' is assigned twice.")
+              }
+
+              assignments = assignments.put(name, value)
+            }
+          }
+        }
+
+        try {
+          with handleRuntimeContext(Some(capturedEnv))
+          with handleNewRuntimeScope
+          
+          params.foreach { p => 
+            val valToAssign = assignments.get(p.name) match {
+              case None() => p.defaultValue match {
+                case Some(defVal) => evalExpr(defVal)
+                case None() => raise(errors::RuntimeError(), "Missing argument for parameter: " ++ p.name)
+              }
+              
+              case Some(v) => v
+            }
+            val addr = do allocate(valToAssign)
+            do define(p.name, addr)
+          }
+
+          evalBlock(body)
+        } with ReturnControl {
+          def returnValue(value) = value
+        }
+       
+      }
+
+      case _ => raise(errors::RuntimeError(), "trying to call a non-function value at " ++ pos.show)
+    }
+  }
 }
 
-def evalStmt(stmt: Stmt): Value / { Context[Address], Store, Exception[RuntimeError], Inspector[Address], Positioning, LoopControl } = stmt match {
+def evalStmt(stmt: Stmt): Value / { Context[Address], Store, Exception[RuntimeError], Inspector[Address], Positioning, LoopControl, ReturnControl } = stmt match {
   case ValDeclaration(name, _, value, pos) => {
     with at(pos)
     val v = evalExpr(value)
@@ -256,17 +338,44 @@ def evalStmt(stmt: Stmt): Value / { Context[Address], Store, Exception[RuntimeEr
     do inspect(currentContext)
     VUnit()
   }
+  
+  case ReturnStmt(maybeExpr, pos) => {
+    with at(pos)
+    val returnVal = maybeExpr match {
+      case Some(expr) => evalExpr(expr)
+      case None() => VUnit()
+    }
+    do returnValue(returnVal)
+    VUnit() // unreachable
+  }
 }
 
-def evalBlock(stmts: List[Stmt]): Value / { Context[Address], Store, Exception[RuntimeError], Inspector[Address], Positioning, LoopControl } = {
+def evalBlock(block: Block): Value / { Context[Address], Store, Exception[RuntimeError], Inspector[Address], Positioning, LoopControl, ReturnControl } = {
   var lastValue = VUnit()
   with handleNewRuntimeScope
-  stmts.foreach { stmt => lastValue = evalStmt(stmt) }
-  lastValue
+  block.statements.foreach { stmt => lastValue = evalStmt(stmt) }
+
+  block.finalExpr match {
+    case Some(expr) => evalExpr(expr)
+    case None() => lastValue
+  }
+  
 }
 
 def evalProgram(program: Program): Value / { Exception[RuntimeError], Inspector[Address], Positioning } = {
-  with handleRuntimeContext
   with handleDefaultLoopControl
-  evalBlock(program)
+  with handleStore
+  with handleRuntimeContext(None())
+  
+  try {
+    var lastValue = VUnit()
+    program.foreach { stmt => 
+      lastValue = evalStmt(stmt) 
+    }
+
+    lastValue
+  } with ReturnControl {
+    def returnValue(value) = value
+  }
+  
 }

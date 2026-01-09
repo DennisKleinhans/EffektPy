@@ -1,0 +1,6 @@
+module src/lib/runner/result
+
+type PipelineResult[T] {
+  Success(data: T)
+  Failure(msg: String)
+}

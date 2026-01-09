@@ -6,8 +6,7 @@ import src/lib/lexer/tokens
 import src/lib/utils/errors
 import src/lib/utils/effects
 import src/lib/utils/helpers
-import src/lib/utils/types
-
+import src/lib/lexer/position
 
 /// scanner that tracks source position
 def scanWithPos[R]() { prog: => R / { Scan[Char], Positioning } }: R / Scan[Char] = {
@@ -111,6 +110,9 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], Positioning 
       case "while" => While()
       case "break" => Break()
       case "continue" => Continue()
+      case "def" => Def()
+      case "return" => Return()
+      case "lambda" => Lambda()
       case _ => {
         with on[OutOfBounds].panic
         if (name.charAt(0).isUpper) UpperIdentifier(name) else LowerIdentifier(name)
@@ -200,6 +202,9 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], Positioning 
     if (next == '=') {
       do Scan::skip()
       Token(MinusAssign(), pos)
+    } else if (next == '>') {
+      do Scan::skip()
+      Token(Arrow(), pos)
     } else {
       Token(Minus(), pos)
     }
@@ -224,6 +229,9 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], Positioning 
   } else if (c == ':') {
     do Scan::skip()
     Token(Colon(), pos)
+  } else if (c == ',') {
+    do Scan::skip()
+    Token(Comma(), pos)
   } else {
     do raise(LexerError(), "can not tokenize char: " ++ "'" ++ c.show ++ "'" ++ " at " ++ pos.show)
   }

@@ -3,7 +3,7 @@ module src/lib/runner/runParser
 import scanner
 import exception
 import src/lib/lexer/lexer
-import src/lib/utils/types
+import src/lib/runner/result
 import src/lib/utils/errors
 import src/lib/parser/parser
 import src/lib/parser/surfaceAst

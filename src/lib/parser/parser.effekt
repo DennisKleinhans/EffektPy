@@ -5,12 +5,13 @@ import src/lib/parser/surfaceAst
 import src/lib/utils/effects
 import src/lib/utils/errors
 import src/lib/utils/helpers
-import src/lib/utils/types
+import src/lib/lexer/position
+import src/lib/typechecker/types
 
 /// parsePrimary parses the smallest expression forms: literals, variables,
 /// and parenthesized expressions. It does not handle binary operators.\n
 /// Parentheses are handled here so that ( ... ) produces a nested expression.
-def parsePrimary(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
+def parsePrimaryRaw(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
   val token = do peek()
   val pos = do getPos()
   token.kind match {
@@ -18,22 +19,55 @@ def parsePrimary(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } 
       do next()
       IntLiteral(n, pos)
     }
+
     case Boolean(b) => {
       do next()
       BoolLiteral(b, pos)
     }
+
     case LowerIdentifier(id) => {
       do next()
       Variable(id, pos)
     }
+
     case LParen() => {
       do next()
       val expr = parseExpression()
       expect(RParen())
       expr
     }
+
+    case Lambda() => {
+      do next()
+      expect(LParen())
+      val params = parseCommaList { parseParameter }
+      expect(RParen())
+      val retType = if (check(Colon())) { do next(); Some(parseType()) } else { None() }
+      expect(LBrace())
+      val body = parseBlock()
+      expect(RBrace())
+      FunExpr(params, retType, body, pos)
+    }
+
     case _ => do raise(ParseError(), "expected expression at position " ++ token.position.show ++ " but got " ++ token.kind.show)
   }
+}
+
+def parsePrimary(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
+  val left = parsePrimaryRaw()
+
+  def go(current: Expr): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
+    if (check(LParen())) {
+      val callPos = do getPos()
+      do next()
+      val args = parseCommaList { parseArgument }
+      expect(RParen())
+      go(CallExpr(current, args, callPos))
+    } else {
+      current
+    }
+  }
+  go(left)
 }
 
 /// Implements parsing for unary `not` operator and unary `-`.
@@ -242,12 +276,7 @@ def parseStmt(): Stmt / { Lexer[Token], Positioning, Exception[ParseError] } = {
   token.kind match {
     case Val() => {
       do next()
-      val nameToken = do next()
-      val name = nameToken.kind match {
-        case LowerIdentifier(id) => id
-        case UpperIdentifier(id) => raise(ParseError(), "variable name at position " ++ nameToken.position.show ++ " must start with a lower case char: '" ++ id ++ "'")
-        case _ => raise(ParseError(), "expected variable name after 'val' at position " ++ nameToken.position.show)
-      }
+      val name = expectLowerIdentifier()
 
       // optional type annotation (looks for ': TypeName')
       val typeAnnotation = {
@@ -266,12 +295,7 @@ def parseStmt(): Stmt / { Lexer[Token], Positioning, Exception[ParseError] } = {
     
     case Var() => {
       do next()
-      val nameToken = do next()
-      val name = nameToken.kind match {
-        case LowerIdentifier(id) => id
-        case UpperIdentifier(id) => raise(ParseError(), "variable name at position " ++ nameToken.position.show ++ " must start with a lower case char: '" ++ id ++ "'")
-        case _ => raise(ParseError(), "expected variable name after 'var' at position " ++ nameToken.position.show)
-      }
+      val name = expectLowerIdentifier()
 
       // optional type annotation (looks for ': TypeName')
       val typeAnnotation = {
@@ -309,7 +333,7 @@ def parseStmt(): Stmt / { Lexer[Token], Positioning, Exception[ParseError] } = {
               expect(RBrace())
               elseBlock
             } else {
-              Nil()
+              Block(Nil(), None())
             }
           }
           IfStmt(condition, thenBranch, elseBranch, pos)
@@ -337,6 +361,36 @@ def parseStmt(): Stmt / { Lexer[Token], Positioning, Exception[ParseError] } = {
     case Continue() => {
       do next()
       ContinueStmt(pos)
+    }
+
+    case Def() => {
+      do next()
+      val name = expectLowerIdentifier()
+
+      expect(LParen())
+      val params = parseCommaList { parseParameter }
+      expect(RParen())
+
+      val retType = if (check(Colon())) { do next(); Some(parseType()) } else { None() }
+
+      expect(LBrace())
+      val body = parseBlock()
+      expect(RBrace())
+      
+      DefStmt(name, params, retType, body, pos)
+    }
+
+    case Return() => {
+      do next()
+      val nextToken = do peek()
+
+      val value = nextToken.kind match {
+        case RBrace() => None() 
+        case EOF() => None()
+        case _ => Some(parseExpression())
+      }
+
+      ReturnStmt(value, pos)
     }
 
     case LowerIdentifier(id) => {
@@ -379,12 +433,40 @@ def parseStmt(): Stmt / { Lexer[Token], Positioning, Exception[ParseError] } = {
 
 /// parseType expects a single UpperIdentifier as a type name (e.g. Int, Bool).
 /// It reports an error if a lowercase identifier is used for a type.
-def parseType(): Type / { Lexer[Token], Exception[ParseError] } = {
-  val token = do next()
-  token.kind match {
-    case UpperIdentifier(id) => extractType(id)
+def parseType(): Type / { Lexer[Token], Exception[ParseError], Positioning } = {
+  val token = do peek()
+
+  val paramTypes = token.kind match {
+    case LParen() => {
+      // function type with multiple parameters
+      do next()
+      val types = parseCommaList { parseType }
+      expect(RParen())
+      types
+    }
+
+    case UpperIdentifier(id) => {
+      // single type
+      do next()
+      [extractType(id)]
+    }
+
     case LowerIdentifier(id) => raise(ParseError(), "syntax error at position " ++ token.position.show ++ ": type annotations must start with upper case char")
+
     case _ => raise(ParseError(), "expected type name (UpperIdentifier) at position " ++ token.position.show ++ " but got " ++ token.kind.show)
+  }
+
+  val nextToken = do peek()
+  nextToken.kind match {
+    case Arrow() => {
+      do next()
+      val returnType = parseType()
+      FunType(paramTypes, returnType)
+    }
+    case _ => paramTypes match {
+      case Cons(single, Nil()) => single
+      case _ => raise(ParseError(), "expected '->' for function type at position " ++ nextToken.position.show)
+    }
   }
 }
 
@@ -392,12 +474,18 @@ def parseType(): Type / { Lexer[Token], Exception[ParseError] } = {
 /// It uses an accumulator and returns the statements in the correct order.\n
 /// Important detail: go accumulates statements in reverse (Cons(stmt, acc))
 /// and returns acc.reverse at the end so that statements keep their original order.
-def parseBlock(): List[Stmt] / { Lexer[Token], Positioning, Exception[ParseError] } = {
-  def go(acc: List[Stmt]): List[Stmt] / Lexer[Token] = {
+def parseBlock(): Block / { Lexer[Token], Positioning, Exception[ParseError] } = {
+  def go(acc: List[Stmt]): Block / Lexer[Token] = {
     val token = do peek()
     token.kind match {
-      case RBrace() => acc.reverse // end of block: return statements in original order
-      case EOF() => acc.reverse // defensive: EOF inside block -> return what we have
+      case RBrace() => acc match {
+          case Cons(ExprStmt(e, p), rest) => Block(rest.reverse, Some(e))
+          case _ => Block(acc.reverse, None())
+        } // end of block: return statements in original order
+      case EOF() => acc match {
+          case Cons(ExprStmt(e, p), rest) => Block(rest.reverse, Some(e))
+          case _ => Block(acc.reverse, None())
+        }// defensive: EOF inside block -> return what we have
       case _ => {
         val stmt = parseStmt()
         go(Cons(stmt, acc))
@@ -405,6 +493,49 @@ def parseBlock(): List[Stmt] / { Lexer[Token], Positioning, Exception[ParseError
     }
   }
   go(Nil())
+}
+
+/// parses a function parameter of the form: name: Type = defaultValue
+def parseParameter(): Parameter / { Lexer[Token], Positioning, Exception[ParseError] } = {
+  val name = expectLowerIdentifier()
+
+  val tpe = if (check(Colon())) { do next(); Some(parseType()) } else { None() }
+  val defaultValue = if (check(Assign())) {
+    do next()
+    Some(parseExpression())
+  } else {
+    None()
+  }
+  Parameter(name, tpe, defaultValue)
+}
+
+/// parses a function argument, which can be either a value or a named argument of the form 'name = value'.
+def parseArgument(): Argument / { Lexer[Token], Positioning, Exception[ParseError] } = {
+  val token = do peek()
+  val next = do peek2()
+
+  if (token.kind is LowerIdentifier(_) and next.kind is Assign()) {
+    val name = expectLowerIdentifier()
+    do next()
+    Argument(Some(name), parseExpression())
+  } else {
+    Argument(None(), parseExpression())
+  }
+}
+
+/// parses a comma-separated list of items using the provided parseFun.
+def parseCommaList[T] { parseFun: => T / { Lexer[Token], Positioning, Exception[ParseError] } }: List[T] / { Lexer[Token], Positioning, Exception[ParseError] } = {
+  if (check(RParen())) {
+    Nil()
+  } else {
+    val first = parseFun()
+    if (check(Comma())) {
+      do next()
+      Cons(first, parseCommaList { parseFun })
+    } else {
+      Cons(first, Nil())
+    }
+  }
 }
 
 /// parses a full program as a list of statements until EOF.

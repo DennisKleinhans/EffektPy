@@ -3,8 +3,8 @@ module src/tests/testPipeline
 import test
 import src/lib/runner/runPipeline
 import src/lib/utils/testUtils
-import src/lib/utils/types
 import src/lib/utils/helpers
+import src/lib/interpreter/values
 
 def main() = mainSuite("pipeline") {
 
@@ -282,4 +282,236 @@ def main() = mainSuite("pipeline") {
     """)
     assertTrue(result.equal(VInt(88)))
   }
+
+  test("simple function definition and call") {
+    val result = runPipeline("""
+      def add(a: Int, b: Int): Int { a + b }
+      add(5, 3)
+    """)
+    assertTrue(result.equal(VInt(8)))
+  }
+
+  test("function with multiple parameters") {
+    val result = runPipeline("""
+      def multiply(x: Int, y: Int, z: Int): Int { x * y * z }
+      multiply(2, 3, 4)
+    """)
+    assertTrue(result.equal(VInt(24)))
+  }
+
+  test("nested function calls") {
+    val result = runPipeline("""
+      def add(a: Int, b: Int): Int { a + b }
+      def multiply(x: Int, y: Int): Int { x * y }
+      multiply(add(2, 3), 4)
+    """)
+    assertTrue(result.equal(VInt(20)))
+  }
+
+  test("function with variable assignment") {
+    val result = runPipeline("""
+      def compute(x: Int): Int { 
+        var result = x * 2
+        result += 5
+        result
+      }
+      compute(10)
+    """)
+    assertTrue(result.equal(VInt(25)))
+  }
+
+  test("function with if statement") {
+    val result = runPipeline("""
+      def absolute(x: Int): Int { if x < 0 then -x else x }
+      absolute(-15)
+    """)
+    assertTrue(result.equal(VInt(15)))
+  }
+
+  test("simple lambda") {
+    val result = runPipeline("""
+      val add = lambda(x: Int) { x + 10 }
+      add(5)
+    """)
+    assertTrue(result.equal(VInt(15)))
+  }
+
+  test("lambda with multiple parameters") {
+    val result = runPipeline("""
+      val multiply = lambda(x: Int) { lambda(y: Int) { x * y } }
+      multiply(3)(4)
+    """)
+    assertTrue(result.equal(VInt(12)))
+  }
+
+  test("function returning lambda") {
+    val result = runPipeline("""
+      def makeAdder(n: Int): Int -> Int { lambda (x: Int) { x + n } }
+      val addFive = makeAdder(5)
+      addFive(10)
+    """)
+    assertTrue(result.equal(VInt(15)))
+  }
+
+  test("function returning lambda with multiple parameters") {
+    val result = runPipeline("""
+      def makeMultiplier(factor: Int): (Int, Int) -> Int { 
+        lambda (x: Int, y: Int) { x * y * factor } 
+      }
+      val doubleMultiplier = makeMultiplier(2)
+      doubleMultiplier(3, 4)
+    """)
+    assertTrue(result.equal(VInt(24)))
+  }
+
+  test("lambda in loop") {
+    val result = runPipeline("""
+      var result = 0
+      val addTo = lambda(x: Int) { lambda(y: Int) { x + y } }
+      var i = 0
+      while (i < 5) {
+        result = addTo(result)(i)
+        i += 1
+      }
+      result
+    """)
+    assertTrue(result.equal(VInt(10)))
+  }
+
+  test("function with lambda parameter") {
+    val result = runPipeline("""
+      def apply(f: Int -> Int, x: Int): Int { f(x) }
+      val double = lambda(x: Int) { x * 2 }
+      apply(double, 7)
+    """)
+    assertTrue(result.equal(VInt(14)))
+  }
+
+  test("function with multi-parameter lambda") {
+    val result = runPipeline("""
+      def applyBinary(f: (Int, Int) -> Int, x: Int, y: Int): Int { f(x, y) }
+      val add = lambda(a: Int, b: Int) { a + b }
+      applyBinary(add, 5, 8)
+    """)
+    assertTrue(result.equal(VInt(13)))
+  }
+
+  test("chained lambda calls") {
+    val result = runPipeline("""
+      val add = lambda (x: Int) { lambda (y: Int) { x + y } }
+      val mul = lambda (x: Int) { lambda (y: Int) { x * y } }
+      add(mul(3)(4))(5)
+    """)
+    assertTrue(result.equal(VInt(17)))
+  }
+
+  test("function using shadowing in loops") {
+    val result = runPipeline("""
+      def accumulate(limit: Int): Int {
+        var acc = 0
+        var i = 0
+        while (i < limit) {
+          val x = i * 2
+          acc += x
+          i += 1
+        }
+        acc
+      }
+      accumulate(5)
+    """)
+    assertTrue(result.equal(VInt(20)))
+  }
+
+  test("lambda with if expression") {
+    val result = runPipeline("""
+      val maxNum = lambda (x: Int) { lambda (y: Int) { if x > y then x else y } }
+      maxNum(15)(8)
+    """)
+    assertTrue(result.equal(VInt(15)))
+  }
+
+   test("function with default parameters") {
+    val result = runPipeline("""
+      def add(a: Int, b: Int = 10): Int {
+        a + b
+      }
+      add(5)
+    """)
+    assertTrue(result.equal(VInt(15)))
+  }
+
+  test("function with default parameters overridden") {
+    val result = runPipeline("""
+      def add(a: Int, b: Int = 10): Int {
+        a + b
+      }
+      add(5, 20)
+    """)
+    assertTrue(result.equal(VInt(25)))
+  }
+
+  test("function without type annotations") {
+    val result = runPipeline("""
+      def multiply(x, y) {
+        x * y
+      }
+      multiply(4, 5)
+    """)
+    assertTrue(result.equal(VInt(20)))
+  }
+
+  test("function with mixed type annoations and default paramters") {
+    val result = runPipeline("""
+      def compute(x: Int, y = 5, z: Int = 10) {
+        x + y + z
+      }
+      compute(15)
+    """)
+    assertTrue(result.equal(VInt(30)))
+  }
+
+  test("higher-order function") {
+    val result = runPipeline("""
+      def applyFunction(f: Int -> Int, value: Int): Int {
+        f(value)
+      }
+      def square(x: Int) { x * x }
+      applyFunction(square, 6)
+    """)
+    assertTrue(result.equal(VInt(36)))
+  }
+
+    test("higher-order function without type annotations") {
+    val result = runPipeline("""
+      def applyFunction(f, value) {
+        f(value)
+      }
+      def square(x) { x * x }
+      applyFunction(square, 6)
+    """)
+    assertTrue(result.equal(VInt(36)))
+  }
+
+  test("complex program combining all features") {
+    val result = runPipeline("""
+      def complexFunction(a: Int, b: Int): Int {
+        var result = 0
+        val compute = lambda (x: Int) {
+          if x < 0 then -x else x
+        }
+        
+        var i = a
+        while (i < b) {
+          val valToAdd = compute(i)
+          result += valToAdd
+          i += 1
+        }
+        
+        result
+      }
+      
+      complexFunction(-3, 4)
+    """)
+    assertTrue(result.equal(VInt(12)))
+  } 
 }

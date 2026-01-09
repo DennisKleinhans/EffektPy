@@ -4,10 +4,22 @@ import map
 import src/lib/desugar/coreAst
 import src/lib/typechecker/unification
 import src/lib/utils/errors
-import src/lib/utils/types
 import src/lib/utils/effects
 import src/lib/utils/helpers
 import src/lib/utils/handlers
+import src/lib/typechecker/types
+import src/lib/lexer/position
+
+/// effect for generating fresh type variables and equating types
+interface Typing {
+  def fresh(): TypingType
+  def equate(t1: TypingType, t2: TypingType, pos: Position): Unit
+}
+
+/// effect for getting the expected return type in a function context
+interface ReturnContext {
+  def getExpectedType(): TypingType
+}
 
 /// typechecks a program and returns a mapping from variable names to their inferred types
 def typecheck(prog: Program): Map[String, TypingType] / { Exception[TypeError], Exception[NameError], Inspector[TypeBinding], Positioning } = {
@@ -38,11 +50,13 @@ def typecheck(prog: Program): Map[String, TypingType] / { Exception[TypeError], 
     }
   } with LoopContext {
     def isInLoop() = resume(false)
+  } with ReturnContext {
+    def getExpectedType() = raise(TypeError(), "Return statement outside of function context")
   }
 }
 
 /// typecheck a single statement
-def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning, LoopContext } = stmt match {
+def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning, LoopContext, ReturnContext } = stmt match {
   case ValDeclaration(name, typeAnno, value, pos) => {
     with at(pos) 
     val tExpr = checkExpr(value)
@@ -72,8 +86,8 @@ def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspecto
   case IfStmt(cond, thenBranch, elseBranch, pos) => {
     with at(pos) 
     do equate(checkExpr(cond), TBool(), pos)
-    checkBlock(thenBranch)
-    checkBlock(elseBranch)
+    handleNewTypingScope { checkBlock(thenBranch) }
+    handleNewTypingScope { checkBlock(elseBranch) }
   }
 
   case InspectScope() => {
@@ -91,6 +105,8 @@ def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspecto
   case WhileStmt(condition, body, pos) => {
     with at(pos) 
     do equate(checkExpr(condition), TBool(), pos)
+
+    with handleNewTypingScope
     try {
       checkBlock(body)
     } with LoopContext {
@@ -112,17 +128,31 @@ def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspecto
     }
     TUnit()
   }
+
+  case ReturnStmt(maybeExpr, pos) => {
+    with at(pos)
+    val expectedType = do getExpectedType()
+
+    val actualType = maybeExpr match {
+      case Some(expr) => checkExpr(expr)
+      case None() => TUnit()
+    }
+
+    do equate(actualType, expectedType, pos)
+    TUnit()
+  }
 }
 
-def checkBlock(stmts: List[Stmt]): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning, LoopContext} = {
-  var lastType: TypingType = TUnit()
-  with handleNewTypingScope
-  stmts.foreach { stmt => lastType = checkStmt(stmt) }
-  lastType
+def checkBlock(block: Block): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning, LoopContext, ReturnContext} = {
+  block.statements.foreach { stmt => checkStmt(stmt); () }
+  block.finalExpr match {
+    case Some(expr) => checkExpr(expr)
+    case None() => TUnit()
+  }
 }
 
 /// Typecheck an expression and return its inferred type
-def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Positioning } = expr match {
+def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Positioning, Exception[TypeError], Inspector[TypeBinding], LoopContext } = expr match {
   case IntLiteral(value, pos) => { with at(pos); TInt()}
   case BoolLiteral(value, pos) => { with at(pos); TBool()}
   case Variable(name, pos) => {
@@ -252,6 +282,70 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
     do equate(tRight, TInt(), pos)
     TBool()
   }
+
+  case FunExpr(params, retAnno, body, pos) => {
+    with at(pos) 
+    val paramTypes = params.map { p => 
+      val pType = translateType(p.tpe)
+
+      // validate default value if present
+      p.defaultValue match {
+        case Some(defaultExpr) => {
+          val tDefault = checkExpr(defaultExpr)
+          // make sure default value matches parameter type
+          do equate(tDefault, pType, pos)
+        }
+        case None() => ()
+      } 
+      TypingParam(pType, p.defaultValue.isDefined())
+    }
+
+    val retType = translateType(retAnno)
+
+    handleNewTypingScope {
+      params.zip(paramTypes).foreach { case (p, tp) => 
+        do define(p.name, TypeBinding(tp.tpe, false))
+      }
+      
+      val tBody = try {
+        checkBlock(body)
+      } with ReturnContext {
+        def getExpectedType() = resume(retType)
+      }
+      
+      do equate(tBody, retType, pos)
+    }
+    TFun(paramTypes, retType)
+  }
+
+  case CallExpr(receiver, args, pos) => {
+    with at(pos) 
+    val tReceiver = checkExpr(receiver)
+    val argTypes = args.map { arg => checkExpr(arg.value) }
+    val retType = do fresh()
+
+    // construct function type from argument types and return type
+    val tCall = TFun(argTypes.map { t => TypingParam(t, false) }, retType)
+
+    do equate(tReceiver, tCall, pos)
+
+    // check for correct number of arguments
+    tReceiver match {
+      case TFun(definedParams, _) => {
+        val minArgs = definedParams.filter { p => not(p.isOptional) }.size
+        val maxArgs = definedParams.size
+
+        if (argTypes.size < minArgs) {
+          raise(TypeError(), "Too few arguments at " ++ pos.show ++ ". Expected at least " ++ minArgs.show)
+        }
+        if (argTypes.size > maxArgs) {
+          raise(TypeError(), "Too many arguments at " ++ pos.show ++ ". Expected at most " ++ maxArgs.show)
+        }
+      }
+      case _ => ()
+    }
+    retType
+  }
 }
 
 /// translate an optional Type annotation into a TypingType
@@ -259,5 +353,12 @@ def translateType(t: Option[Type]): TypingType / Typing = t match {
   case Some(IntType()) => TInt()
   case Some(BoolType()) => TBool()
   case Some(UnitType()) => TUnit()
+
+  case Some(FunType(paramTypes, returnType)) => {
+    val tParams = paramTypes.map { pt => TypingParam(translateType(Some(pt)), false) }
+    val tReturn = translateType(Some(returnType))
+    TFun(tParams, tReturn)
+  }
+
   case None() => do fresh() // generate a fresh type variable
 }

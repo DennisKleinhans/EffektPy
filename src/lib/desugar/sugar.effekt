@@ -5,8 +5,7 @@ import src/lib/desugar/coreAst
 import src/lib/lexer/tokens
 import src/lib/utils/errors
 import src/lib/utils/helpers
-import src/lib/utils/types
-
+import src/lib/lexer/position
 
 /// combine a list of expressions into a chain of AndExpr
 def combineWithAnd(comps: List[coreAst::Expr], pos: Position): coreAst::Expr / Exception[DesugarError] = comps match {
@@ -48,6 +47,7 @@ def desugarExpr(e: surfaceAst::Expr): coreAst::Expr / { Exception[DesugarError],
   case surfaceAst::LtE(l, r, pos) => coreAst::LtE(desugarExpr(l), desugarExpr(r), pos)
   case surfaceAst::GtE(l, r, pos) => coreAst::GtE(desugarExpr(l), desugarExpr(r), pos)
   case surfaceAst::IfExpr(thenE, cond, elseE, pos) => coreAst::IfExpr(desugarExpr(thenE), desugarExpr(cond), desugarExpr(elseE), pos)
+
   case surfaceAst::CompareChain(first, pairs, pos) => {
     // desugar the leftmost expr
     val coreLeft = desugarExpr(first)
@@ -72,6 +72,19 @@ def desugarExpr(e: surfaceAst::Expr): coreAst::Expr / { Exception[DesugarError],
       combineWithAnd(comps, pos)
     }
   }
+
+  case surfaceAst::FunExpr(params, retType, body, pos) => {
+    val desugaredBody = desugarBlock(body)
+    val desugaredParams = params.map { p => desugarParameter(p) }
+    coreAst::FunExpr(desugaredParams, retType, desugaredBody, pos)
+  }
+
+  case surfaceAst::CallExpr(receiver, args, pos) => {
+    val desugaredReceiver = desugarExpr(receiver)
+    val desugaredArgs = args.map { a => desugarArgument(a) }
+    coreAst::CallExpr(desugaredReceiver, desugaredArgs, pos)
+  }
+  
 }
 
 
@@ -93,21 +106,46 @@ def desugarStmt(s: surfaceAst::Stmt): coreAst::Stmt / { Exception[DesugarError],
 
   case surfaceAst::IfStmt(cond, thenB, elseB, pos) => {
     val cond2 = desugarExpr(cond)
-    val then2 = thenB.map {st => desugarStmt(st)}
-    val else2 = elseB.map {st => desugarStmt(st)}
-    coreAst::IfStmt(cond2, then2, else2, pos)
+    coreAst::IfStmt(cond2, desugarBlock(thenB), desugarBlock(elseB), pos)
   }
   
   case surfaceAst::ExprStmt(expr, pos) => coreAst::ExprStmt(desugarExpr(expr), pos)
 
   case surfaceAst::WhileStmt(condition, body, pos) => {
     val cond = desugarExpr(condition)
-    val body = body.map {st => desugarStmt(st)}
-    coreAst::WhileStmt(cond, body, pos)
+    coreAst::WhileStmt(cond, desugarBlock(body), pos)
   }
 
   case surfaceAst::BreakStmt(pos) => coreAst::BreakStmt(pos)
   case surfaceAst::ContinueStmt(pos) => coreAst::ContinueStmt(pos)
+
+  case surfaceAst::DefStmt(name, params, retType, body, pos) => {
+    val desugaredParams = params.map { p => desugarParameter(p) }
+    val lambda = coreAst::FunExpr(desugaredParams, retType, desugarBlock(body), pos)
+    coreAst::ValDeclaration(name, None(), lambda, pos)
+  }
+
+  case surfaceAst::ReturnStmt(value, pos) => value match {
+    case Some(expr) => coreAst::ReturnStmt(Some(desugarExpr(expr)), pos)
+    case None() => coreAst::ReturnStmt(None(), pos)
+  }
+}
+
+/// desugar a block of statements by desugaring each statement
+def desugarBlock(block: surfaceAst::Block): coreAst::Block / { Exception[DesugarError], Exception[ParseError] } = {
+  coreAst::Block(block.statements.map { s => desugarStmt(s) }, block.finalExpr.map { e => desugarExpr(e) })
+}
+
+/// desugar a parameter by desugaring its default value if present
+def desugarParameter(param: surfaceAst::Parameter): coreAst::Parameter / { Exception[DesugarError], Exception[ParseError] } = {
+  val defValue = param.defaultValue.map { dv => desugarExpr(dv) }
+  coreAst::Parameter(param.name, param.tpe, defValue)
+}
+
+/// desugar an argument by desugaring its value
+def desugarArgument(arg: surfaceAst::Argument): coreAst::Argument / { Exception[DesugarError], Exception[ParseError] } = {
+  val value = desugarExpr(arg.value)
+  coreAst::Argument(arg.name, value)
 }
 
 

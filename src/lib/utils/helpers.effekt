@@ -4,13 +4,24 @@ import src/lib/lexer/tokens
 import src/lib/parser/surfaceAst
 import src/lib/utils/effects
 import src/lib/utils/errors
-import src/lib/utils/types
+import src/lib/lexer/position
+import src/lib/typechecker/types
+import src/lib/interpreter/values
 
 /// consume the next token and assert it has the expected kind. If not, raise a ParseError.
 def expect(expected: TokenKind): Unit / { Lexer[Token], Exception[ParseError] } = {
   val token = do next()
   if (not(token.kind.equal(expected))) {
     do raise(ParseError(), "expected " ++ expected.show ++ " at Position " ++ token.position.show ++ " but got " ++ token.kind.show)
+  }
+}
+
+/// consume the next token and return its LowerIdentifier id. If the token is not a LowerIdentifier, raise a ParseError.
+def expectLowerIdentifier(): String / { Lexer[Token], Exception[ParseError] } = {
+  val token = do next()
+  token.kind match {
+    case LowerIdentifier(id) => id
+    case _ => do raise(ParseError(), "expected LowerIdentifier at Position " ++ token.position.show ++ " but got " ++ token.kind.show)
   }
 }
 
@@ -65,6 +76,7 @@ def extractType(input: String): Type / Exception[ParseError] = {
   }
 }
 
+
 /// pretty prints a position
 def show(pos: Position): String = "line: " ++ pos.line.show ++ " column: " ++ pos.column.show
 
@@ -104,6 +116,11 @@ def show(tokenKind: TokenKind): String = tokenKind match {
   case While() => "Keyword: while"
   case Break() => "Keyword: break"
   case Continue() => "Keyword: continue"
+  case Def() => "Keyword: def"
+  case Return() => "Keyword: return"
+  case Comma() => "Comma"
+  case Lambda() => "Keyword: lambda"
+  case Arrow() => "Arrow"
 }
 
 /// pretty prints a token
@@ -115,6 +132,14 @@ def show(t: TypingType): String = t match {
   case TBool() => "Bool"
   case TUnit() => "Unit"
   case TVar(id) => "TVar(" ++ id.show ++ ")"
+  case TFun(params, ret) => {
+    val paramStrs = params.map { p => show(p.tpe) }
+    paramStrs match {
+      case Nil() => "TFun() -> " ++ show(ret)
+      case _ => "TFun(" ++ paramStrs.join(", ") ++ ") -> " ++ show(ret)
+    }
+    
+  }
 }
 
 /// checks if two token kinds are equal
@@ -150,6 +175,14 @@ def equal(t1: TokenKind, t2: TokenKind): Bool = (t1, t2) match {
   case (RBrace(), RBrace()) => true
   case (EOF(), EOF()) => true
   case (Colon(), Colon()) => true
+  case (While(), While()) => true
+  case (Break(), Break()) => true
+  case (Continue(), Continue()) => true
+  case (Return(), Return()) => true
+  case (Def(), Def()) => true
+  case (Comma(), Comma()) => true
+  case (Lambda(), Lambda()) => true
+  case (Arrow(), Arrow()) => true
   case _ => false
 }
 
@@ -166,6 +199,18 @@ def equal(t1: TypingType, t2: TypingType): Bool = (t1, t2) match {
   case (TInt(), TInt()) => true
   case (TBool(), TBool()) => true
   case (TVar(id1), TVar(id2)) => id1 == id2
+  case (TUnit(), TUnit()) => true
+
+  case (TFun(p1, r1), TFun(p2, r2)) => {
+    if (p1.size != p2.size) {
+      false 
+    } else {
+      val paramsEqual = p1.zip(p2).all { case (a, b) => a.tpe.equal(b.tpe) && a.isOptional == b.isOptional }
+      val returnEqual = r1.equal(r2)
+      paramsEqual && returnEqual
+    }
+  }
+
   case _ => false
 }
 

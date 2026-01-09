@@ -10,7 +10,7 @@ import src/lib/desugar/sugar
 import src/lib/utils/testUtils
 import src/lib/utils/errors
 import src/lib/utils/effects
-import src/lib/utils/types
+import src/lib/lexer/position
 
 def main() = mainSuite("lexer") {
 
@@ -253,6 +253,93 @@ def main() = mainSuite("lexer") {
       Token(Break(), Position(2, 2)),
       Token(Continue(), Position(3, 2)),
       Token(RBrace(), Position(4, 1))
+    ]
+
+    with fullLexerHandler(input, false)
+    val tokens = collectTokens(Nil()) { do next() }
+    assertEqual(tokens, expected)
+  }
+
+  test("lexer recognizes function definitions and return statements") {
+    val input = "def add(a: Int, b: Int): Int {\n return a + b\n}"
+
+    val expected = [
+      Token(Def(), Position(1, 1)),
+      Token(LowerIdentifier("add"), Position(1, 5)),
+      Token(LParen(), Position(1, 8)),
+      Token(LowerIdentifier("a"), Position(1, 9)),
+      Token(Colon(), Position(1, 10)),
+      Token(UpperIdentifier("Int"), Position(1, 12)),
+      Token(Comma(), Position(1, 15)),
+      Token(LowerIdentifier("b"), Position(1, 17)),
+      Token(Colon(), Position(1, 18)),
+      Token(UpperIdentifier("Int"), Position(1, 20)),
+      Token(RParen(), Position(1, 23)),
+      Token(Colon(), Position(1, 24)),
+      Token(UpperIdentifier("Int"), Position(1, 26)),
+      Token(LBrace(), Position(1, 30)),
+      Token(Return(), Position(2, 2)),
+      Token(LowerIdentifier("a"), Position(2, 9)),
+      Token(Plus(), Position(2, 11)),
+      Token(LowerIdentifier("b"), Position(2, 13)),
+      Token(RBrace(), Position(3, 1))
+    ]
+
+    with fullLexerHandler(input, false)
+    val tokens = collectTokens(Nil()) { do next() }
+    assertEqual(tokens, expected)
+  }
+
+  test("lexer recognizes lambdas") {
+    val input = "val increment = lambda(x: Int): Int {\n return x + 1\n}"
+
+    val expected = [
+      Token(Val(), Position(1, 1)),
+      Token(LowerIdentifier("increment"), Position(1, 5)),
+      Token(Assign(), Position(1, 15)),
+      Token(Lambda(), Position(1, 17)),
+      Token(LParen(), Position(1, 23)),
+      Token(LowerIdentifier("x"), Position(1, 24)),
+      Token(Colon(), Position(1, 25)),
+      Token(UpperIdentifier("Int"), Position(1, 27)),
+      Token(RParen(), Position(1, 30)),
+      Token(Colon(), Position(1, 31)),
+      Token(UpperIdentifier("Int"), Position(1, 33)),
+      Token(LBrace(), Position(1, 37)),
+      Token(Return(), Position(2, 2)),
+      Token(LowerIdentifier("x"), Position(2, 9)),
+      Token(Plus(), Position(2, 11)),
+      Token(Number(1), Position(2, 13)),
+      Token(RBrace(), Position(3, 1))
+    ]
+  }
+
+  test("lexer recognizes arrow in function types") {
+    val input = "def apply(f: Int -> Int, x: Int): Int {\n return f(x)\n}"
+
+    val expected = [
+      Token(Def(), Position(1, 1)),
+      Token(LowerIdentifier("apply"), Position(1, 5)),
+      Token(LParen(), Position(1, 10)),
+      Token(LowerIdentifier("f"), Position(1, 11)),
+      Token(Colon(), Position(1, 12)),
+      Token(UpperIdentifier("Int"), Position(1, 14)),
+      Token(Arrow(), Position(1, 18)),
+      Token(UpperIdentifier("Int"), Position(1, 21)),
+      Token(Comma(), Position(1, 24)),
+      Token(LowerIdentifier("x"), Position(1, 26)),
+      Token(Colon(), Position(1, 27)),
+      Token(UpperIdentifier("Int"), Position(1, 29)),
+      Token(RParen(), Position(1, 32)),
+      Token(Colon(), Position(1, 33)),
+      Token(UpperIdentifier("Int"), Position(1, 35)),
+      Token(LBrace(), Position(1, 39)),
+      Token(Return(), Position(2, 2)),
+      Token(LowerIdentifier("f"), Position(2, 9)),
+      Token(LParen(), Position(2, 10)),
+      Token(LowerIdentifier("x"), Position(2, 11)),
+      Token(RParen(), Position(2, 12)),
+      Token(RBrace(), Position(3, 1))
     ]
 
     with fullLexerHandler(input, false)

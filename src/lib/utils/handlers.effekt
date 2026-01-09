@@ -2,9 +2,11 @@ module src/lib/utils/handlers
 
 import map
 import src/lib/utils/errors
-import src/lib/utils/types
 import src/lib/utils/effects
 import src/lib/utils/helpers
+import src/lib/typechecker/types
+import src/lib/lexer/position
+import src/lib/interpreter/values
 
 /// handler for TypingContext effect that manages variable bindings and their types in a mutable map
 def handleTypingContext[R] { prog: => R / Context[TypeBinding] }: R / { Exception[NameError], Positioning } = {
@@ -35,10 +37,8 @@ def handleTypingContext[R] { prog: => R / Context[TypeBinding] }: R / { Exceptio
 }
 
 /// handler for RuntimeContext effect that manages variable bindings and memory store in mutable maps
-def handleRuntimeContext[R] { prog: => R / { Context[Address], Store } }: R / {Exception[RuntimeError], Positioning } = {
-  var context: Map[String, Address] = map::emptyGeneric[String, Address]()
-  var heap: Map[Address, Value] = map::emptyGeneric[Address, Value]()
-  var nextAddress: Address = 0
+def handleRuntimeContext[R](initEnv: Option[Map[String, Address]]) { prog: => R / { Context[Address] } }: R / {Exception[RuntimeError], Positioning } = {
+  var context: Map[String, Address] = initEnv.getOrElse { map::emptyGeneric[String, Address]() }
 
   try { prog() } with Context[Address] {
     def define(name, addr) = {
@@ -59,26 +59,33 @@ def handleRuntimeContext[R] { prog: => R / { Context[Address], Store } }: R / {E
       context = savedContext
       resume(())
     }
+  } 
+}
 
-  } with Store {
+def handleStore[R] { prog: => R / Store }: R / Exception[RuntimeError] = {
+  var store: Map[Address, Value] = map::emptyGeneric[Address, Value]()
+  var nextAddress: Address = 0
+
+  try { prog() } with Store {
     def allocate(value) = {
       val addr = nextAddress
+      store = store.put(addr, value)
       nextAddress = nextAddress + 1
-      heap = heap.put(addr, value)
       resume(addr)
     }
 
-    def load(addr) = heap.get(addr) match {
+    def load(addr) = store.get(addr) match {
       case Some(value) => resume(value)
       case None() => do raise(errors::RuntimeError(), "Invalid memory access at address " ++ addr.show)
     }
 
     def store(addr, value) = {
-      heap = heap.put(addr, value)
+      store = store.put(addr, value)
       resume(())
     }
   }
-}
+} 
+
 
 /// mock handler for Positioning effect that always returns a fixed position (line 1, column 1)
 def mockGetPos[R] { prog: => R / Positioning } = {

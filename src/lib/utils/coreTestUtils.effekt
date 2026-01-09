@@ -1,7 +1,8 @@
 module src/lib/utils/coreTestUtils
 
 import src/lib/desugar/coreAst
-import src/lib/utils/types
+import src/lib/lexer/position
+import src/lib/typechecker/types
 
 val d = Position(0, 0)
 
@@ -22,12 +23,15 @@ def cGt(l: Expr, r: Expr) = Gt(l, r, d)
 def cLtE(l: Expr, r: Expr) = LtE(l, r, d)
 def cGtE(l: Expr, r: Expr) = GtE(l, r, d)
 def cIf(c: Expr, t: Expr, e: Expr) = IfExpr(c, t, e, d)
+def cFun(p: List[Parameter], rt: Option[Type], b: Block) = FunExpr(p, rt, b, d)
+def cCall(r: Expr, a: List[Argument]) = CallExpr(r, a, d)
 
 def cVal(n: String, t: Option[Type], v: Expr) = ValDeclaration(n, t, v, d)
 def cVar(n: String, t: Option[Type], v: Expr) = VarDeclaration(n, t, v, d)
 def cAssign(n: String, v: Expr) = AssignStmt(n, v, d)
-def cIf(c: Expr, t: List[Stmt], e: List[Stmt]) = IfStmt(c, t, e, d)
+def cIf(c: Expr, t: Block, e: Block) = IfStmt(c, t, e, d)
 def cExpr(e: Expr) = ExprStmt(e, d)
-def cWhile(c: Expr, b: List[Stmt]) = WhileStmt(c, b, d)
+def cWhile(c: Expr, b: Block) = WhileStmt(c, b, d)
 def cBreak() = BreakStmt(d)
 def cContinue() = ContinueStmt(d)
+def cReturn(v: Option[Expr]) = ReturnStmt(v, d)

@@ -2,10 +2,12 @@ module src/lib/runner/runTypechecker
 
 import src/lib/typechecker/typecheck
 import src/lib/desugar/coreAst
-import src/lib/utils/types
+import src/lib/runner/result
 import src/lib/utils/handlers
 import src/lib/utils/errors
 import src/lib/utils/effects
+import src/lib/lexer/position
+import src/lib/typechecker/types
 
 /// runs the typechecker on the given program and returns either a success or failure with an error message
 def runTypecheck(prog: Program): PipelineResult[Unit]  = {

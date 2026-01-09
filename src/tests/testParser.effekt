@@ -10,9 +10,9 @@ import src/lib/desugar/sugar
 import src/lib/utils/testUtils
 import src/lib/utils/errors
 import src/lib/utils/effects
-import src/lib/utils/types
 import src/lib/utils/surfaceTestUtils
 import src/lib/utils/handlers
+import src/lib/typechecker/types
 
 def main() = mainSuite("parser") {
 
@@ -314,8 +314,8 @@ def main() = mainSuite("parser") {
     val expected = [
       sIf(
           sLit(true),
-          [sExpr(sLit(1))],
-          Nil()
+          Block(Nil(), Some(sLit(1))),
+          Block(Nil(), None())
         )
     ]
 
@@ -341,8 +341,8 @@ def main() = mainSuite("parser") {
           sAnd(
             sNot(sLit(false)),
             sLit(true)),
-          [sExpr(sLit(1))],
-          [sExpr(sLit(0))]
+          Block(Nil(), Some(sLit(1))),
+          Block(Nil(), Some(sLit(0)))
         )
     ]
 
@@ -378,8 +378,8 @@ def main() = mainSuite("parser") {
           sGtE(sV("x"), sLit(10)),
           sNot(sV("y"))
         ),
-        [sAssign("x", sAdd(sV("x"), sLit(1)))],
-        [sAssign("x", sSub(sV("x"), sLit(1)))]
+        Block([sAssign("x", sAdd(sV("x"), sLit(1)))], None()),
+        Block([sAssign("x", sSub(sV("x"), sLit(1)))], None())
       )
     ]
 
@@ -403,7 +403,7 @@ def main() = mainSuite("parser") {
     val expected = [
       sWhile(
         sLt(sV("x"), sLit(10)),
-        [sCAssign("x", PlusAssign(), sLit(1))]
+        Block([sCAssign("x", PlusAssign(), sLit(1))], None())
       )
     ]
 
@@ -427,13 +427,282 @@ def main() = mainSuite("parser") {
     val expected = [
       sWhile(
         sLit(true),
-        [
+        Block([
           sIf(
             sGt(sV("x"), sLit(10)),
-            [sBreak()],
-            [sContinue()]
+            Block([sBreak()], None()),
+            Block([sContinue()], None())
           )
-        ]
+        ], None())
+      )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with mockGetPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
+
+  test("parser parses function definitions fully typed") {
+    val input = """
+    def add(a: Int, b: Int): Int {
+      return a + b
+    }"""
+
+    val expected = [
+      sDef(
+        "add",
+        [
+          Parameter("a", Some(IntType()), None()),
+          Parameter("b", Some(IntType()), None())
+        ],
+        Some(IntType()),
+        Block([
+          sReturn(Some(sAdd(sV("a"), sV("b"))))
+        ], None())
+      )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with mockGetPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
+
+  test("parser parses function definitions without types") {
+    val input = """
+    def add(a, b) {
+      return a + b
+    }"""
+
+    val expected = [
+      sDef(
+        "add",
+        [
+          Parameter("a", None(), None()),
+          Parameter("b", None(), None())
+        ],
+        None(),
+        Block([
+          sReturn(Some(sAdd(sV("a"), sV("b"))))
+        ], None())
+      )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with mockGetPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
+
+  test("parser parses function definitions with default arguments") {
+    val input = """
+    def add(a = 1, b = 2) {
+      return a + b
+    }"""
+
+    val expected = [
+      sDef(
+        "add",
+        [
+          Parameter("a", None(), Some(sLit(1))),
+          Parameter("b", None(), Some(sLit(2)))
+        ],
+        None(),
+        Block([
+          sReturn(Some(sAdd(sV("a"), sV("b"))))
+        ], None())
+      )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with mockGetPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
+
+  test("parser parses function definitions fully typed and with default arguments") {
+    val input = """
+    def add(a: Int = 1, b: Int = 2): Int {
+      return a + b
+    }"""
+
+    val expected = [
+      sDef(
+        "add",
+        [
+          Parameter("a", Some(IntType()), Some(sLit(1))),
+          Parameter("b", Some(IntType()), Some(sLit(2)))
+        ],
+        Some(IntType()),
+        Block([
+          sReturn(Some(sAdd(sV("a"), sV("b"))))
+        ], None())
+      )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with mockGetPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
+
+  test("parser parses function definition with empty return") {
+    val input = """
+    def add(a: Int = 1, b: Int = 2): Int {
+      return 
+    }"""
+
+    val expected = [
+      sDef(
+        "add",
+        [
+          Parameter("a", Some(IntType()), Some(sLit(1))),
+          Parameter("b", Some(IntType()), Some(sLit(2)))
+        ],
+        Some(IntType()),
+        Block([sReturn(None())], None())
+      )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with mockGetPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
+
+  test("parser parses lambda expressions") {
+    val input = "val f = lambda (x: Int, y: Int) : Int { return x + y }"
+
+    val expected = [
+      sVal(
+        "f",
+        None(),
+        sFun(
+          [
+            Parameter("x", Some(IntType()), None()),
+            Parameter("y", Some(IntType()), None())
+          ],
+          Some(IntType()),
+          Block([
+            sReturn(Some(sAdd(sV("x"), sV("y"))))
+          ], None())
+        )
+      )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with mockGetPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
+
+  test("parser parses function type annotations") {
+    val input = "val f: Int -> Int = lambda (x: Int) : Int { return x + 1 }"
+
+    val expected = [
+      sVal(
+        "f",
+        Some(FunType([IntType()], IntType())),
+        sFun(
+          [
+            Parameter("x", Some(IntType()), None())
+          ],
+          Some(IntType()),
+          Block([
+            sReturn(Some(sAdd(sV("x"), sLit(1))))
+          ], None())
+        )
+      )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with mockGetPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
+
+  test("parser parses function type annotations with multiple parameters") {
+    val input = "val f: (Int, Bool) -> Int = lambda (x: Int, y: Bool) : Int { return x + 1 }"
+
+    val expected = [
+      sVal(
+        "f",
+        Some(FunType([IntType(), BoolType()], IntType())),
+        sFun(
+          [
+            Parameter("x", Some(IntType()), None()),
+            Parameter("y", Some(BoolType()), None())
+          ],
+          Some(IntType()),
+          Block([
+            sReturn(Some(sAdd(sV("x"), sLit(1))))
+          ], None())
+        )
       )
     ]
 

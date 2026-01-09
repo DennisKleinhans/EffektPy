@@ -6,9 +6,10 @@ import src/lib/desugar/coreAst
 import src/lib/utils/testUtils
 import src/lib/utils/handlers
 import src/lib/utils/errors
-import src/lib/utils/types
 import src/lib/utils/coreTestUtils
 import src/lib/utils/helpers
+import src/lib/lexer/position
+import src/lib/interpreter/values
 
 def main() = mainSuite("interpreter") {
 
@@ -165,12 +166,12 @@ def main() = mainSuite("interpreter") {
       cVar("x", None(), cLit(0)),
       cIf(
         cLit(true),
-        [
+        Block([
           cAssign("x", cLit(10))
-        ],
-        [
+        ], None()),
+        Block([
           cAssign("x", cLit(20))
-        ]
+        ], None())
       ),
       cExpr(cV("x"))
     ]
@@ -209,20 +210,20 @@ def main() = mainSuite("interpreter") {
       cVar("x", None(), cLit(0)),
       cIf(
         cLit(false),
-        [
+        Block([
           cAssign("x", cLit(10))
-        ],
-        [
+        ], None()),
+        Block([
           cIf(
             cLit(true),
-            [
+            Block([
               cAssign("x", cLit(20))
-            ],
-            [
+            ], None()),
+            Block([
               cAssign("x", cLit(30))
-            ]
+            ], None())
           )
-        ]
+        ], None())
       ),
       cExpr(cV("x"))
     ]
@@ -241,17 +242,17 @@ def main() = mainSuite("interpreter") {
       cVar("b", None(), cLit(20)),
       cAssign("b", cAdd(cV("a"), cLit(5))),
       cIf(cLt(cV("b"), cV("a")),
-        [
+        Block([
           cAssign("b", cMult(cV("b"), cLit(2)))
-        ],
-        [
+        ], None()),
+        Block([
           cAssign("b", cSub(cV("b"), cLit(5))),
           cVal("c", None(), cDiv(cV("b"), cLit(2))),
           cAssign("b", cIf(cGtE(cAdd(cV("b"), cV("c")), cLit(30)),
             cLit(100),
             cLit(50)
           ))
-        ]
+        ], None())
       ),
       cExpr(cV("b"))
     ]
@@ -269,9 +270,9 @@ def main() = mainSuite("interpreter") {
       cVar("x", None(), cLit(0)),
       cWhile(
         cLt(cV("x"), cLit(5)),
-        [
+        Block([
           cAssign("x", cAdd(cV("x"), cLit(1)))
-        ]
+        ], None())
       ),
       cExpr(cV("x"))
     ]
@@ -289,9 +290,9 @@ def main() = mainSuite("interpreter") {
       cVar("x", None(), cLit(0)),
       cWhile(
         cLt(cV("x"), cLit(0)),
-        [
+        Block([
           cAssign("x", cAdd(cV("x"), cLit(1)))
-        ]
+        ], None())
       ),
       cExpr(cV("x"))
     ]
@@ -309,16 +310,16 @@ def main() = mainSuite("interpreter") {
       cVar("x", None(), cLit(0)),
       cWhile(
         cLt(cV("x"), cLit(5)),
-        [
+        Block([
           cAssign("x", cAdd(cV("x"), cLit(1))),
           cIf(
             cEq(cV("x"), cLit(2)),
-            [
+            Block([
               cBreak()
-            ], 
-            Nil()
+            ], None()),
+          Block(Nil(), None())
           )
-        ]
+        ], None())
       ),
       cExpr(cV("x"))
     ] 
@@ -337,17 +338,17 @@ def main() = mainSuite("interpreter") {
       cVar("y", None(), cLit(0)),
       cWhile(
         cLt(cV("x"), cLit(5)),
-        [
+        Block([
           cAssign("x", cAdd(cV("x"), cLit(1))),
           cIf(
             cEq(cV("x"), cLit(2)),
-            [
+            Block([
               cContinue()
-            ], 
-            Nil()
+            ], None()),
+          Block(Nil(), None())
           ),
           cAssign("y", cAdd(cV("y"), cLit(1)))
-        ]
+        ], None())
       ),
       cExpr(cV("y"))
     ] 
@@ -358,5 +359,654 @@ def main() = mainSuite("interpreter") {
     val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(4)))
+  }
+
+  test("identity function") {
+    val prog = [
+      cVal("id", None(), cFun([Parameter("x", None(), None())], None(), Block(Nil(), Some(cV("x"))))),
+      cExpr(cCall(cV("id"), [Argument(None(), cLit(42))]))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(42)))
+  }
+
+  test("function with multiple parameters") {
+    val prog = [
+      cVal("add", None(), cFun(
+        [Parameter("x", None(), None()), Parameter("y", None(), None())],
+        None(),
+        Block(Nil(), Some(cAdd(cV("x"), cV("y"))))
+      )),
+      cExpr(cCall(cV("add"), [Argument(None(), cLit(10)), Argument(None(), cLit(20))]))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(30)))
+  }
+
+  test("function with named arguments") {
+    val prog = [
+      cVal("mul", None(), cFun(
+        [Parameter("a", None(), None()), Parameter("b", None(), None())],
+        None(),
+        Block(Nil(), Some(cMult(cV("a"), cV("b"))))
+      )),
+      cExpr(cCall(cV("mul"), [Argument(Some("b"), cLit(5)), Argument(Some("a"), cLit(4))]))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(20)))
+  }
+
+  test("function with mixed named and positional arguments") {
+    val prog = [
+      cVal("calc", None(), cFun(
+        [Parameter("x", None(), None()), Parameter("y", None(), None()), Parameter("z", None(), None())],
+        None(),
+        Block(Nil(), Some(cAdd(cMult(cV("x"), cV("y")), cV("z"))))
+      )),
+      cExpr(cCall(cV("calc"), [Argument(None(), cLit(2)), Argument(Some("z"), cLit(10)), Argument(Some("y"), cLit(3))]))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(16)))
+  }
+
+  test("variable shadowing in function parameter") {
+    val prog = [
+      cVal("x", None(), cLit(100)),
+      cVal("shadow", None(), cFun(
+        [Parameter("x", None(), None())],
+        None(),
+        Block(Nil(), Some(cV("x")))
+      )),
+      cExpr(cCall(cV("shadow"), [Argument(None(), cLit(42))]))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(42)))
+  }
+
+  test("function parameter shadows outer variable in nested block") {
+    val prog = [
+      cVal("x", None(), cLit(100)),
+      cVal("f", None(), cFun(
+        [Parameter("x", None(), None())],
+        None(),
+        Block(Nil(), Some(cAdd(cV("x"), cLit(5))))
+      )),
+      cExpr(cCall(cV("f"), [Argument(None(), cLit(10))]))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(15)))
+  }
+
+  test("nested function definition") {
+    val prog = [
+      cVal("outer", None(), cFun(
+        [Parameter("x", None(), None())],
+        None(),
+        Block([
+          cVal("inner", None(), cFun(
+            [Parameter("y", None(), None())],
+            None(),
+            Block(Nil(), Some(cAdd(cV("x"), cV("y"))))
+          ))
+        ], Some(cCall(cV("inner"), [Argument(None(), cLit(20))])))
+      )),
+      cExpr(cCall(cV("outer"), [Argument(None(), cLit(10))]))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(30)))
+  }
+
+  test("nested function with closure over multiple parameters") {
+    val prog = [
+      cVal("make_adder", None(), cFun(
+        [Parameter("a", None(), None()), Parameter("b", None(), None())],
+        None(),
+        Block([
+          cVal("add_third", None(), cFun(
+            [Parameter("c", None(), None())],
+            None(),
+            Block(Nil(), Some(cAdd(cAdd(cV("a"), cV("b")), cV("c"))))
+          ))
+        ], Some(cCall(cV("add_third"), [Argument(None(), cLit(5))])))
+      )),
+      cExpr(cCall(cV("make_adder"), [Argument(None(), cLit(10)), Argument(None(), cLit(20))]))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(35)))
+  }
+
+  test("function returning a function (currying)") {
+    val prog = [
+      cVal("curry_add", None(), cFun(
+        [Parameter("x", None(), None())],
+        None(),
+        Block(Nil(), Some(cFun(
+          [Parameter("y", None(), None())],
+          None(),
+          Block(Nil(), Some(cAdd(cV("x"), cV("y"))))
+        )))
+      )),
+      cVal("add5", None(), cCall(cV("curry_add"), [Argument(None(), cLit(5))])),
+      cExpr(cCall(cV("add5"), [Argument(None(), cLit(10))]))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(15)))
+  }
+
+  test("parameter shadowing with multiple nested functions") {
+    val prog = [
+      cVal("x", None(), cLit(1)),
+      cVal("f1", None(), cFun(
+        [Parameter("x", None(), None())],
+        None(),
+        Block([
+          cVal("f2", None(), cFun(
+            [Parameter("x", None(), None())],
+            None(),
+            Block(Nil(), Some(cV("x")))
+          ))
+        ], Some(cCall(cV("f2"), [Argument(None(), cLit(3))])))
+      )),
+      cExpr(cCall(cV("f1"), [Argument(None(), cLit(2))]))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(3)))
+  }
+
+  test("function accessing outer scope without shadowing") {
+    val prog = [
+      cVal("x", None(), cLit(100)),
+      cVal("y", None(), cLit(50)),
+      cVal("f", None(), cFun(
+        [Parameter("z", None(), None())],
+        None(),
+        Block(Nil(), Some(cAdd(cAdd(cV("x"), cV("y")), cV("z"))))
+      )),
+      cExpr(cCall(cV("f"), [Argument(None(), cLit(25))]))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(175)))
+  }
+
+  test("variable shadowing in local function scope") {
+    val prog = [
+      cVal("x", None(), cLit(10)),
+      cVal("f", None(), cFun(
+        [Parameter("y", None(), None())],
+        None(),
+        Block([
+          cVar("x", None(), cLit(20)),
+          cAssign("x", cAdd(cV("x"), cLit(5)))
+        ], Some(cAdd(cV("x"), cV("y"))))
+      )),
+      cExpr(cCall(cV("f"), [Argument(None(), cLit(15))]))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(40)))
+  }
+
+  // test("function with complex nested scoping") {
+  //   val prog = [
+  //     cVal("a", None(), cLit(1)),
+  //     cVal("f", None(), cFun(
+  //       [Parameter("a", None(), None())],
+  //       None(),
+  //       Block([
+  //         cVal("b", None(), cLit(2)),
+  //         cVal("g", None(), cFun(
+  //           [Parameter("a", None(), None())],
+  //           None(),
+  //           Block([
+  //             cVal("c", None(), cLit(3))
+  //           ], Some(cAdd(cAdd(cV("a"), cV("b")), cV("c"))))
+  //         ))
+  //       ], Some(cCall(cV("g"), [Argument(None(), cLit(10))])))
+  //     )),
+  //     cExpr(cCall(cV("f"), [Argument(None(), cLit(100))]))
+  //   ]
+
+  //   with on[RuntimeError].panic
+  //   with mockGetPos 
+  //   with mockInspector[Unit, Address]
+  //   val result = evalProgram(prog)
+
+  //   assertTrue(result.equal(VInt(15)))
+  // }
+
+  test("function with default parameter value") {
+    val prog = [
+      cVal("greet", None(), cFun(
+        [Parameter("x", None(), Some(cLit(42)))],
+        None(),
+        Block(Nil(), Some(cV("x")))
+      )),
+      cExpr(cCall(cV("greet"), Nil()))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(42)))
+  }
+
+  test("function with multiple default parameters") {
+    val prog = [
+      cVal("defaults", None(), cFun(
+        [Parameter("x", None(), Some(cLit(10))), Parameter("y", None(), Some(cLit(20)))],
+        None(),
+        Block(Nil(), Some(cAdd(cV("x"), cV("y"))))
+      )),
+      cExpr(cCall(cV("defaults"), Nil()))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(30)))
+  }
+
+  test("function with mixed default and required parameters") {
+    val prog = [
+      cVal("mixed", None(), cFun(
+        [Parameter("x", None(), None()), Parameter("y", None(), Some(cLit(5)))],
+        None(),
+        Block(Nil(), Some(cAdd(cV("x"), cV("y"))))
+      )),
+      cExpr(cCall(cV("mixed"), [Argument(None(), cLit(10))]))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(15)))
+  }
+
+  test("function with three nested levels") {
+    val prog = [
+      cVal("f1", None(), cFun(
+        [Parameter("a", None(), None())],
+        None(),
+        Block([], Some(cFun(
+          [Parameter("b", None(), None())],
+          None(),
+          Block([], Some(cFun(
+            [Parameter("c", None(), None())],
+            None(),
+            Block([], Some(cAdd(cAdd(cV("a"), cV("b")), cV("c"))))
+          )))
+        )))
+      )),
+      cVal("f2", None(), cCall(cV("f1"), [Argument(None(), cLit(1))])),
+      cVal("f3", None(), cCall(cV("f2"), [Argument(None(), cLit(2))])),
+      cExpr(cCall(cV("f3"), [Argument(None(), cLit(3))]))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(6)))
+  }
+
+  test("function call with too few arguments throws error") {
+    val prog = [
+      cVal("require_two", None(), cFun(
+        [Parameter("x", None(), None()), Parameter("y", None(), None())],
+        None(),
+        Block(Nil(), Some(cAdd(cV("x"), cV("y"))))
+      )),
+      cExpr(cCall(cV("require_two"), [Argument(None(), cLit(10))]))
+    ]
+
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    with assertThrows[RuntimeError]
+    evalProgram(prog)
+    ()
+  }
+
+  test("function call with too many arguments throws error") {
+    val prog = [
+      cVal("one_arg", None(), cFun(
+        [Parameter("x", None(), None())],
+        None(),
+        Block(Nil(), Some(cV("x")))
+      )),
+      cExpr(cCall(cV("one_arg"), [Argument(None(), cLit(10)), Argument(None(), cLit(20))]))
+    ]
+
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    with assertThrows[RuntimeError]
+    evalProgram(prog)
+    ()
+  }
+
+  test("calling non-function value throws error") {
+    val prog = [
+      cVal("x", None(), cLit(42)),
+      cExpr(cCall(cV("x"), [Argument(None(), cLit(10))]))
+    ]
+
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    with assertThrows[RuntimeError]
+    evalProgram(prog)
+    ()
+  }
+
+  test("function with named argument for undefined parameter throws error") {
+    val prog = [
+      cVal("f", None(), cFun(
+        [Parameter("x", None(), None())],
+        None(),
+        Block(Nil(), Some(cV("x")))
+      )),
+      cExpr(cCall(cV("f"), [Argument(Some("undefined"), cLit(10))]))
+    ]
+
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    with assertThrows[RuntimeError]
+    evalProgram(prog)
+    ()
+  }
+
+  test("function parameter modification doesn't affect outer scope") {
+    val prog = [
+      cVal("x", None(), cLit(100)),
+      cVal("f", None(), cFun(
+        [Parameter("x", None(), None())],
+        None(),
+        Block([
+          cVar("temp", None(), cV("x")),
+          cAssign("temp", cLit(999))
+        ], Some(cV("temp")))
+      )),
+      cExpr(cCall(cV("f"), [Argument(None(), cLit(50))])),
+      cExpr(cV("x"))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(100)))
+  }
+
+  test("function modifying outer scope variable") {
+    val prog = [
+      cVar("counter", None(), cLit(0)),
+      cVal("increment", None(), cFun(
+        [Parameter("n", None(), None())],
+        None(),
+        Block([], Some(cV("n")))
+      )),
+      cVal("result", None(), cCall(cV("increment"), [Argument(None(), cAdd(cV("counter"), cLit(1)))])),
+      cExpr(cV("result"))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(1)))
+  }
+
+  test("multiple function definitions with same parameter names") {
+    val prog = [
+      cVal("f1", None(), cFun(
+        [Parameter("x", None(), None())],
+        None(),
+        Block(Nil(), Some(cMult(cV("x"), cLit(2))))
+      )),
+      cVal("f2", None(), cFun(
+        [Parameter("x", None(), None())],
+        None(),
+        Block(Nil(), Some(cAdd(cV("x"), cLit(10))))
+      )),
+      cVal("r1", None(), cCall(cV("f1"), [Argument(None(), cLit(5))])),
+      cVal("r2", None(), cCall(cV("f2"), [Argument(None(), cLit(5))])),
+      cExpr(cAdd(cV("r1"), cV("r2")))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(25)))
+  }
+
+  test("function inside if expression") {
+    val prog = [
+      cVal("f", None(), cFun(
+        [Parameter("x", None(), None())],
+        None(),
+        Block(Nil(), Some(cMult(cV("x"), cLit(3))))
+      )),
+      cExpr(cIf(
+        cLit(true),
+        cCall(cV("f"), [Argument(None(), cLit(10))]),
+        cLit(0)
+      ))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(30)))
+  }
+
+  test("function in while loop") {
+    val prog = [
+      cVal("f", None(), cFun(
+        [Parameter("x", None(), None())],
+        None(),
+        Block(Nil(), Some(cAdd(cV("x"), cLit(1))))
+      )),
+      cVar("counter", None(), cLit(0)),
+      cWhile(
+        cLt(cV("counter"), cLit(3)),
+        Block([
+          cAssign("counter", cCall(cV("f"), [Argument(None(), cV("counter"))]))
+        ], None())
+      ),
+      cExpr(cV("counter"))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(3)))
+  }
+
+  test("shadowing parameter in inner block") {
+    val prog = [
+      cVal("f", None(), cFun(
+        [Parameter("x", None(), None())],
+        None(),
+        Block([
+          cVar("x", None(), cLit(999))
+        ], Some(cAdd(cV("x"), cLit(1))))
+      )),
+      cExpr(cCall(cV("f"), [Argument(None(), cLit(10))]))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(1000)))
+  }
+
+  test("parameter shadowing with same type") {
+    val prog = [
+      cVal("f", None(), cFun(
+        [Parameter("val", None(), None())],
+        None(),
+        Block([
+          cVar("val", None(), cLit(50))
+        ], Some(cV("val")))
+      )),
+      cExpr(cCall(cV("f"), [Argument(None(), cLit(30))]))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(50)))
+  }
+
+  test("complex shadowing with multiple scopes") {
+    val prog = [
+      cVal("x", None(), cLit(1)),
+      cVal("y", None(), cLit(2)),
+      cVal("f", None(), cFun(
+        [Parameter("x", None(), None())],
+        None(),
+        Block([
+          cVal("y", None(), cLit(200))
+        ], Some(cAdd(cV("x"), cV("y"))))
+      )),
+      cExpr(cCall(cV("f"), [Argument(None(), cLit(100))]))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(300)))
+  }
+
+  test("named arguments in correct order") {
+    val prog = [
+      cVal("sub", None(), cFun(
+        [Parameter("a", None(), None()), Parameter("b", None(), None())],
+        None(),
+        Block(Nil(), Some(cSub(cV("a"), cV("b"))))
+      )),
+      cExpr(cCall(cV("sub"), [Argument(Some("a"), cLit(50)), Argument(Some("b"), cLit(20))]))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(30)))
+  }
+
+  test("named arguments in reverse order") {
+    val prog = [
+      cVal("sub", None(), cFun(
+        [Parameter("a", None(), None()), Parameter("b", None(), None())],
+        None(),
+        Block(Nil(), Some(cSub(cV("a"), cV("b"))))
+      )),
+      cExpr(cCall(cV("sub"), [Argument(Some("b"), cLit(20)), Argument(Some("a"), cLit(50))]))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(30)))
+  }
+
+  test("partial default parameters with named arguments") {
+    val prog = [
+      cVal("fn", None(), cFun(
+        [Parameter("x", None(), None()), Parameter("y", None(), Some(cLit(100))), Parameter("z", None(), Some(cLit(10)))],
+        None(),
+        Block(Nil(), Some(cAdd(cAdd(cV("x"), cV("y")), cV("z"))))
+      )),
+      cExpr(cCall(cV("fn"), [Argument(Some("z"), cLit(20)), Argument(None(), cLit(5))]))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos 
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(125)))
   }
 }
