@@ -77,9 +77,12 @@ def readInputBlock(): String / REPLConsole = {
   var result = ""
 
   with stringBuffer
+
   while (reading) {
     if (isEmpty) {
       do writeSingle(">>> ")
+    } else {
+      do writeSingle("... ")
     }
     val line = do readLine()
 

@@ -2,14 +2,25 @@ module src/lib/runner/runParser
 
 import scanner
 import exception
+import io/error
+import io/filesystem
 import src/lib/lexer/lexer
+import src/lib/lexer/tokens
+import src/lib/lexer/position
 import src/lib/runner/result
 import src/lib/utils/errors
 import src/lib/parser/parser
 import src/lib/parser/surfaceAst
 import src/lib/desugar/sugar
 import src/lib/desugar/coreAst
+import src/lib/utils/effects
 
+/// runs the parsing and desugaring stages of the pipeline
+def parseAndDesugar(): PipelineResult[Program] / { Lexer[Token], Exception[ParseError], Exception[DesugarError], Positioning } = {
+   val parsed = parseProgram()
+   val desugared = desugarProgram(parsed)
+   PipelineResult::Success(desugared)
+}
 
 /// runs the parsing stage of the pipeline: lexing, parsing, and desugaring.
 def runParsing(input: String) : PipelineResult[Program] = {
@@ -18,9 +29,26 @@ def runParsing(input: String) : PipelineResult[Program] = {
     with returning::scanner[Char, PipelineResult[Program]]
     with scanWithPos
     with lexer
-    val parsed = parseProgram()
-    val desugared = desugarProgram(parsed)
-    PipelineResult::Success(desugared)
+    parseAndDesugar()
+  } with Exception[LexerError] { 
+      def raise(exception, msg) = Failure("LexerError: " ++ msg)
+  } with Exception[ParseError] {
+      def raise(exception, msg) = Failure("ParseError: " ++ msg)
+  } with Exception[DesugarError] {
+      def raise(exception, msg) = Failure("DesugarError: " ++ msg)
+  }
+}
+
+/// runs the parsing stage of the pipeline on a file: lexing, parsing, and desugaring.
+def runParsingFile(path: String) : PipelineResult[Program] / Exception[IOError] = {
+  try {
+    // HIER ist der einzige Unterschied: Wir lesen direkt aus der Datei
+    with readFileUTF8(path) 
+    with returning::scanner[Char, PipelineResult[Program]]
+    with scanWithPos
+    with lexer
+    parseAndDesugar()
+    
   } with Exception[LexerError] { 
       def raise(exception, msg) = Failure("LexerError: " ++ msg)
   } with Exception[ParseError] {
