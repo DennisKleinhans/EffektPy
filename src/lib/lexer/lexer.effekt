@@ -137,7 +137,7 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], Positioning 
       val rest = string::collect { readWhile { c => c.isAlphanumeric } }
       do raise(LexerError(), "invalid char at " ++ pos.show ++ " in " ++ "'" ++ value.show ++ rest ++ "'" )
     }
-    Token(Number(value), pos)
+    Token(Integer(value), pos)
   }
 
   // always skip whitespace 

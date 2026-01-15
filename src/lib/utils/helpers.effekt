@@ -84,7 +84,7 @@ def show(pos: Position): String = "line: " ++ pos.line.show ++ " column: " ++ po
 def show(tokenKind: TokenKind): String = tokenKind match {
   case LowerIdentifier(id) => "LowerIdentifier: " ++ id
   case UpperIdentifier(id) => "UpperIdentifier: " ++ id
-  case Number(n) => "Number: " ++ n.show
+  case Integer(n) => "Integer: " ++ n.show
   case Boolean(b) => "Bool: " ++ b.show
   case Val() => "Keyword: val"
   case Var() => "Keyword: var"
@@ -153,7 +153,7 @@ def show(v: Value): String = v match {
 def equal(t1: TokenKind, t2: TokenKind): Bool = (t1, t2) match {
   case (LowerIdentifier(id1), LowerIdentifier(id2)) => id1 == id2
   case (UpperIdentifier(id1), UpperIdentifier(id2)) => id1 == id2
-  case (Number(n1), Number(n2)) => n1 == n2
+  case (Integer(n1), Integer(n2)) => n1 == n2
   case (Boolean(b1), Boolean(b2)) => b1 == b2
   case (Val(), Val()) => true
   case (Var(), Var()) => true
