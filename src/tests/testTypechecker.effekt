@@ -15,14 +15,14 @@ import src/lib/typechecker/types
 
 def main() = mainSuite("typechecker") {
 
-  def typeMapsEqual(m1: Map[String, TypingType], m2: Map[String, TypingType]): Bool = {
+  def typeMapsEqual(m1: Map[String, TypeBinding], m2: Map[String, TypingType]): Bool = {
       if (m1.size() != m2.size()) {
         false
       } else {
         m1.keys().all { key =>
         m2.get(key) match  {
           case Some(v2) => m1.get(key) match {
-            case Some(v1) => v1.equal(v2)
+            case Some(v1) => v1.tpe.equal(v2)
             case None() => false
           }
           case None() => false
@@ -460,7 +460,7 @@ def main() = mainSuite("typechecker") {
     ])
 
     var innerContext: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
-    var outerContext: Map[String, TypingType] = map::emptyGeneric[String, TypingType]()
+    var outerContext: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
 
     with on[TypeError].panic
     with on[NameError].panic
@@ -551,7 +551,7 @@ def main() = mainSuite("typechecker") {
 
     var innerContext1: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
     var innerContext2: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
-    var outerContext: Map[String, TypingType] = map::emptyGeneric[String, TypingType]()
+    var outerContext: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
     var inspectCount = 0
     with on[TypeError].panic
     with on[NameError].panic
@@ -651,7 +651,7 @@ def main() = mainSuite("typechecker") {
 
     var innerContext1: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
     var innerContext2: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
-    var outerContext: Map[String, TypingType] = map::emptyGeneric[String, TypingType]()
+    var outerContext: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
     var inspectCount = 0
 
     with on[TypeError].panic

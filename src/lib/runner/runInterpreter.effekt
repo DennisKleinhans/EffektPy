@@ -1,5 +1,6 @@
 module src/lib/runner/runInterpreter
 
+import map
 import src/lib/interpreter/eval
 import src/lib/desugar/coreAst
 import src/lib/utils/errors
@@ -16,6 +17,24 @@ def runEval(prog: Program): PipelineResult[Value]  = {
     with mockInspector[PipelineResult[Value], Address]
     val result = evalProgram(prog)
     PipelineResult::Success(result)
+  } with Exception[RuntimeError] {
+    def raise(exception, msg) = Failure("RuntimeError: " ++ msg)
+  } with Positioning {
+    def getPos() = resume(currentPos)
+    def setPos(p) = {
+      currentPos = p
+      resume(())
+    }
+  }
+}
+
+/// runs the interpreter incrementally on a desugared program, given an initial environment and store, returning either a Failure with an error message or a Success with the resulting EvalState
+def runEvalIncremental(prog: Program, initialEnv: Map[String, Address], initialStore: Map[Address, Value]): PipelineResult[EvalState]  = {
+  var currentPos = Position(1, 1)
+  try {
+    with mockInspector[PipelineResult[EvalState], Address]
+    val newEvalState = evalProgramIncremental(prog, initialEnv, initialStore)
+    PipelineResult::Success(newEvalState)
   } with Exception[RuntimeError] {
     def raise(exception, msg) = Failure("RuntimeError: " ++ msg)
   } with Positioning {

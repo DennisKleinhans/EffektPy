@@ -24,6 +24,7 @@ interface Store {
   def allocate(value: Value): Address
   def load(addr: Address): Value
   def store(addr: Address, value: Value): Unit
+  def dump(): Map[Address, Value]
 }
 
 /// effect for inspecting the current context (for debugging)

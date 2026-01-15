@@ -8,8 +8,9 @@ import src/lib/utils/errors
 import src/lib/utils/helpers
 import src/lib/interpreter/values
 import src/lib/lexer/position
+import src/lib/runner/result
 
-
+/// evaluates an expression and returns the resulting value
 def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeError], Positioning, Inspector[Address], LoopControl } = expr match {
   case IntLiteral(n, pos) => { 
     with at(pos)
@@ -234,7 +235,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
         }
 
         try {
-          with handleRuntimeContext(Some(capturedEnv))
+          with handleRuntimeContext(capturedEnv)
           with handleNewRuntimeScope
           
           params.foreach { p => 
@@ -262,6 +263,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
   }
 }
 
+/// evaluates a statement and returns the resulting value
 def evalStmt(stmt: Stmt): Value / { Context[Address], Store, Exception[RuntimeError], Inspector[Address], Positioning, LoopControl, ReturnControl } = stmt match {
   case ValDeclaration(name, _, value, pos) => {
     with at(pos)
@@ -356,6 +358,7 @@ def evalStmt(stmt: Stmt): Value / { Context[Address], Store, Exception[RuntimeEr
   }
 }
 
+/// evaluates a block of statements and returns the resulting value
 def evalBlock(block: Block): Value / { Context[Address], Store, Exception[RuntimeError], Inspector[Address], Positioning, LoopControl, ReturnControl } = {
   var lastValue = VUnit()
   with handleNewRuntimeScope
@@ -368,20 +371,26 @@ def evalBlock(block: Block): Value / { Context[Address], Store, Exception[Runtim
   
 }
 
+/// evaluates a program and returns the resulting value
 def evalProgram(program: Program): Value / { Exception[RuntimeError], Inspector[Address], Positioning } = {
+  evalProgramIncremental(program, map::emptyGeneric[String, Address](), map::emptyGeneric[Address, Value]()).value
+}
+
+/// evaluates a program incrementally, given an initial environment and store, returning the resulting EvalState
+def evalProgramIncremental(program: Program, initialEnv: Map[String, Address], initialStore: Map[Address, Value]): EvalState / { Exception[RuntimeError], Inspector[Address], Positioning } = {
   with handleDefaultLoopControl
-  with handleStore
-  with handleRuntimeContext(None())
+  with handleStore(initialStore)
+  with handleRuntimeContext(initialEnv)
   
   try {
     var lastValue = VUnit()
     program.foreach { stmt => 
       lastValue = evalStmt(stmt) 
     }
-
-    lastValue
+    val finalEnv = do backup()
+    val finalStore = do dump()
+    EvalState(lastValue, finalEnv, finalStore)
   } with ReturnControl {
-    def returnValue(value) = value
+    def returnValue(value) = EvalState(value, do backup(), do dump())
   }
-  
 }

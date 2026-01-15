@@ -492,6 +492,16 @@ def main() = mainSuite("pipeline") {
     assertTrue(result.equal(VInt(36)))
   }
 
+  test("function with Unit type annotation") {
+    val result = runPipeline("""
+      def printValue(x: Int): Unit {
+        val y = x + 10
+      }
+      printValue(5)
+    """)
+    assertTrue(result.equal(VUnit()))
+  }
+  
   test("complex program combining all features") {
     val result = runPipeline("""
       def complexFunction(a: Int, b: Int): Int {

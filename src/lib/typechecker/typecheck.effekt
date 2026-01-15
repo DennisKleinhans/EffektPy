@@ -21,22 +21,32 @@ interface ReturnContext {
   def getExpectedType(): TypingType
 }
 
+// typechecks a program and returns a mapping from variable names to their inferred types
+def typecheck(prog: Program): Map[String, TypeBinding] / { Exception[TypeError], Exception[NameError], Inspector[TypeBinding], Positioning } = {
+  typecheckIncremental(prog, map::emptyGeneric[String, TypeBinding]())
+}
+
 /// typechecks a program and returns a mapping from variable names to their inferred types
-def typecheck(prog: Program): Map[String, TypingType] / { Exception[TypeError], Exception[NameError], Inspector[TypeBinding], Positioning } = {
+/// accepts an initial environment of variable bindings to start from
+def typecheckIncremental(prog: Program, initialEnv: Map[String, TypeBinding]): Map[String, TypeBinding] / { Exception[TypeError], Exception[NameError], Inspector[TypeBinding], Positioning } = {
   var equations: List[TypeEquation] = Nil()
   var counter = 0
 
-  with handleTypingContext
+  with handleTypingContext(initialEnv)
   try {
     prog.foreach { stmt => checkStmt(stmt); () }
     val finalSubst = solve(equations)
 
-    val globalEnv: Map[String, TypeBinding] = do backup()
-    var results = map::emptyGeneric[String, TypingType]()
-    globalEnv.foreach { (name, binding) => 
-      results = results.put(name, applySubstitution(binding.tpe, finalSubst))
+    val currentEnv: Map[String, TypeBinding] = do backup()
+    var updatedEnv = map::emptyGeneric[String, TypeBinding]()
+
+    currentEnv.foreach { (name, binding) => {
+        val concreteType = applySubstitution(binding.tpe, finalSubst)
+        updatedEnv = updatedEnv.put(name, TypeBinding(concreteType, binding.isMutable))
+      }
     }
-    results
+    updatedEnv
+
   } with Typing {
     def fresh() = {
       val t = TVar(counter)

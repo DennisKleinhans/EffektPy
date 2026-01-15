@@ -1,26 +1,39 @@
 module src/lib/runner/runPipeline
 
 import scanner
+import io/error
 import src/lib/runner/result
 import src/lib/runner/runParser
 import src/lib/runner/runTypechecker
 import src/lib/runner/runInterpreter
 import src/lib/interpreter/values
+import src/lib/desugar/coreAst
 
-/// runs the full pipeline: parsing, typechecking, and evaluation
+/// runs the backend: typechecking and interpretation
+def runBackend(ast: Program): Value = {
+  runTypecheck(ast) match {
+    case Failure(msg) => { println(msg); VUnit() }
+    case PipelineResult::Success(_) => {
+      runEval(ast) match {
+        case Failure(msg) => { println(msg); VUnit() }
+        case PipelineResult::Success(value) => value 
+      }
+    }
+  }
+}
+
+/// runs the full pipeline on the given input string
 def runPipeline(input: String) = {
   runParsing(input) match {
     case Failure(msg) => { println(msg); VUnit() }
-    case PipelineResult::Success(ast) => {
-      runTypecheck(ast) match {
-        case Failure(msg) => { println(msg); VUnit() }
-        case PipelineResult::Success(_) => {
-          runEval(ast) match {
-            case Failure(msg) => { println(msg); VUnit() }
-            case PipelineResult::Success(value) => value 
-          }
-        }
-      }
-    }
+    case PipelineResult::Success(ast) => runBackend(ast) 
+  }
+}
+
+/// runs the full pipeline on the given file
+def runFilePipeline(path: String): Value / Exception[IOError] = {
+  runParsingFile(path) match {
+    case Failure(msg) => { println(msg); VUnit() }
+    case PipelineResult::Success(ast) => runBackend(ast) 
   }
 }

@@ -1,0 +1,172 @@
+module src/lib/runner/runRepl
+
+import map
+import stringbuffer
+import src/lib/runner/runParser
+import src/lib/runner/runTypechecker
+import src/lib/runner/runInterpreter
+import src/lib/runner/result
+import src/lib/typechecker/types
+import src/lib/interpreter/values
+import src/lib/utils/helpers
+
+
+interface REPLConsole {
+  def readLine(): String
+  def writeLine(message: String): Unit
+  def writeSingle(content: String): Unit
+}
+
+/// Handler for the console effect, using the Console available in js
+def consoleRepl[R] { program: () => R / REPLConsole }: R = {
+  val c = js::newConsole()
+  try {
+    val r = program()
+    js::close(c)
+    return r
+  } with REPLConsole {
+    def readLine() = resume(js::readLine(c))
+    def writeLine(message) = resume(js::writeLine(c, message))
+    def writeSingle(message) = resume(js::write(c, message))
+  }
+}
+
+namespace js {
+
+  extern jsNode """
+    const readline = require('node:readline');
+  """
+
+  extern type JSConsole
+
+  extern def newConsole() at io: JSConsole =
+    jsNode """readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+      })"""
+
+  extern def close(console: JSConsole) at io: Unit =
+    jsNode "${console}.close()"
+
+  extern def readLine(console: JSConsole) at async: String =
+    jsNode "$effekt.capture(k => ${console}.once('line', k))"
+  extern def writeLine(console: JSConsole, message: String) at io: Unit =
+    jsNode "${console}.output.write(${message} + '\\n')"
+  extern def write(console: JSConsole, message: String) at io: Unit =
+    jsNode "${console}.output.write(${message})"
+}
+
+/// Helper to count open braces to detect if a block is finished
+def updateBalance(line: String, currentBalance: Int): Int = {
+  var balance = currentBalance
+   try { line.each } with emit[Char] { char => 
+    if (char == '{') { balance = balance + 1 }
+    else if (char == '}') { balance = balance - 1; resume(()) }
+    else if (char == '(') { balance = balance + 1; resume(()) }
+    else if (char == ')') { balance = balance - 1; resume(()) }
+    else resume(())
+   } 
+  balance
+}
+
+/// Reads a block of input from the user, handling multi-line input based on brace balance
+def readInputBlock(): String / REPLConsole = {
+  var balance = 0
+  var reading = true 
+  var isEmpty = true
+  var result = ""
+
+  with stringBuffer
+
+  while (reading) {
+    if (isEmpty) {
+      do writeSingle(">>> ")
+    } else {
+      do writeSingle("... ")
+    }
+    val line = do readLine()
+
+    // check for exit command
+    if (line == ":exit") {
+      result = ":exit"
+      reading = false
+    }
+
+    val trimmed = line.trim()
+
+    
+    if (isEmpty && trimmed == "") {
+      reading = false
+    } else {
+      balance = updateBalance(line, balance)
+      do write(line)
+      do write("\n")
+
+      isEmpty = false
+
+      // if balance is zero and line is not empty, we are done
+      if (balance <= 0 && trimmed != "") {
+        reading = false
+      }
+    }
+  }
+  // flush the buffer or return the stored command e.g. ':exit'
+  if (result == "") {
+    do flush()
+  } else {
+    do flush()
+    result
+  }
+}
+
+/// Starts the REPL loop for EffektPy programs 
+/// Maintains incremental type and runtime environments across inputs
+def startRepl() = {
+
+  var typeEnv = map::emptyGeneric[String, TypeBinding]()
+  var runtimeEnv = map::emptyGeneric[String, Address]()
+  var store = map::emptyGeneric[Address, Value]()
+  var continueRepl = true
+
+  with consoleRepl
+  do writeLine("Welcome to the EffektPy REPL!")
+  do writeLine("Type ':exit' to quit.")
+  
+  while (continueRepl) {
+    val input = readInputBlock()
+
+    if (input == ":exit") {
+      do writeLine("Goodbye!")
+      continueRepl = false
+      ()
+    } else {
+      runParsing(input) match {
+        case Failure(msg) => do writeLine(msg)
+        case PipelineResult::Success(ast) => {
+          runTypecheckIncremental(ast, typeEnv) match {
+            case Failure(msg) => do writeLine(msg)
+            case PipelineResult::Success(newTypeEnv) => { 
+              do writeLine("Typecheck successful!")
+              runEvalIncremental(ast, runtimeEnv, store) match {
+                case Failure(msg) => do writeLine(msg)
+                case PipelineResult::Success(evalState) => {
+                  typeEnv = newTypeEnv
+                  runtimeEnv = evalState.env
+                  store = evalState.store
+
+                  if (evalState.value is VUnit()) {
+                    ()
+                  } else {
+                    do writeLine("Result: " ++ evalState.value.show)
+                  }
+                  
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+

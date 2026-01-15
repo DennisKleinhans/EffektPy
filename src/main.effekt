@@ -1,22 +1,36 @@
 module src/main 
 
+import args
 import src/lib/runner/runPipeline
-
+import src/lib/runner/runRepl
+import io/filesystem
+import io/error
+import src/lib/utils/helpers
 
 def main(): Unit = {
-  
-  runPipeline(
-    """if (10 < 20) {
-      if (true) {
-        val x = 2
-        x
+  val arguments = js::commandLineArgs()
+
+  arguments match {
+    case Nil() => startRepl()
+    case Cons("--help", _) => {
+      println("EffektPy Interpreter")
+      println("Usage:")
+      println("  <no args>      Starts the REPL")
+      println("  <filename>     Executes the given file")
+      println("  --help         Shows this help")
+    } 
+
+    case Cons(filename, _) => {
+      // read and execute the file
+      try {
+        val res = runFilePipeline(filename)
+        println(res.show)
+      } with Exception[IOError] {
+        def raise(exception, msg) = {
+          println("IOError: " ++ msg)
+        }
       }
-    } else {
-      val x = 5
-      x
     }
-    """
-  )
-  ()
+  }
 
 }
