@@ -86,6 +86,8 @@ def show(tokenKind: TokenKind): String = tokenKind match {
   case UpperIdentifier(id) => "UpperIdentifier: " ++ id
   case Integer(n) => "Integer: " ++ n.show
   case Boolean(b) => "Bool: " ++ b.show
+  case Double(d) => "Double: " ++ d.show
+  case String(s) => "String: " ++ s
   case Val() => "Keyword: val"
   case Var() => "Keyword: var"
   case If() => "Keyword: if" 
@@ -155,6 +157,8 @@ def equal(t1: TokenKind, t2: TokenKind): Bool = (t1, t2) match {
   case (UpperIdentifier(id1), UpperIdentifier(id2)) => id1 == id2
   case (Integer(n1), Integer(n2)) => n1 == n2
   case (Boolean(b1), Boolean(b2)) => b1 == b2
+  case (Double(d1), Double(d2)) => d1 == d2
+  case (String(s1), String(s2)) => s1 == s2
   case (Val(), Val()) => true
   case (Var(), Var()) => true
   case (If(), If()) => true
@@ -220,5 +224,7 @@ def equal(t1: TypingType, t2: TypingType): Bool = (t1, t2) match {
 
   case _ => false
 }
+
+extern def stringToDouble(s: String): Double = jsNode "parseFloat(${s})"
 
 

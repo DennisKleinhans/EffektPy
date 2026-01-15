@@ -21,6 +21,8 @@ type TokenKind {
   UpperIdentifier(id: String) // used for types like "someValue: Int"
   Integer(n: Int)
   Boolean(b: Bool)
+  Double(d: Double)
+  String(s: String)
 
   // operators
   Assign()

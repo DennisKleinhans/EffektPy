@@ -122,22 +122,101 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], Positioning 
     Token(kind, pos)
   }
 
-  def readNumberToken(pos: Position): Token / { Scan[Char], stop } = {
-    val value = readDecimal()
-
-    val hasAlphaAfter = try {
+  // checks if the next char is alphabetic (used to disallow identifiers starting with numbers)
+  def checkInvalidTrailingAlpha(): Bool / { Scan[Char], stop } = {
+    try {
       val next = do Scan::peek()
-      next.isAlphabetic
+      next.isAlphabetic || next == '_'
     } with stop {
       false
     }
+  }
 
-    // disallow identifiers to start with a number
-    if (hasAlphaAfter) {
-      val rest = string::collect { readWhile { c => c.isAlphanumeric } }
-      do raise(LexerError(), "invalid char at " ++ pos.show ++ " in " ++ "'" ++ value.show ++ rest ++ "'" )
+  def readNumberToken(pos: Position): Token / { Scan[Char], stop } = {
+    val integerPart = readDecimal()
+    val next = try { do Scan::peek() } with stop { ' ' }
+
+    // check for fractional part
+    if (next == '.') {
+      // consume '.'
+      do Scan::skip()
+
+      // read fractional part as string to avoid precision issues like 123.000001
+      val fractionalPart = string::collect {
+        readWhile { c => c.isDigit }
+      }
+
+      if (fractionalPart == "") {
+        do raise(LexerError(), "Expected digit after '.' at " ++ pos.show)
+      }
+
+      if (checkInvalidTrailingAlpha()) {
+        do raise(LexerError(), "Invalid identifier starting with number at " ++ pos.show)
+      }
+
+      val doubleVal = stringToDouble(integerPart.show ++ "." ++ fractionalPart)
+      Token(Double(doubleVal), pos)
+    } else {
+      if (checkInvalidTrailingAlpha()) {
+        val rest = string::collect { readWhile { c => c.isAlphanumeric } }
+        do raise(LexerError(), "invalid char at " ++ pos.show ++ " in " ++ "'" ++ integerPart.show ++ rest ++ "'")
+      }
+      Token(Integer(integerPart), pos)
     }
-    Token(Integer(value), pos)
+  }
+
+  def readStringLikeToken(pos: Position, delim: Char): Token / { Scan[Char], stop, Exception[LexerError] } = {
+    // consume opening "
+    do Scan::skip()
+
+    // collect string content, handling escape sequences
+    val strValue = try {
+      string::collect {
+        
+        def loop(): Unit = {
+          val c = do Scan::peek()
+          
+          if (c == delim) {
+            () // end of string literal, stop collecting
+          } else if (c == '\\') {
+            do Scan::skip() // consume the \
+            val escaped = do Scan::peek()
+            do Scan::skip() // consume the char after the \
+            
+            // handle escape sequences
+            escaped match {
+              case 'n'  => do emit('\n')
+              case 't'  => do emit('\t')
+              case 'r'  => do emit('\r')
+              case '\\' => do emit('\\')
+              case '"'  => do emit('"')
+              case _    => {
+                // unknown escape: keep both (like Python)
+                do emit('\\')
+                do emit(escaped)
+              }
+            }
+            loop() 
+          } else {
+            do Scan::skip()
+            do emit(c) // normal char
+            loop() 
+          }
+        }
+        loop()
+      }
+    } with stop {
+      do raise(LexerError(), "unterminated string literal at " ++ pos.show)
+    }
+
+    // expect closing "
+    if (do Scan::peek() == delim) {
+      do Scan::skip()
+    } else {
+      do raise(LexerError(), "Expected " ++ delim.show ++ " at end of string")
+    }
+
+    Token(String(strValue), pos)
   }
 
   // always skip whitespace 
@@ -152,6 +231,10 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], Positioning 
     readIdentifierOrKeyword(pos)
   } else if (c.isDigit) {
     readNumberToken(pos)
+  } else if (c == '"') {
+    readStringLikeToken(pos, '"')
+  } else if (c == '\'') {
+    readStringLikeToken(pos, '\'')
   } else if (c == '=') {
     // consume first char 
     do Scan::skip()
