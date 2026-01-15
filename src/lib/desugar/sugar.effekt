@@ -31,6 +31,8 @@ def desugarCmp(left: coreAst::Expr, op: TokenKind, right: coreAst::Expr, pos: Po
 def desugarExpr(e: surfaceAst::Expr): coreAst::Expr / { Exception[DesugarError], Exception[ParseError] } = e match {
   case surfaceAst::IntLiteral(x, pos) => coreAst::IntLiteral(x, pos)
   case surfaceAst::BoolLiteral(b, pos) => coreAst::BoolLiteral(b, pos)
+  case surfaceAst::StringLiteral(s, pos) => coreAst::StringLiteral(s, pos)
+  case surfaceAst::DoubleLiteral(d, pos) => coreAst::DoubleLiteral(d, pos)
   case surfaceAst::Variable(id, pos) => coreAst::Variable(id, pos)
   case surfaceAst::AddExpr(l, r, pos) => coreAst::AddExpr(desugarExpr(l), desugarExpr(r), pos)
   case surfaceAst::SubExpr(l, r, pos) => coreAst::SubExpr(desugarExpr(l), desugarExpr(r), pos)

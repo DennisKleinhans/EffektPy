@@ -7,6 +7,8 @@ type Expr {
   // literals
   IntLiteral(value: Int, pos: Position)
   BoolLiteral(value: Bool, pos: Position)
+  StringLiteral(value: String, pos: Position)
+  DoubleLiteral(value: Double, pos: Position)
   Variable(name: String, pos: Position)
   // binary operands
   AddExpr(left: Expr, right: Expr, pos: Position)

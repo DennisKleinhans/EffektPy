@@ -719,4 +719,60 @@ def main() = mainSuite("parser") {
    
     assertEqual(obtained, expected)
   }
+
+  test("parser parses double literals in expressions") {
+    val input = "val x = 3.14 + 2.71"
+
+    val expected = [
+      sVal(
+        "x",
+        None(),
+        sAdd(
+          sLit(3.14),
+          sLit(2.71)
+        )
+      )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with mockGetPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
+
+  test("parser parses string literals in expressions") {
+    val input = "val greeting = \"Hello, \" + \"world!\""
+
+    val expected = [
+      sVal(
+        "greeting",
+        None(),
+        sAdd(
+          sLit("Hello, "),
+          sLit("world!")
+        )
+      )
+    ]
+
+    with on[OutOfBounds].panic
+    with feed(input)
+    with scanner[Char]
+    with scanWithPos
+    with mockGetPos
+    with on[LexerError].panic
+    with lexer
+    with on[ParseError].panic 
+
+    val obtained = parseProgram()
+   
+    assertEqual(obtained, expected)
+  }
 }

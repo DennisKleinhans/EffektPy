@@ -20,6 +20,16 @@ def parsePrimaryRaw(): Expr / { Lexer[Token], Positioning, Exception[ParseError]
       IntLiteral(n, pos)
     }
 
+    case String(s) => {
+      do next()
+      StringLiteral(s, pos)
+    }
+
+    case Double(d) => {
+      do next()
+      DoubleLiteral(d, pos)
+    }
+
     case Boolean(b) => {
       do next()
       BoolLiteral(b, pos)
