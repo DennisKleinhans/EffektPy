@@ -524,4 +524,56 @@ def main() = mainSuite("pipeline") {
     """)
     assertTrue(result.equal(VInt(12)))
   } 
+
+  test("string literals and concatenation with annotation") {
+    val result = runPipeline("""
+      val greeting: String = "hello"
+      val target: String = "world"
+      val message: String = greeting + " " + target
+      message
+    """)
+    assertTrue(result.equal(VString("hello world")))
+  }
+
+  test("double arithmetic with annotation") {
+    val result = runPipeline("""
+      val base: Double = 2.5 * 4.0
+      val half: Double = base / 2.0
+      half
+    """)
+    assertTrue(result.equal(VDouble(5.0)))
+  }
+
+  test("promotes mixed int/double arithmetic to double") {
+    val result = runPipeline("""
+      val mixed = 3 + 2.5
+      mixed * 2
+    """)
+    assertTrue(result.equal(VDouble(11.0)))
+  }
+
+  test("functions operating on doubles") {
+    val result = runPipeline("""
+      def scale(x: Double, factor: Double): Double { x * factor }
+      scale(2.0, 3.0)
+    """)
+    assertTrue(result.equal(VDouble(6.0)))
+  }
+
+  test("functions operating on strings") {
+    val result = runPipeline("""
+      def greet(name: String): String { name + "!" }
+      greet("Ada")
+    """)
+    assertTrue(result.equal(VString("Ada!")))
+  }
+
+  test("string escape sequences") {
+    val result = runPipeline("""
+      val text: String = "Line1\nLine2\tTabbed"
+      text
+    """)
+    assertTrue(result.equal(VString("Line1\nLine2\tTabbed")))
+  }
+
 }
