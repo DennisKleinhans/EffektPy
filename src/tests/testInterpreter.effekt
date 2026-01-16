@@ -1009,4 +1009,117 @@ def main() = mainSuite("interpreter") {
 
     assertTrue(result.equal(VInt(125)))
   }
+
+  test("eval string literal") {
+    val prog = [cExpr(cLit("hello"))]
+
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VString("hello")))
+  }
+
+  test("eval string concatenation") {
+    val prog = [cExpr(cAdd(cLit("hello"), cLit("world")))]
+
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VString("helloworld")))
+  }
+
+  test("eval string equality") {
+    val prog = [cExpr(cEq(cLit("echo"), cLit("echo")))]
+
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VBool(true)))
+  }
+
+  test("eval double literal") {
+    val prog = [cExpr(cLit(3.14))]
+
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VDouble(3.14)))
+  }
+
+  test("eval double arithmetic") {
+    val progs = [
+      [cExpr(cAdd(cLit(1.5), cLit(2.5)))],
+      [cExpr(cSub(cLit(5.0), cLit(3.0)))],
+      [cExpr(cMult(cLit(2.0), cLit(4.0)))],
+      [cExpr(cDiv(cLit(9.0), cLit(3.0)))]
+    ]
+
+    val expected = [
+      VDouble(4.0),
+      VDouble(2.0),
+      VDouble(8.0),
+      VDouble(3.0)
+    ]
+
+    var iter = 0
+    while(iter < progs.size) {
+      with on[RuntimeError].panic
+      with on[OutOfBounds].panic
+      with mockGetPos
+      with mockInspector[Unit, Address]
+
+      val result = evalProgram(progs.get(iter))
+      assertTrue(result.equal(expected.get(iter)))
+      iter = iter + 1
+    }
+  }
+
+  test("eval mixed int and double arithmetic promotes to double") {
+    val progs = [
+      [cExpr(cAdd(cLit(2), cLit(0.5)))],
+      [cExpr(cSub(cLit(5.0), cLit(2)))],
+      [cExpr(cMult(cLit(3), cLit(1.5)))],
+      [cExpr(cDiv(cLit(9), cLit(2.0)))]
+    ]
+
+    val expected = [
+      VDouble(2.5),
+      VDouble(3.0),
+      VDouble(4.5),
+      VDouble(4.5)
+    ]
+
+    var iter = 0
+    while(iter < progs.size) {
+      with on[RuntimeError].panic
+      with on[OutOfBounds].panic
+      with mockGetPos
+      with mockInspector[Unit, Address]
+
+      val result = evalProgram(progs.get(iter))
+      assertTrue(result.equal(expected.get(iter)))
+      iter = iter + 1
+    }
+  }
+
+  test("eval equality with mixed int and double") {
+    val prog = [cExpr(cEq(cLit(4), cLit(4.0)))]
+
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VBool(true)))
+  }
+
+  
 }

@@ -8,6 +8,8 @@ type Value {
   VBool(value: Bool)
   VUnit()
   VClosure(params: List[Parameter], body: Block, env: Map[String, Address])
+  VString(value: String)
+  VDouble(value: Double)
 }
 
 type Address = Int

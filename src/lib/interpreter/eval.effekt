@@ -10,6 +10,14 @@ import src/lib/interpreter/values
 import src/lib/lexer/position
 import src/lib/runner/result
 
+/// casts two values to a common type for binary operations
+def promote(v1: Value, v2: Value): (Value, Value) / Exception[RuntimeError] = (v1, v2) match {
+  case (VInt(i), VDouble(d)) => (VDouble(i.toDouble()), VDouble(d))
+  case (VDouble(d), VInt(i)) => (VDouble(d), VDouble(i.toDouble()))
+  case _ => (v1, v2)
+}
+
+
 /// evaluates an expression and returns the resulting value
 def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeError], Positioning, Inspector[Address], LoopControl } = expr match {
   case IntLiteral(n, pos) => { 
@@ -22,6 +30,16 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
     VBool(b) 
   }
 
+  case DoubleLiteral(d, pos) => {
+    with at(pos)
+    VDouble(d)
+  }
+
+  case StringLiteral(s, pos) => {
+    with at(pos)
+    VString(s)
+  }
+
   case Variable(name, pos) => { 
     with at(pos)
     val addr = do lookup(name)
@@ -30,45 +48,53 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
 
   case AddExpr(left, right, pos) => {
     with at(pos)
-    val vLeft = evalExpr(left)
-    val vRight = evalExpr(right)
+   val (vLeft, vRight) = promote(evalExpr(left), evalExpr(right))
     (vLeft, vRight) match {
       case (VInt(l), VInt(r)) => VInt(l + r)
+      case (VDouble(l), VDouble(r)) => VDouble(l + r)
+      case (VString(l), VString(r)) => VString(l ++ r) // string concatenation
       case _ => do raise(errors::RuntimeError(), "Type error in addition")
     }
   }
 
   case SubExpr(left, right, pos) => {
     with at(pos)
-    val vLeft = evalExpr(left)
-    val vRight = evalExpr(right)
+    val (vLeft, vRight) = promote(evalExpr(left), evalExpr(right))
     (vLeft, vRight) match {
       case (VInt(l), VInt(r)) => VInt(l - r)
+      case (VDouble(l), VDouble(r)) => VDouble(l - r)
       case _ => do raise(errors::RuntimeError(), "Type error in subtraction")
     }
   }
 
   case MultExpr(left, right, pos) => {
     with at(pos)
-    val vLeft = evalExpr(left)
-    val vRight = evalExpr(right)
+    val (vLeft, vRight) = promote(evalExpr(left), evalExpr(right))
     (vLeft, vRight) match {
       case (VInt(l), VInt(r)) => VInt(l * r)
+      case (VDouble(l), VDouble(r)) => VDouble(l * r)
       case _ => do raise(errors::RuntimeError(), "Type error in multiplication")
     }
   }
 
   case DivExpr(left, right, pos) => {
     with at(pos)
-    val vLeft = evalExpr(left)
-    val vRight = evalExpr(right)
+    val (vLeft, vRight) = promote(evalExpr(left), evalExpr(right))
     (vLeft, vRight) match {
-      case (VInt(l), VInt(r)) => 
+      case (VInt(l), VInt(r)) => {
         if (r != 0) {
           VInt(l / r)
         } else {
           do raise(errors::RuntimeError(), "Division by zero at " ++ do getPos().show)
         }
+      }
+      case (VDouble(l), VDouble(r)) => {
+        if (r != 0.0) {
+          VDouble(l / r)
+        } else {
+          do raise(errors::RuntimeError(), "Division by zero at " ++ do getPos().show)
+        }
+      }
       case _ => do raise(errors::RuntimeError(), "Type error in division")
     }
   }
@@ -114,7 +140,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
 
   case NotExpr(inner, pos) => {
     with at(pos)
-    val vInner   = evalExpr(inner)
+    val vInner = evalExpr(inner)
     vInner match {
       case VBool(b) => VBool(not(b))
       case _ => do raise(errors::RuntimeError(), "Type error in logical not")
@@ -123,62 +149,65 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
 
   case Eq(left, right, pos) => {
     with at(pos)
-    val vLeft = evalExpr(left)
-    val vRight = evalExpr(right)
+    val (vLeft, vRight) = promote(evalExpr(left), evalExpr(right))
     (vLeft, vRight) match {
       case (VInt(l), VInt(r)) => VBool(l == r)
+      case (VDouble(l), VDouble(r)) => VBool(l == r)
+      case (VString(l), VString(r)) => VBool(l == r)
       case (VBool(l), VBool(r)) => VBool(l == r)
+      case (VUnit(), VUnit()) => VBool(true)
       case _ => do raise(errors::RuntimeError(), "Type error in equality comparison")
     }
   }
 
   case Neq(left, right, pos) => {
     with at(pos)
-    val vLeft = evalExpr(left)
-    val vRight = evalExpr(right)
+    val (vLeft, vRight) = promote(evalExpr(left), evalExpr(right))
     (vLeft, vRight) match {
       case (VInt(l), VInt(r)) => VBool(l != r)
       case (VBool(l), VBool(r)) => VBool(l != r)
+      case (VDouble(l), VDouble(r)) => VBool(l != r)
+      case (VString(l), VString(r)) => VBool(l != r)
       case _ => do raise(errors::RuntimeError(), "Type error in inequality comparison")
     }
   }
 
   case Lt(left, right, pos) => {
     with at(pos)
-    val vLeft = evalExpr(left)
-    val vRight = evalExpr(right)
+    val (vLeft, vRight) = promote(evalExpr(left), evalExpr(right))
     (vLeft, vRight) match {
       case (VInt(l), VInt(r)) => VBool(l < r)
+      case (VDouble(l), VDouble(r)) => VBool(l < r)
       case _ => do raise(errors::RuntimeError(), "Type error in less-than comparison")
     }
   }
 
   case Gt(left, right, pos) => {
     with at(pos)
-    val vLeft = evalExpr(left)
-    val vRight = evalExpr(right)
+    val (vLeft, vRight) = promote(evalExpr(left), evalExpr(right))
     (vLeft, vRight) match {
       case (VInt(l), VInt(r)) => VBool(l > r)
+      case (VDouble(l), VDouble(r)) => VBool(l > r)
       case _ => do raise(errors::RuntimeError(), "Type error in greater-than comparison")
     }
   }
 
   case LtE(left, right, pos) => {
     with at(pos)
-    val vLeft = evalExpr(left)
-    val vRight = evalExpr(right)
+    val (vLeft, vRight) = promote(evalExpr(left), evalExpr(right))
     (vLeft, vRight) match {
       case (VInt(l), VInt(r)) => VBool(l <= r)
+      case (VDouble(l), VDouble(r)) => VBool(l <= r)
       case _ => do raise(errors::RuntimeError(), "Type error in less-than-equal comparison")
     }
   }
 
   case GtE(left, right, pos) => {
     with at(pos)
-    val vLeft = evalExpr(left)
-    val vRight = evalExpr(right)
+    val (vLeft, vRight) = promote(evalExpr(left), evalExpr(right))
     (vLeft, vRight) match {
       case (VInt(l), VInt(r)) => VBool(l >= r)
+      case (VDouble(l), VDouble(r)) => VBool(l >= r)
       case _ => do raise(errors::RuntimeError(), "Type error in greater-than-equal comparison")
     }
   }

@@ -151,6 +151,8 @@ def show(v: Value): String = v match {
   case VInt(n) => n.show
   case VBool(b) => b.show
   case VUnit() => "Unit"
+  case VString(s) => "\"" ++ s ++ "\""
+  case VDouble(d) => d.show
   case VClosure(params, body, env) => "<function>"
 }
 
@@ -205,6 +207,8 @@ def equal(v1: Value, v2: Value): Bool = (v1, v2) match {
   case (VInt(n1), VInt(n2)) => n1 == n2
   case (VBool(b1), VBool(b2)) => b1 == b2
   case (VUnit(), VUnit()) => true
+  case (VString(s1), VString(s2)) => s1 == s2
+  case (VDouble(d1), VDouble(d2)) => d1 == d2
   case _ => false
 }
 
