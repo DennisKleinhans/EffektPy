@@ -72,6 +72,8 @@ def extractType(input: String): Type / Exception[ParseError] = {
     case "Int" => IntType()
     case "Bool" => BoolType()
     case "Unit" => UnitType()
+    case "String" => StringType()
+    case "Double" => DoubleType()
     case _ => raise(ParseError(), "type annotation '" ++ input ++ "' is not a valid type")
   }
 }
@@ -140,8 +142,9 @@ def show(t: TypingType): String = t match {
       case Nil() => "TFun() -> " ++ show(ret)
       case _ => "TFun(" ++ paramStrs.join(", ") ++ ") -> " ++ show(ret)
     }
-    
   }
+  case TString() => "String"
+  case TDouble() => "Double"
 }
 
 def show(v: Value): String = v match {
@@ -211,6 +214,8 @@ def equal(t1: TypingType, t2: TypingType): Bool = (t1, t2) match {
   case (TBool(), TBool()) => true
   case (TVar(id1), TVar(id2)) => id1 == id2
   case (TUnit(), TUnit()) => true
+  case (TString(), TString()) => true
+  case (TDouble(), TDouble()) => true
 
   case (TFun(p1, r1), TFun(p2, r2)) => {
     if (p1.size != p2.size) {
