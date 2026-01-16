@@ -165,6 +165,8 @@ def checkBlock(block: Block): TypingType / { Typing, Context[TypeBinding], Inspe
 def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Positioning, Exception[TypeError], Inspector[TypeBinding], LoopContext } = expr match {
   case IntLiteral(value, pos) => { with at(pos); TInt()}
   case BoolLiteral(value, pos) => { with at(pos); TBool()}
+  case StringLiteral(value, pos) => { with at(pos); TString()}
+  case DoubleLiteral(value, pos) => { with at(pos); TDouble()}
   case Variable(name, pos) => {
     with at(pos) 
     do lookup(name).tpe
@@ -174,36 +176,37 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
     with at(pos) 
     val tLeft = checkExpr(left)
     val tRight = checkExpr(right)
-    do equate(tLeft, TInt(), pos)
-    do equate(tRight, TInt(), pos)
-    TInt()
+
+    (tLeft, tRight) match {
+      case (TString(), _) => {
+        do equate(tLeft, TString(), pos)
+        do equate(tRight, TString(), pos)
+        TString()
+      }
+      case (_, TString()) => {
+        do equate(tRight, TString(), pos)
+        do equate(tLeft, TString(), pos)
+        TString()
+      }
+      case _ => {
+        checkNumeric(left, right, pos)
+      }
+    }
   }
 
   case SubExpr(left, right, pos) => {
     with at(pos) 
-    val tLeft = checkExpr(left)
-    val tRight = checkExpr(right)
-    do equate(tLeft, TInt(), pos)
-    do equate(tRight, TInt(), pos)
-    TInt()
+    checkNumeric(left, right, pos)
   }
 
   case MultExpr(left, right, pos) => {
     with at(pos) 
-    val tLeft = checkExpr(left)
-    val tRight = checkExpr(right)
-    do equate(tLeft, TInt(), pos)
-    do equate(tRight, TInt(), pos)
-    TInt()
+    checkNumeric(left, right, pos)
   }
 
   case DivExpr(left, right, pos) => {
     with at(pos) 
-    val tLeft = checkExpr(left)
-    val tRight = checkExpr(right)
-    do equate(tLeft, TInt(), pos)
-    do equate(tRight, TInt(), pos)
-    TInt()
+    checkNumeric(left, right, pos)
   }
 
   case IfExpr(condition, thenExpr, elseExpr, pos) => {
@@ -259,37 +262,25 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
 
   case Lt(left, right, pos) => {
     with at(pos) 
-    val tLeft = checkExpr(left)
-    val tRight = checkExpr(right)
-    do equate(tLeft, TInt(), pos)
-    do equate(tRight, TInt(), pos)
+    checkNumeric(left, right, pos)
     TBool()
   }
 
   case Gt(left, right, pos) => {
     with at(pos) 
-    val tLeft = checkExpr(left)
-    val tRight = checkExpr(right)
-    do equate(tLeft, TInt(), pos)
-    do equate(tRight, TInt(), pos)
+    checkNumeric(left, right, pos)
     TBool()
   }
 
   case LtE(left, right, pos) => {
     with at(pos) 
-    val tLeft = checkExpr(left)
-    val tRight = checkExpr(right)
-    do equate(tLeft, TInt(), pos)
-    do equate(tRight, TInt(), pos)
+    checkNumeric(left, right, pos)
     TBool()
   }
 
   case GtE(left, right, pos) => {
     with at(pos) 
-    val tLeft = checkExpr(left)
-    val tRight = checkExpr(right)
-    do equate(tLeft, TInt(), pos)
-    do equate(tRight, TInt(), pos)
+    checkNumeric(left, right, pos)
     TBool()
   }
 
@@ -358,6 +349,36 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
   }
 }
 
+/// check that both sides are numeric types and return the resulting type
+def checkNumeric(left: Expr, right: Expr, pos: Position): TypingType / { Typing, Context[TypeBinding], Positioning, Exception[TypeError], Inspector[TypeBinding], LoopContext } = {
+  val tLeft = checkExpr(left)
+  val tRight = checkExpr(right)
+
+  assertIsNumeric(tLeft, pos)
+  assertIsNumeric(tRight, pos)
+
+  
+  (tLeft, tRight) match {
+    // if either side is a double, the result is a double
+    case (TDouble(), _) => TDouble()
+    case (_, TDouble()) => TDouble()
+    case _ => {
+      val tResult = do fresh()
+      do equate(tLeft, tResult, pos)
+      do equate(tRight, tResult, pos)
+      tResult
+    }
+  }
+}
+
+/// assert that a type is numeric (int or double)
+def assertIsNumeric(t: TypingType, pos: Position): Unit / { Typing, Positioning, Exception[TypeError] } = t match {
+  case TInt() => ()
+  case TDouble() => ()
+  case TVar(_) => () // defer check until unification
+  case _ => raise(TypeError(), "Expected numeric type, but got " ++ t.show ++ " at " ++ pos.show)
+}
+
 /// translate an optional Type annotation into a TypingType
 def translateType(t: Option[Type]): TypingType / Typing = t match {
   case Some(IntType()) => TInt()
@@ -369,6 +390,9 @@ def translateType(t: Option[Type]): TypingType / Typing = t match {
     val tReturn = translateType(Some(returnType))
     TFun(tParams, tReturn)
   }
+
+  case Some(StringType()) => TString()
+  case Some(DoubleType()) => TDouble()
 
   case None() => do fresh() // generate a fresh type variable
 }

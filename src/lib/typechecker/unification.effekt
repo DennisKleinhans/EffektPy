@@ -28,6 +28,9 @@ def applySubstitution(t: TypingType, subst: Substitution): TypingType = t match 
     val newRet = applySubstitution(ret, subst)
     TFun(newParams, newRet)
   }
+
+  case TString() => TString()
+  case TDouble() => TDouble()
 }
 
 /// checks if a type variable occurs in a typing type 
@@ -42,6 +45,9 @@ def occursCheck(id: Int, t: TypingType): Bool = t match {
     val inRet = occursCheck(id, ret)
     inParams || inRet
   }
+
+  case TString() => false
+  case TDouble() => false
 }
 
 /// unification algorithm for typing types

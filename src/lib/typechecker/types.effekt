@@ -7,6 +7,8 @@ type Type {
   BoolType()
   FunType(paramTypes: List[Type], returnType: Type)
   UnitType()
+  StringType()
+  DoubleType()
 }
 
 type TypingType {
@@ -15,6 +17,8 @@ type TypingType {
   TUnit()
   TVar(id: Int)
   TFun(params: List[TypingParam], ret: TypingType)
+  TString()
+  TDouble()
 }
 
 record TypeEquation(left: TypingType, right: TypingType, pos: Position)
