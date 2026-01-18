@@ -1554,14 +1554,14 @@ def main() = mainSuite("typechecker") {
     assertTrue(typeMapsEqual(result, expected))
   }
 
-  test("typechecker throws error on double in boolean operation") {
+  test("typechecker does not throw error on double in boolean operation") {
     val prog = [
       cVal("d", None(), cLit(1.5)),
       cVal("result", None(), cAnd(cV("d"), cLit(true)))
     ]
 
     with on[NameError].panic
-    with assertThrows[TypeError]
+    with on[TypeError].panic
     with mockGetPos
     with mockInspector[Unit, TypeBinding]
     typecheck(prog)

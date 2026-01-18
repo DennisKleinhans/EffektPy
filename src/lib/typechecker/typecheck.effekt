@@ -224,19 +224,17 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
 
   case AndExpr(left, right, pos) => {
     with at(pos) 
+    // check both sides but don't enforce their types to be boolean yet. The truthiness analysis is done in the interpreter.
     val tLeft = checkExpr(left)
     val tRight = checkExpr(right)
-    do equate(tLeft, TBool(), pos)
-    do equate(tRight, TBool(), pos)
     TBool()
   }
 
   case OrExpr(left, right, pos) => {
     with at(pos) 
+    // check both sides but don't enforce their types to be boolean yet. The truthiness analysis is done in the interpreter.
     val tLeft = checkExpr(left)
     val tRight = checkExpr(right)
-    do equate(tLeft, TBool(), pos)
-    do equate(tRight, TBool(), pos)
     TBool()
   }
 
