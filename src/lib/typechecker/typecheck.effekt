@@ -95,7 +95,8 @@ def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspecto
 
   case IfStmt(cond, thenBranch, elseBranch, pos) => {
     with at(pos) 
-    do equate(checkExpr(cond), TBool(), pos)
+    // check the condition but don't enforce its type to be boolean yet. The truthiness analysis is done in the interpreter.
+    checkExpr(cond)
     handleNewTypingScope { checkBlock(thenBranch) }
     handleNewTypingScope { checkBlock(elseBranch) }
   }
@@ -114,7 +115,8 @@ def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspecto
 
   case WhileStmt(condition, body, pos) => {
     with at(pos) 
-    do equate(checkExpr(condition), TBool(), pos)
+    // check the condition but don't enforce its type to be boolean yet. The truthiness analysis is done in the interpreter.
+    checkExpr(condition)
 
     with handleNewTypingScope
     try {
@@ -211,10 +213,11 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
 
   case IfExpr(condition, thenExpr, elseExpr, pos) => {
     with at(pos) 
+    // check the condition but don't enforce its type to be boolean yet. The truthiness analysis is done in the interpreter.
     val tCond = checkExpr(condition)
     val tThen = checkExpr(thenExpr)
     val tElse = checkExpr(elseExpr)
-    do equate(tCond, TBool(), pos)
+    
     do equate(tThen, tElse, pos)
     tThen
   }
@@ -239,8 +242,8 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
 
   case NotExpr(inner, pos) => {
     with at(pos) 
-    val tInner = checkExpr(inner)
-    do equate(tInner, TBool(), pos)
+    // check the condition but don't enforce its type to be boolean yet. The truthiness analysis is done in the interpreter.
+    checkExpr(inner)
     TBool()
   }
 
