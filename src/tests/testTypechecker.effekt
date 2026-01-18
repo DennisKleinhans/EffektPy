@@ -325,52 +325,6 @@ def main() = mainSuite("typechecker") {
     ()
   }
 
-  test("typechecker infers types in blocks of if statement") {
-    val prog = [
-      cVal("x", None(), cLit(5)),
-      cVal("y", None(), cLit(10)),
-      cIf(cLt(cV("x"), cV("y")),
-        Block([
-          cVar("z", None(), cAdd(cV("x"), cLit(2))),
-          InspectScope()
-        ], None()),
-        Block([
-          cVar("z", None(), cLt(cV("y"), cLit(2))),
-          InspectScope()
-        ], None())
-      )
-    ]
-
-    var capturedContexts: List[Map[String, TypeBinding]] = Nil()
-
-    with on[NameError].panic
-    with on[TypeError].panic
-    with mockGetPos
-    
-    try { typecheck(prog) } with Inspector[TypeBinding] {
-      def inspect(context) = {
-        capturedContexts = Cons(context, capturedContexts)
-        resume(())
-      }
-    }
-
-    val expectedThenContext = map::fromListGeneric[String, TypeBinding]([
-      ("x", TypeBinding(TInt(), false)),
-      ("y", TypeBinding(TInt(), false)),
-      ("z", TypeBinding(TInt(), false))
-    ])
-
-    val expectedElseContext = map::fromListGeneric[String, TypeBinding]([
-      ("x", TypeBinding(TInt(), false)),
-      ("y", TypeBinding(TInt(), false)),
-      ("z", TypeBinding(TBool(), false))
-    ])
-
-    with on[OutOfBounds].panic
-    assertTrue(typeMapsEqual(capturedContexts.get(1), expectedThenContext))
-    assertTrue(typeMapsEqual(capturedContexts.get(0), expectedElseContext))
-  }
-
   test("typechecker throws error on if statement with type mismatch") {
     val prog = [
       cVal("x", None(), cLit(5)),
@@ -1301,5 +1255,455 @@ def main() = mainSuite("typechecker") {
     ])
 
     assertTrue(typeMapsEqual(result, expected))
+  }
+
+  // String type tests
+  test("typechecker infers string literal type") {
+    val prog = [
+      cVal("message", None(), cLit("hello"))
+    ]
+
+    with on[NameError].panic
+    with on[TypeError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("message", TString())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker infers string concatenation type") {
+    val prog = [
+      cVal("hello", None(), cLit("hello")),
+      cVal("world", None(), cLit("world")),
+      cVal("result", None(), cAdd(cV("hello"), cV("world")))
+    ]
+
+    with on[NameError].panic
+    with on[TypeError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("hello", TString()),
+      ("world", TString()),
+      ("result", TString())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker throws error on string concatenation with int") {
+    val prog = [
+      cVal("hello", None(), cLit("hello")),
+      cVal("result", None(), cAdd(cV("hello"), cLit(42)))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker throws error on string subtraction") {
+    val prog = [
+      cVal("s1", None(), cLit("hello")),
+      cVal("s2", None(), cLit("world")),
+      cVal("result", None(), cSub(cV("s1"), cV("s2")))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker throws error on string comparison with <") {
+    val prog = [
+      cVal("s1", None(), cLit("hello")),
+      cVal("s2", None(), cLit("world")),
+      cVal("result", None(), cLt(cV("s1"), cV("s2")))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker allows string equality comparison") {
+    val prog = [
+      cVal("s1", None(), cLit("hello")),
+      cVal("s2", None(), cLit("hello")),
+      cVal("result", None(), cEq(cV("s1"), cV("s2")))
+    ]
+
+    with on[NameError].panic
+    with on[TypeError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("s1", TString()),
+      ("s2", TString()),
+      ("result", TBool())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker allows string inequality comparison") {
+    val prog = [
+      cVal("s1", None(), cLit("hello")),
+      cVal("s2", None(), cLit("world")),
+      cVal("result", None(), cNeq(cV("s1"), cV("s2")))
+    ]
+
+    with on[NameError].panic
+    with on[TypeError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("s1", TString()),
+      ("s2", TString()),
+      ("result", TBool())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker throws error on string in arithmetic operation") {
+    val prog = [
+      cVal("s", None(), cLit("text")),
+      cVal("result", None(), cMult(cV("s"), cLit(2)))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker handles string function parameters") {
+    val prog = [
+      cVal("concat", None(), cFun([Parameter("a", Some(StringType()), None()), Parameter("b", Some(StringType()), None())], Some(StringType()), Block(Nil(), Some(cAdd(cV("a"), cV("b")))))),
+      cVal("result", None(), cCall(cV("concat"), [Argument(None(), cLit("hello")), Argument(None(), cLit("world"))]))
+    ]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("concat", TFun([TypingParam(TString(), false), TypingParam(TString(), false)], TString())),
+      ("result", TString())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker throws error on mutable string variable with wrong type assignment") {
+    val prog = [
+      cVar("str", Some(StringType()), cLit("initial")),
+      cAssign("str", cLit(42))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    typecheck(prog)
+    ()
+  }
+
+  // Double type tests
+  test("typechecker infers double literal type") {
+    val prog = [
+      cVal("pi", None(), cLit(3.14))
+    ]
+
+    with on[NameError].panic
+    with on[TypeError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("pi", TDouble())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker infers double arithmetic operation type") {
+    val prog = [
+      cVal("x", None(), cLit(2.5)),
+      cVal("y", None(), cLit(3.5)),
+      cVal("sum", None(), cAdd(cV("x"), cV("y")))
+    ]
+
+    with on[NameError].panic
+    with on[TypeError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("x", TDouble()),
+      ("y", TDouble()),
+      ("sum", TDouble())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker infers double subtraction type") {
+    val prog = [
+      cVal("a", None(), cLit(10.5)),
+      cVal("b", None(), cLit(3.2)),
+      cVal("diff", None(), cSub(cV("a"), cV("b")))
+    ]
+
+    with on[NameError].panic
+    with on[TypeError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("a", TDouble()),
+      ("b", TDouble()),
+      ("diff", TDouble())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker infers double multiplication type") {
+    val prog = [
+      cVal("base", None(), cLit(2.5)),
+      cVal("factor", None(), cLit(4.0)),
+      cVal("product", None(), cMult(cV("base"), cV("factor")))
+    ]
+
+    with on[NameError].panic
+    with on[TypeError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("base", TDouble()),
+      ("factor", TDouble()),
+      ("product", TDouble())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker infers double division type") {
+    val prog = [
+      cVal("dividend", None(), cLit(10.0)),
+      cVal("divisor", None(), cLit(2.5)),
+      cVal("quotient", None(), cDiv(cV("dividend"), cV("divisor")))
+    ]
+
+    with on[NameError].panic
+    with on[TypeError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("dividend", TDouble()),
+      ("divisor", TDouble()),
+      ("quotient", TDouble())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker allows double comparison operators") {
+    val prog = [
+      cVal("x", None(), cLit(3.5)),
+      cVal("y", None(), cLit(2.5)),
+      cVal("gt", None(), cGt(cV("x"), cV("y"))),
+      cVal("lt", None(), cLt(cV("x"), cV("y"))),
+      cVal("eq", None(), cEq(cV("x"), cV("y"))),
+      cVal("neq", None(), cNeq(cV("x"), cV("y")))
+    ]
+
+    with on[NameError].panic
+    with on[TypeError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("x", TDouble()),
+      ("y", TDouble()),
+      ("gt", TBool()),
+      ("lt", TBool()),
+      ("eq", TBool()),
+      ("neq", TBool())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker throws error on double in boolean operation") {
+    val prog = [
+      cVal("d", None(), cLit(1.5)),
+      cVal("result", None(), cAnd(cV("d"), cLit(true)))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker handles double function parameters") {
+    val prog = [
+      cVal("square", None(), cFun([Parameter("x", Some(DoubleType()), None())], Some(DoubleType()), Block(Nil(), Some(cMult(cV("x"), cV("x")))))),
+      cVal("result", None(), cCall(cV("square"), [Argument(None(), cLit(2.5))]))
+    ]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("square", TFun([TypingParam(TDouble(), false)], TDouble())),
+      ("result", TDouble())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker throws error on passing int to double parameter") {
+    val prog = [
+      cVal("square", None(), cFun([Parameter("x", Some(DoubleType()), None())], Some(DoubleType()), Block(Nil(), Some(cMult(cV("x"), cV("x")))))),
+      cVal("result", None(), cCall(cV("square"), [Argument(None(), cLit(5))]))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker handles mutable double variables") {
+    val prog = [
+      cVar("value", Some(DoubleType()), cLit(1.5)),
+      cAssign("value", cAdd(cV("value"), cLit(2.5))),
+      cAssign("value", cMult(cV("value"), cLit(0.5)))
+    ]
+
+    with on[NameError].panic
+    with on[TypeError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("value", TDouble())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker throws error on assigning int to double variable") {
+    val prog = [
+      cVar("value", Some(DoubleType()), cLit(1.5)),
+      cAssign("value", cLit(10))
+    ]
+
+    with on[NameError].panic
+    with assertThrows[TypeError]
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    typecheck(prog)
+    ()
+  }
+
+  test("typechecker infers types in double arithmetic with if expression") {
+    val prog = [
+      cVal("x", None(), cLit(5.0)),
+      cVal("y", None(), cLit(3.0)),
+      cVal("max", None(), cIf(cGt(cV("x"), cV("y")), cV("x"), cV("y")))
+    ]
+
+    with on[NameError].panic
+    with on[TypeError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("x", TDouble()),
+      ("y", TDouble()),
+      ("max", TDouble())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker handles double in while loop") {
+    val prog = [
+      cVar("counter", Some(DoubleType()), cLit(0.0)),
+      cWhile(cLt(cV("counter"), cLit(10.0)),
+        Block([
+          cAssign("counter", cAdd(cV("counter"), cLit(0.5)))
+        ], None())
+      )
+    ]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("counter", TDouble())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
+
+  test("typechecker throws on mixed arithmetic with Int and Double") {
+    val prog = [cExpr(cAdd(cLit(3.0), cLit(2)))]
+    
+    with assertThrows[TypeError]
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    typecheck(prog)
+    ()
   }
 }

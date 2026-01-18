@@ -72,6 +72,8 @@ def extractType(input: String): Type / Exception[ParseError] = {
     case "Int" => IntType()
     case "Bool" => BoolType()
     case "Unit" => UnitType()
+    case "String" => StringType()
+    case "Double" => DoubleType()
     case _ => raise(ParseError(), "type annotation '" ++ input ++ "' is not a valid type")
   }
 }
@@ -84,8 +86,10 @@ def show(pos: Position): String = "line: " ++ pos.line.show ++ " column: " ++ po
 def show(tokenKind: TokenKind): String = tokenKind match {
   case LowerIdentifier(id) => "LowerIdentifier: " ++ id
   case UpperIdentifier(id) => "UpperIdentifier: " ++ id
-  case Number(n) => "Number: " ++ n.show
+  case Integer(n) => "Integer: " ++ n.show
   case Boolean(b) => "Bool: " ++ b.show
+  case Double(d) => "Double: " ++ d.show
+  case String(s) => "String: " ++ s
   case Val() => "Keyword: val"
   case Var() => "Keyword: var"
   case If() => "Keyword: if" 
@@ -138,14 +142,17 @@ def show(t: TypingType): String = t match {
       case Nil() => "TFun() -> " ++ show(ret)
       case _ => "TFun(" ++ paramStrs.join(", ") ++ ") -> " ++ show(ret)
     }
-    
   }
+  case TString() => "String"
+  case TDouble() => "Double"
 }
 
 def show(v: Value): String = v match {
   case VInt(n) => n.show
   case VBool(b) => b.show
   case VUnit() => "Unit"
+  case VString(s) => "\"" ++ s ++ "\""
+  case VDouble(d) => d.show
   case VClosure(params, body, env) => "<function>"
 }
 
@@ -153,8 +160,10 @@ def show(v: Value): String = v match {
 def equal(t1: TokenKind, t2: TokenKind): Bool = (t1, t2) match {
   case (LowerIdentifier(id1), LowerIdentifier(id2)) => id1 == id2
   case (UpperIdentifier(id1), UpperIdentifier(id2)) => id1 == id2
-  case (Number(n1), Number(n2)) => n1 == n2
+  case (Integer(n1), Integer(n2)) => n1 == n2
   case (Boolean(b1), Boolean(b2)) => b1 == b2
+  case (Double(d1), Double(d2)) => d1 == d2
+  case (String(s1), String(s2)) => s1 == s2
   case (Val(), Val()) => true
   case (Var(), Var()) => true
   case (If(), If()) => true
@@ -198,6 +207,8 @@ def equal(v1: Value, v2: Value): Bool = (v1, v2) match {
   case (VInt(n1), VInt(n2)) => n1 == n2
   case (VBool(b1), VBool(b2)) => b1 == b2
   case (VUnit(), VUnit()) => true
+  case (VString(s1), VString(s2)) => s1 == s2
+  case (VDouble(d1), VDouble(d2)) => d1 == d2
   case _ => false
 }
 
@@ -207,6 +218,8 @@ def equal(t1: TypingType, t2: TypingType): Bool = (t1, t2) match {
   case (TBool(), TBool()) => true
   case (TVar(id1), TVar(id2)) => id1 == id2
   case (TUnit(), TUnit()) => true
+  case (TString(), TString()) => true
+  case (TDouble(), TDouble()) => true
 
   case (TFun(p1, r1), TFun(p2, r2)) => {
     if (p1.size != p2.size) {
@@ -220,5 +233,7 @@ def equal(t1: TypingType, t2: TypingType): Bool = (t1, t2) match {
 
   case _ => false
 }
+
+extern def stringToDouble(s: String): Double = jsNode "parseFloat(${s})"
 
 

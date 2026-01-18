@@ -15,9 +15,19 @@ def parsePrimaryRaw(): Expr / { Lexer[Token], Positioning, Exception[ParseError]
   val token = do peek()
   val pos = do getPos()
   token.kind match {
-    case Number(n) => {
+    case Integer(n) => {
       do next()
       IntLiteral(n, pos)
+    }
+
+    case String(s) => {
+      do next()
+      StringLiteral(s, pos)
+    }
+
+    case Double(d) => {
+      do next()
+      DoubleLiteral(d, pos)
     }
 
     case Boolean(b) => {

@@ -54,19 +54,19 @@ def main() = mainSuite("lexer") {
       Token(Val(), Position(1, 1)), 
       Token(LowerIdentifier("x"), Position(1, 5)), 
       Token(Assign(), Position(1, 7)), 
-      Token(Number(10), Position(1, 9)), 
+      Token(Integer(10), Position(1, 9)), 
       Token(If(), Position(2, 1)), 
       Token(LParen(), Position(2, 4)), 
       Token(LowerIdentifier("x"), Position(2, 5)), 
       Token(GreaterEqual(), Position(2, 7)), 
-      Token(Number(10), Position(2, 10)), 
+      Token(Integer(10), Position(2, 10)), 
       Token(RParen(), Position(2, 12)), 
       Token(LBrace(), Position(2, 14)), 
       Token(LowerIdentifier("x"), Position(3, 3)), 
       Token(Assign(), Position(3, 5)), 
       Token(LowerIdentifier("x"), Position(3, 7)), 
       Token(Plus(), Position(3, 9)), 
-      Token(Number(1), Position(3, 11)), 
+      Token(Integer(1), Position(3, 11)), 
       Token(RBrace(), Position(4, 1)), 
       Token(Else(), Position(4, 3)), 
       Token(LBrace(), Position(4, 8)), 
@@ -74,7 +74,7 @@ def main() = mainSuite("lexer") {
       Token(Assign(), Position(5, 5)), 
       Token(LowerIdentifier("x"), Position(5, 7)), 
       Token(Plus(), Position(5, 9)), 
-      Token(Number(2), Position(5, 11)), 
+      Token(Integer(2), Position(5, 11)), 
       Token(RBrace(), Position(6, 1))
     ]
 
@@ -90,11 +90,11 @@ def main() = mainSuite("lexer") {
       Token(Val(), Position(1, 1)), 
       Token(LowerIdentifier("x"), Position(1, 5)), 
       Token(Assign(), Position(1, 7)), 
-      Token(Number(2), Position(1, 9)), 
+      Token(Integer(2), Position(1, 9)), 
       Token(Var(), Position(2, 2)), 
       Token(LowerIdentifier("y"), Position(2, 6)), 
       Token(Assign(), Position(2, 8)), 
-      Token(Number(3), Position(2, 10))
+      Token(Integer(3), Position(2, 10))
     ]
 
     with fullLexerHandler(input, false)
@@ -112,7 +112,7 @@ def main() = mainSuite("lexer") {
       Token(Colon(), Position(1, 6)), 
       Token(UpperIdentifier("Int"), Position(1, 8)), 
       Token(Assign(), Position(1, 12)), 
-      Token(Number(2), Position(1, 14))
+      Token(Integer(2), Position(1, 14))
     ]
 
     with fullLexerHandler(input, false)
@@ -127,7 +127,7 @@ def main() = mainSuite("lexer") {
     val tokens = collectTokens(Nil()) { do next() }
   }
 
-  test("lexer throws LexerError if an identifier starts with a number") {
+  test("lexer throws LexerError if an identifier starts with a Integer") {
     val input = "val 1x = 2"
 
     with fullLexerHandler(input, true)
@@ -188,13 +188,13 @@ def main() = mainSuite("lexer") {
       Token(Var(), Position(1, 1)),
       Token(LowerIdentifier("x"), Position(1, 5)),
       Token(Assign(), Position(1, 7)),
-      Token(Number(10), Position(1, 9)),
+      Token(Integer(10), Position(1, 9)),
       Token(LowerIdentifier("x"), Position(2, 1)),
       Token(PlusAssign(), Position(2, 3)),
-      Token(Number(5), Position(2, 6)),
+      Token(Integer(5), Position(2, 6)),
       Token(LowerIdentifier("x"), Position(3, 1)),
       Token(MinusAssign(), Position(3, 3)),
-      Token(Number(3), Position(3, 6))
+      Token(Integer(3), Position(3, 6))
     ]
 
     with fullLexerHandler(input, false)
@@ -209,9 +209,9 @@ def main() = mainSuite("lexer") {
       Token(If(), Position(1, 1)),
       Token(Boolean(true), Position(1, 4)),
       Token(Then(), Position(1, 9)),
-      Token(Number(1), Position(1, 14)),
+      Token(Integer(1), Position(1, 14)),
       Token(Else(), Position(1, 16)),
-      Token(Number(0), Position(1, 21))
+      Token(Integer(0), Position(1, 21))
     ]
 
     with fullLexerHandler(input, false)
@@ -227,12 +227,12 @@ def main() = mainSuite("lexer") {
       Token(LParen(), Position(1, 7)),
       Token(LowerIdentifier("x"), Position(1, 8)),
       Token(Less(), Position(1, 10)),
-      Token(Number(10), Position(1, 12)),
+      Token(Integer(10), Position(1, 12)),
       Token(RParen(), Position(1, 14)),
       Token(LBrace(), Position(1, 16)),
       Token(LowerIdentifier("x"), Position(2, 2)),
       Token(PlusAssign(), Position(2, 4)),
-      Token(Number(1), Position(2, 7)),
+      Token(Integer(1), Position(2, 7)),
       Token(RBrace(), Position(3, 1))
     ]
 
@@ -309,7 +309,7 @@ def main() = mainSuite("lexer") {
       Token(Return(), Position(2, 2)),
       Token(LowerIdentifier("x"), Position(2, 9)),
       Token(Plus(), Position(2, 11)),
-      Token(Number(1), Position(2, 13)),
+      Token(Integer(1), Position(2, 13)),
       Token(RBrace(), Position(3, 1))
     ]
   }
@@ -345,5 +345,112 @@ def main() = mainSuite("lexer") {
     with fullLexerHandler(input, false)
     val tokens = collectTokens(Nil()) { do next() }
     assertEqual(tokens, expected)
+  }
+
+  test("lexer recognizes string literals") {
+    val input = "val greeting = \"Hello, World!\"\nval multiLine = \"Line1\\nLine2\""
+
+    val expected = [
+      Token(Val(), Position(1, 1)),
+      Token(LowerIdentifier("greeting"), Position(1, 5)),
+      Token(Assign(), Position(1, 14)),
+      Token(String("Hello, World!"), Position(1, 16)),
+      Token(Val(), Position(2, 1)),
+      Token(LowerIdentifier("multiLine"), Position(2, 5)),
+      Token(Assign(), Position(2, 15)),
+      Token(String("Line1\nLine2"), Position(2, 17))
+    ]
+
+    with fullLexerHandler(input, false)
+    val tokens = collectTokens(Nil()) { do next() }
+    assertEqual(tokens, expected)
+  }
+
+  test("lexer recognizes escape sequences in string literals") {
+    val input = "val special = \"Tab:\\t NewLine:\\n Quote:\\\" Backslash:\\\\\""
+
+    val expected = [
+      Token(Val(), Position(1, 1)),
+      Token(LowerIdentifier("special"), Position(1, 5)),
+      Token(Assign(), Position(1, 13)),
+      Token(String("Tab:\t NewLine:\n Quote:\" Backslash:\\"), Position(1, 15))
+    ]
+
+    with fullLexerHandler(input, false)
+    val tokens = collectTokens(Nil()) { do next() }
+    assertEqual(tokens, expected)
+  }
+
+  test("lexer recognizes empty string literal") {
+    val input = "val empty = \"\""
+
+    val expected = [
+      Token(Val(), Position(1, 1)),
+      Token(LowerIdentifier("empty"), Position(1, 5)),
+      Token(Assign(), Position(1, 11)),
+      Token(String(""), Position(1, 13))
+    ]
+
+    with fullLexerHandler(input, false)
+    val tokens = collectTokens(Nil()) { do next() }
+    assertEqual(tokens, expected)
+  }
+
+  test("lexer recognizes char literals as string literals") {
+    val input = "val letterA = 'A'\nval newlineChar = '\\n'"
+
+    val expected = [
+      Token(Val(), Position(1, 1)),
+      Token(LowerIdentifier("letterA"), Position(1, 5)),
+      Token(Assign(), Position(1, 13)),
+      Token(String("A"), Position(1, 15)),
+      Token(Val(), Position(2, 1)),
+      Token(LowerIdentifier("newlineChar"), Position(2, 5)),
+      Token(Assign(), Position(2, 17)),
+      Token(String("\n"), Position(2, 19))
+    ]
+
+    with fullLexerHandler(input, false)
+    val tokens = collectTokens(Nil()) { do next() }
+    assertEqual(tokens, expected)
+  }
+
+  test("lexer raises LexerError on unterminated string literal") {
+    val input = "val badString = \"This string never ends..."
+
+    with fullLexerHandler(input, true)
+    val tokens = collectTokens(Nil()) { do next() }
+  }
+
+  test("lexer recognizes double literals") {
+    val input = "val pi = 3.14\nval negative = -0.001"
+    val expected = [
+      Token(Val(), Position(1, 1)),
+      Token(LowerIdentifier("pi"), Position(1, 5)),
+      Token(Assign(), Position(1, 8)),
+      Token(Double(3.14), Position(1, 10)),
+      Token(Val(), Position(2, 1)),
+      Token(LowerIdentifier("negative"), Position(2, 5)),
+      Token(Assign(), Position(2, 14)),
+      Token(Minus(), Position(2, 16)),
+      Token(Double(0.001), Position(2, 17))
+    ]
+    with fullLexerHandler(input, false)
+    val tokens = collectTokens(Nil()) { do next() }
+    assertEqual(tokens, expected)
+  }
+
+  test("lexer raises LexerError on invalid double literal") {
+    val input = "val badDouble = 3.14.15"
+
+    with fullLexerHandler(input, true)
+    val tokens = collectTokens(Nil()) { do next() }
+  }
+
+  test("lexer raises LexerError on double literal with missing fractional part") {
+    val input = "val incomplete = 42."
+
+    with fullLexerHandler(input, true)
+    val tokens = collectTokens(Nil()) { do next() }
   }
 }

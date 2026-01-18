@@ -28,6 +28,9 @@ def applySubstitution(t: TypingType, subst: Substitution): TypingType = t match 
     val newRet = applySubstitution(ret, subst)
     TFun(newParams, newRet)
   }
+
+  case TString() => TString()
+  case TDouble() => TDouble()
 }
 
 /// checks if a type variable occurs in a typing type 
@@ -42,6 +45,9 @@ def occursCheck(id: Int, t: TypingType): Bool = t match {
     val inRet = occursCheck(id, ret)
     inParams || inRet
   }
+
+  case TString() => false
+  case TDouble() => false
 }
 
 /// unification algorithm for typing types
@@ -58,7 +64,9 @@ def unify(eqs: List[TypeEquation], subst: Substitution): Substitution / { Except
         case (other, TVar(id)) => bind(id, other, rest, subst)
         case (TInt(), TInt()) => unify(rest, subst)
         case (TBool(), TBool()) => unify(rest, subst)
-        
+        case (TUnit(), TUnit()) => unify(rest, subst)
+        case (TString(), TString()) => unify(rest, subst)
+        case (TDouble(), TDouble()) => unify(rest, subst)
         
         case (TFun(p1, r1), TFun(p2, r2)) => {
           // allow unification of functions with different number of parameters (by matching up to the smaller size)

@@ -10,6 +10,8 @@ val d = Position(0, 0)
 
 def sLit(n: Int) = IntLiteral(n, d)
 def sLit(b: Bool) = BoolLiteral(b, d)
+def sLit(s: String) = StringLiteral(s, d)
+def sLit(dbl: Double) = DoubleLiteral(dbl, d)
 def sV(name: String) = Variable(name, d)
 
 def sAdd(l: Expr, r: Expr) = AddExpr(l, r, d)

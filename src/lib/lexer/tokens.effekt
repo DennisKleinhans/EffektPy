@@ -19,8 +19,10 @@ type TokenKind {
   // identifier and literals
   LowerIdentifier(id: String) // used for variables and function names like 'val someVal = 2' or 'def someFunc = {...}
   UpperIdentifier(id: String) // used for types like "someValue: Int"
-  Number(n: Int)
+  Integer(n: Int)
   Boolean(b: Bool)
+  Double(d: Double)
+  String(s: String)
 
   // operators
   Assign()
