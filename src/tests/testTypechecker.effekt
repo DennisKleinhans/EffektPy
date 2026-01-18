@@ -1475,28 +1475,6 @@ def main() = mainSuite("typechecker") {
     assertTrue(typeMapsEqual(result, expected))
   }
 
-  test("typechecker infers int and double mixed arithmetic as double") {
-    val prog = [
-      cVal("i", None(), cLit(5)),
-      cVal("d", None(), cLit(2.5)),
-      cVal("result", None(), cAdd(cV("i"), cV("d")))
-    ]
-
-    with on[NameError].panic
-    with on[TypeError].panic
-    with mockGetPos
-    with mockInspector[Unit, TypeBinding]
-    val result = typecheck(prog)
-
-    val expected = map::fromListGeneric[String, TypingType]([
-      ("i", TInt()),
-      ("d", TDouble()),
-      ("result", TDouble())
-    ])
-
-    assertTrue(typeMapsEqual(result, expected))
-  }
-
   test("typechecker infers double subtraction type") {
     val prog = [
       cVal("a", None(), cLit(10.5)),
@@ -1718,33 +1696,14 @@ def main() = mainSuite("typechecker") {
     assertTrue(typeMapsEqual(result, expected))
   }
 
-  test("typechecker handles complex mixed numeric operations") {
-    val prog = [
-      cVal("i", None(), cLit(10)),
-      cVal("d1", None(), cLit(2.5)),
-      cVal("d2", None(), cLit(1.5)),
-      cVal("result1", None(), cAdd(cV("i"), cV("d1"))),
-      cVal("result2", None(), cMult(cV("d1"), cV("d2"))),
-      cVal("result3", None(), cDiv(cV("result1"), cV("d2")))
-    ]
-
-    with on[TypeError].panic
+  test("typechecker throws on mixed arithmetic with Int and Double") {
+    val prog = [cExpr(cAdd(cLit(3.0), cLit(2)))]
+    
+    with assertThrows[TypeError]
     with on[NameError].panic
     with mockGetPos
     with mockInspector[Unit, TypeBinding]
-    val result = typecheck(prog)
-
-    val expected = map::fromListGeneric[String, TypingType]([
-      ("i", TInt()),
-      ("d1", TDouble()),
-      ("d2", TDouble()),
-      ("result1", TDouble()),
-      ("result2", TDouble()),
-      ("result3", TDouble())
-    ])
-
-    assertTrue(typeMapsEqual(result, expected))
+    typecheck(prog)
+    ()
   }
-
-  
 }

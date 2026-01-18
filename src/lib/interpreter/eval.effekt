@@ -10,13 +10,6 @@ import src/lib/interpreter/values
 import src/lib/lexer/position
 import src/lib/runner/result
 
-/// casts two values to a common type for binary operations
-def promote(v1: Value, v2: Value): (Value, Value) / Exception[RuntimeError] = (v1, v2) match {
-  case (VInt(i), VDouble(d)) => (VDouble(i.toDouble()), VDouble(d))
-  case (VDouble(d), VInt(i)) => (VDouble(d), VDouble(i.toDouble()))
-  case _ => (v1, v2)
-}
-
 
 /// evaluates an expression and returns the resulting value
 def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeError], Positioning, Inspector[Address], LoopControl } = expr match {
@@ -48,7 +41,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
 
   case AddExpr(left, right, pos) => {
     with at(pos)
-   val (vLeft, vRight) = promote(evalExpr(left), evalExpr(right))
+   val (vLeft, vRight) = (evalExpr(left), evalExpr(right))
     (vLeft, vRight) match {
       case (VInt(l), VInt(r)) => VInt(l + r)
       case (VDouble(l), VDouble(r)) => VDouble(l + r)
@@ -59,7 +52,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
 
   case SubExpr(left, right, pos) => {
     with at(pos)
-    val (vLeft, vRight) = promote(evalExpr(left), evalExpr(right))
+    val (vLeft, vRight) = (evalExpr(left), evalExpr(right))
     (vLeft, vRight) match {
       case (VInt(l), VInt(r)) => VInt(l - r)
       case (VDouble(l), VDouble(r)) => VDouble(l - r)
@@ -69,7 +62,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
 
   case MultExpr(left, right, pos) => {
     with at(pos)
-    val (vLeft, vRight) = promote(evalExpr(left), evalExpr(right))
+    val (vLeft, vRight) = (evalExpr(left), evalExpr(right))
     (vLeft, vRight) match {
       case (VInt(l), VInt(r)) => VInt(l * r)
       case (VDouble(l), VDouble(r)) => VDouble(l * r)
@@ -79,7 +72,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
 
   case DivExpr(left, right, pos) => {
     with at(pos)
-    val (vLeft, vRight) = promote(evalExpr(left), evalExpr(right))
+    val (vLeft, vRight) = (evalExpr(left), evalExpr(right))
     (vLeft, vRight) match {
       case (VInt(l), VInt(r)) => {
         if (r != 0) {
@@ -149,7 +142,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
 
   case Eq(left, right, pos) => {
     with at(pos)
-    val (vLeft, vRight) = promote(evalExpr(left), evalExpr(right))
+    val (vLeft, vRight) = (evalExpr(left), evalExpr(right))
     (vLeft, vRight) match {
       case (VInt(l), VInt(r)) => VBool(l == r)
       case (VDouble(l), VDouble(r)) => VBool(l == r)
@@ -162,7 +155,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
 
   case Neq(left, right, pos) => {
     with at(pos)
-    val (vLeft, vRight) = promote(evalExpr(left), evalExpr(right))
+    val (vLeft, vRight) = (evalExpr(left), evalExpr(right))
     (vLeft, vRight) match {
       case (VInt(l), VInt(r)) => VBool(l != r)
       case (VBool(l), VBool(r)) => VBool(l != r)
@@ -174,7 +167,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
 
   case Lt(left, right, pos) => {
     with at(pos)
-    val (vLeft, vRight) = promote(evalExpr(left), evalExpr(right))
+    val (vLeft, vRight) = (evalExpr(left), evalExpr(right))
     (vLeft, vRight) match {
       case (VInt(l), VInt(r)) => VBool(l < r)
       case (VDouble(l), VDouble(r)) => VBool(l < r)
@@ -184,7 +177,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
 
   case Gt(left, right, pos) => {
     with at(pos)
-    val (vLeft, vRight) = promote(evalExpr(left), evalExpr(right))
+    val (vLeft, vRight) = (evalExpr(left), evalExpr(right))
     (vLeft, vRight) match {
       case (VInt(l), VInt(r)) => VBool(l > r)
       case (VDouble(l), VDouble(r)) => VBool(l > r)
@@ -194,7 +187,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
 
   case LtE(left, right, pos) => {
     with at(pos)
-    val (vLeft, vRight) = promote(evalExpr(left), evalExpr(right))
+    val (vLeft, vRight) = (evalExpr(left), evalExpr(right))
     (vLeft, vRight) match {
       case (VInt(l), VInt(r)) => VBool(l <= r)
       case (VDouble(l), VDouble(r)) => VBool(l <= r)
@@ -204,7 +197,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
 
   case GtE(left, right, pos) => {
     with at(pos)
-    val (vLeft, vRight) = promote(evalExpr(left), evalExpr(right))
+    val (vLeft, vRight) = (evalExpr(left), evalExpr(right))
     (vLeft, vRight) match {
       case (VInt(l), VInt(r)) => VBool(l >= r)
       case (VDouble(l), VDouble(r)) => VBool(l >= r)

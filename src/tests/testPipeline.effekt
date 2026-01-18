@@ -544,14 +544,6 @@ def main() = mainSuite("pipeline") {
     assertTrue(result.equal(VDouble(5.0)))
   }
 
-  test("promotes mixed int/double arithmetic to double") {
-    val result = runPipeline("""
-      val mixed = 3 + 2.5
-      mixed * 2
-    """)
-    assertTrue(result.equal(VDouble(11.0)))
-  }
-
   test("functions operating on doubles") {
     val result = runPipeline("""
       def scale(x: Double, factor: Double): Double { x * factor }

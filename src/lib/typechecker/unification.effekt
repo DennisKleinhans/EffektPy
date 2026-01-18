@@ -64,7 +64,9 @@ def unify(eqs: List[TypeEquation], subst: Substitution): Substitution / { Except
         case (other, TVar(id)) => bind(id, other, rest, subst)
         case (TInt(), TInt()) => unify(rest, subst)
         case (TBool(), TBool()) => unify(rest, subst)
-        
+        case (TUnit(), TUnit()) => unify(rest, subst)
+        case (TString(), TString()) => unify(rest, subst)
+        case (TDouble(), TDouble()) => unify(rest, subst)
         
         case (TFun(p1, r1), TFun(p2, r2)) => {
           // allow unification of functions with different number of parameters (by matching up to the smaller size)

@@ -357,18 +357,8 @@ def checkNumeric(left: Expr, right: Expr, pos: Position): TypingType / { Typing,
   assertIsNumeric(tLeft, pos)
   assertIsNumeric(tRight, pos)
 
-  
-  (tLeft, tRight) match {
-    // if either side is a double, the result is a double
-    case (TDouble(), _) => TDouble()
-    case (_, TDouble()) => TDouble()
-    case _ => {
-      val tResult = do fresh()
-      do equate(tLeft, tResult, pos)
-      do equate(tRight, tResult, pos)
-      tResult
-    }
-  }
+  do equate(tLeft, tRight, pos)
+  tLeft
 }
 
 /// assert that a type is numeric (int or double)
