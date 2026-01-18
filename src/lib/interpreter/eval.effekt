@@ -117,10 +117,10 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
   case AndExpr(left, right, pos) => {
     with at(pos)
 
-    evalExpr(left) match {
+    isTruthy(evalExpr(left)) match {
       case VBool(false) => VBool(false) // short-circuit
       case VBool(true) => {
-        val vRight = evalExpr(right)
+        val vRight = isTruthy(evalExpr(right))
         vRight match {
           case VBool(r) => VBool(r)
           case _ => do raise(errors::RuntimeError(), "Type error in logical and")
@@ -132,8 +132,8 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
 
   case OrExpr(left, right, pos) => {
     with at(pos)
-    val vLeft = evalExpr(left)
-    val vRight = evalExpr(right)
+    val vLeft = isTruthy(evalExpr(left))
+    val vRight = isTruthy(evalExpr(right))
     (vLeft, vRight) match {
       case (VBool(l), VBool(r)) => VBool(l || r)
       case _ => do raise(errors::RuntimeError(), "Type error in logical or")
