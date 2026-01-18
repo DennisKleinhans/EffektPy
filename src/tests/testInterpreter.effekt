@@ -1081,5 +1081,177 @@ def main() = mainSuite("interpreter") {
       iter = iter + 1
     }
   }
+
+  test("eval truthy value in if expression") {
+    val prog = [cExpr(cIf(cLit(5), cLit(10), cLit(20)))]
+
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(10)))
+  }
+
+  test("eval falsy value in if expression") {
+    val prog = [cExpr(cIf(cLit(0), cLit(10), cLit(20)))]
+
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(20)))
+  }
+
+  test("eval truthy value in while loop") {
+    val prog = [
+      cVar("counter", None(), cLit(3)),
+      cVar("sum", None(), cLit(0)),
+      cWhile(cV("counter"), 
+        Block([cAssign("counter", cSub(cV("counter"), cLit(1))),
+        cAssign("sum", cAdd(cV("sum"), cV("counter")))], None())
+        ),
+      cExpr(cV("sum"))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(3)))
+  }
+
+  test("eval truthy in 'and' (Int)") {
+    val prog = [cExpr(cAnd(cLit(5), cLit(10)))]
+    
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VBool(true)))
+  }
+
+  test("eval truthy in `or` (Int)") {
+    val prog = [cExpr(cOr(cLit(0), cLit(10)))]
+    
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VBool(true)))
+  }
+
+  test("eval falsy in `and` (Int)") {
+    val prog = [cExpr(cAnd(cLit(0), cLit(10)))]
+    
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VBool(false)))
+  }
+
+  test("eval falsy in `or` (Int)") {
+    val prog = [cExpr(cOr(cLit(0), cLit(5)))]
+    
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VBool(true)))
+  }
+
+  test("eval truthy in 'and' (Double)") {
+    val prog = [cExpr(cAnd(cLit(5.0), cLit(10.0)))]
+    
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VBool(true)))
+  }
+
+  test("eval truthy in `or` (Double)") {
+    val prog = [cExpr(cOr(cLit(0.0), cLit(10.0)))]
+
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VBool(true)))
+  }
+
+  test("eval falsy in 'and' (Double)") {
+    val prog = [cExpr(cAnd(cLit(0.0), cLit(10.0)))]
+
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VBool(false)))
+  }
+
+  test("eval falsy in `or` (Double)") {
+    val prog = [cExpr(cOr(cLit(0.0), cLit(5.0)))]
+
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VBool(true)))
+  }
+
+  test("eval truthy in 'and' (String)") {
+    val prog = [cExpr(cAnd(cLit("hello"), cLit("world")))]
+    
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
   
+    assertTrue(result.equal(VBool(true)))
+  }
+
+  test("eval truthy in `or` (String)") {
+    val prog = [cExpr(cOr(cLit(""), cLit("world")))]
+    
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VBool(true)))
+  }
+
+  test("eval falsy in 'and' (String)") {
+    val prog = [cExpr(cAnd(cLit(""), cLit("world")))]
+    
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VBool(false)))
+  }
+
+  test("eval falsy in `or` (String)") {
+    val prog = [cExpr(cOr(cLit(""), cLit("world")))]
+    
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VBool(true)))
+  }
 }

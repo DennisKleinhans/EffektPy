@@ -347,7 +347,7 @@ def main() = mainSuite("typechecker") {
     ()
   }
 
-  test("typechecker throws error on if statement with non-boolean condition") {
+  test("typechecker does not throw error on if statement with non-boolean condition since the truthiness analysis is done in the interpreter") {
     val prog = [
       cVal("x", None(), cLit(5)),
       cVal("y", None(), cLit(10)),
@@ -362,7 +362,7 @@ def main() = mainSuite("typechecker") {
     ]
 
     with on[NameError].panic
-    with assertThrows[TypeError]
+    with on[TypeError].panic
     with mockGetPos
     with mockInspector[Unit, TypeBinding]
     typecheck(prog)
@@ -567,7 +567,7 @@ def main() = mainSuite("typechecker") {
     assertTrue(typeMapsEqual(result, expected))
   }
 
-  test("typechecker throws on non boolean condition in while statement") {
+  test("typechecker does not throw on non boolean condition in while statement since the truthiness analysis is done in the interpreter") {
     val prog = [
       cVar("counter", None(), cLit(0)),
       cWhile(cLit(5),
@@ -577,7 +577,7 @@ def main() = mainSuite("typechecker") {
       )
     ]
 
-    with assertThrows[TypeError]
+    with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
     with mockInspector[Unit, TypeBinding]
@@ -1020,21 +1020,6 @@ def main() = mainSuite("typechecker") {
     ])
 
     assertTrue(typeMapsEqual(result, expected))
-  }
-
-  test("typechecker throws error on passing wrong function type") {
-    val prog = [
-      cVal("negate", None(), cFun([Parameter("x", None(), None())], None(), Block(Nil(), Some(cNot(cV("x")))))),
-      cVal("apply", None(), cFun([Parameter("f", None(), None()), Parameter("x", None(), None())], None(), Block(Nil(), Some(cCall(cV("f"), [Argument(None(), cV("x"))]))))),
-      cVal("result", None(), cCall(cV("apply"), [Argument(None(), cV("negate")), Argument(None(), cLit(5))]))
-    ]
-
-    with on[NameError].panic
-    with assertThrows[TypeError]
-    with mockGetPos
-    with mockInspector[Unit, TypeBinding]
-    typecheck(prog)
-    ()
   }
 
   test("typechecker handles complex nested higher-order functions") {
@@ -1569,14 +1554,14 @@ def main() = mainSuite("typechecker") {
     assertTrue(typeMapsEqual(result, expected))
   }
 
-  test("typechecker throws error on double in boolean operation") {
+  test("typechecker does not throw error on double in boolean operation") {
     val prog = [
       cVal("d", None(), cLit(1.5)),
       cVal("result", None(), cAnd(cV("d"), cLit(true)))
     ]
 
     with on[NameError].panic
-    with assertThrows[TypeError]
+    with on[TypeError].panic
     with mockGetPos
     with mockInspector[Unit, TypeBinding]
     typecheck(prog)

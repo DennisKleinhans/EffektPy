@@ -11,6 +11,15 @@ import src/lib/lexer/position
 import src/lib/runner/result
 
 
+/// Determines the truthiness of a value (python-like semantics)
+def isTruthy(value: Value): Value = value match {
+  case VBool(b) => VBool(b)
+  case VInt(n) => VBool(n != 0)
+  case VDouble(d) => VBool(d != 0.0)
+  case VString(s) => VBool(s != "")
+  case _ => VBool(false)
+}
+
 /// evaluates an expression and returns the resulting value
 def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeError], Positioning, Inspector[Address], LoopControl } = expr match {
   case IntLiteral(n, pos) => { 
@@ -94,7 +103,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
   
   case IfExpr(condition, thenExpr, elseExpr, pos) => {
     with at(pos)
-    val vCond = evalExpr(condition)
+    val vCond = isTruthy(evalExpr(condition))
     vCond match {
       case VBool(cond) =>
         if (cond) {
@@ -108,10 +117,10 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
   case AndExpr(left, right, pos) => {
     with at(pos)
 
-    evalExpr(left) match {
+    isTruthy(evalExpr(left)) match {
       case VBool(false) => VBool(false) // short-circuit
       case VBool(true) => {
-        val vRight = evalExpr(right)
+        val vRight = isTruthy(evalExpr(right))
         vRight match {
           case VBool(r) => VBool(r)
           case _ => do raise(errors::RuntimeError(), "Type error in logical and")
@@ -123,8 +132,8 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
 
   case OrExpr(left, right, pos) => {
     with at(pos)
-    val vLeft = evalExpr(left)
-    val vRight = evalExpr(right)
+    val vLeft = isTruthy(evalExpr(left))
+    val vRight = isTruthy(evalExpr(right))
     (vLeft, vRight) match {
       case (VBool(l), VBool(r)) => VBool(l || r)
       case _ => do raise(errors::RuntimeError(), "Type error in logical or")
@@ -133,7 +142,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
 
   case NotExpr(inner, pos) => {
     with at(pos)
-    val vInner = evalExpr(inner)
+    val vInner = isTruthy(evalExpr(inner))
     vInner match {
       case VBool(b) => VBool(not(b))
       case _ => do raise(errors::RuntimeError(), "Type error in logical not")
@@ -314,7 +323,7 @@ def evalStmt(stmt: Stmt): Value / { Context[Address], Store, Exception[RuntimeEr
 
   case IfStmt(cond, thenBranch, elseBranch, pos) => {
     with at(pos)
-    val vCond = evalExpr(cond)
+    val vCond = isTruthy(evalExpr(cond))
     vCond match {
       case VBool(b) => if (b) evalBlock(thenBranch) else evalBlock(elseBranch)
       case _ => do raise(errors::RuntimeError(), "Type error in if condition")
@@ -330,7 +339,7 @@ def evalStmt(stmt: Stmt): Value / { Context[Address], Store, Exception[RuntimeEr
     with at(pos)
     
     def runLoop(): Unit = {
-      var vCond = evalExpr(condition)
+      var vCond = isTruthy(evalExpr(condition))
       var cond = vCond match {
         case VBool(b) => b
         case _ => false
