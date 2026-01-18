@@ -568,4 +568,82 @@ def main() = mainSuite("pipeline") {
     assertTrue(result.equal(VString("Line1\nLine2\tTabbed")))
   }
 
+  test("truthy Int value in 'not'") {
+    val result = runPipeline("""
+      val x = not 5
+      x
+    """)
+    assertTrue(result.equal(VBool(false)))
+  }
+
+  test("falsy Int value in 'not'") {
+    val result = runPipeline("""
+      val x = not 0
+      x
+    """)
+    assertTrue(result.equal(VBool(true)))
+  }
+
+  test("truthy Double value in 'not'") {
+    val result = runPipeline("""
+      val x = not 3.14
+      x
+    """)
+    assertTrue(result.equal(VBool(false)))
+  }
+
+  test("falsy Double value in 'not'") {
+    val result = runPipeline("""
+      val x = not 0.0
+      x
+    """)
+    assertTrue(result.equal(VBool(true)))
+  }
+
+  test("truthy String value in 'not'") {
+    val result = runPipeline("""
+      val x = not "hello"
+      x
+    """)
+    assertTrue(result.equal(VBool(false)))
+  }
+
+  test("falsy String value in 'not'") {
+    val result = runPipeline("""
+      val x = not ""
+      x
+    """)
+    assertTrue(result.equal(VBool(true)))
+  }
+
+  test("truthy values in if condition") {
+    val result = runPipeline("""
+      def add(a, b): Int {
+        a + b
+      }
+
+      if (add(2, 3)) {
+        10
+      } else {
+        20
+      }
+    """)
+    assertTrue(result.equal(VInt(10)))
+  }
+
+  test("truthy values in while condition") {
+    val result = runPipeline("""
+      var count = 3
+      var sum = 0
+
+      while (count) {
+        sum += count
+        count -= 1
+      }
+
+      sum
+    """)
+    assertTrue(result.equal(VInt(6)))
+  }
+
 }

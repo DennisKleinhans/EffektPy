@@ -1081,5 +1081,46 @@ def main() = mainSuite("interpreter") {
       iter = iter + 1
     }
   }
+
+  test("eval truthy value in if expression") {
+    val prog = [cExpr(cIf(cLit(5), cLit(10), cLit(20)))]
+
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(10)))
+  }
+
+  test("eval falsy value in if expression") {
+    val prog = [cExpr(cIf(cLit(0), cLit(10), cLit(20)))]
+
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(20)))
+  }
+
+  test("eval truthy value in while loop") {
+    val prog = [
+      cVar("counter", None(), cLit(3)),
+      cVar("sum", None(), cLit(0)),
+      cWhile(cV("counter"), 
+        Block([cAssign("counter", cSub(cV("counter"), cLit(1))),
+        cAssign("sum", cAdd(cV("sum"), cV("counter")))], None())
+        ),
+      cExpr(cV("sum"))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(3)))
+  }
   
 }
