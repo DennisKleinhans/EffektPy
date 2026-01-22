@@ -177,7 +177,8 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
     with at(pos) 
     // look up the variable binding and instantiate its type
     val binding = do lookup(name)
-    instantiate(binding.tpe)
+    // instantiate(binding.tpe)
+    binding.tpe
   }
 
   case AddExpr(left, right, pos) => {
@@ -329,30 +330,45 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
   case CallExpr(receiver, args, pos) => {
     with at(pos) 
     val tReceiver = checkExpr(receiver)
-    val argTypes = args.map { arg => checkExpr(arg.value) }
-    val retType = do fresh()
 
-    // construct function type from argument types and return type
-    val tCall = TFun(argTypes.map { t => TypingParam(t, false) }, retType)
-
-    do equate(tReceiver, tCall, pos)
-
-    // check for correct number of arguments
-    tReceiver match {
-      case TFun(definedParams, _) => {
-        val minArgs = definedParams.filter { p => not(p.isOptional) }.size
-        val maxArgs = definedParams.size
-
-        if (argTypes.size < minArgs) {
-          raise(TypeError(), "Too few arguments at " ++ pos.show ++ ". Expected at least " ++ minArgs.show)
-        }
-        if (argTypes.size > maxArgs) {
-          raise(TypeError(), "Too many arguments at " ++ pos.show ++ ". Expected at most " ++ maxArgs.show)
-        }
-      }
-      case _ => ()
+    val isPrint = receiver match {
+      case Variable("print", _) => true
+      case _ => false
     }
-    retType
+
+    // special case for 'print' to allow any argument types and arbitrary number of arguments
+    if (isPrint) {
+      args.foreach { arg => {
+        val tArg = checkExpr(arg.value)
+        do equate(tArg, instantiate(TVar(-1)), pos)
+      }}
+      TUnit()
+    } else {
+      val argTypes = args.map { arg => checkExpr(arg.value) }
+      val retType = do fresh()
+
+      // construct function type from argument types and return type
+      val tCall = TFun(argTypes.map { t => TypingParam(t, false) }, retType)
+
+      do equate(tReceiver, tCall, pos)
+
+      // check for correct number of arguments
+      tReceiver match {
+        case TFun(definedParams, _) => {
+          val minArgs = definedParams.filter { p => not(p.isOptional) }.size
+          val maxArgs = definedParams.size
+
+          if (argTypes.size < minArgs) {
+            raise(TypeError(), "Too few arguments at " ++ pos.show ++ ". Expected at least " ++ minArgs.show)
+          }
+          if (argTypes.size > maxArgs) {
+            raise(TypeError(), "Too many arguments at " ++ pos.show ++ ". Expected at most " ++ maxArgs.show)
+          }
+        }
+        case _ => ()
+      }
+      retType
+    }
   }
 }
 
