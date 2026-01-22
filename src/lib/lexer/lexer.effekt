@@ -93,7 +93,7 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], Positioning 
 
   def readIdentifierOrKeyword(pos: Position): Token / { Scan[Char], stop } = {
     // collect all alphanumeric chars
-    val name = string::collect { readWhile { c => c.isAlphanumeric } } 
+    val name = string::collect { readMany { c => c.isAlphanumeric } } 
 
     // identify potential keywords
     val kind = name match {
@@ -133,7 +133,7 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], Positioning 
   }
 
   def readNumberToken(pos: Position): Token / { Scan[Char], stop } = {
-    val integerPart = readDecimal()
+    val integerPart = try { readDecimal() } with fail { raise(LexerError(), "invalid number at " ++ pos.show) }
     val next = try { do Scan::peek() } with stop { ' ' }
 
     // check for fractional part
@@ -143,7 +143,7 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], Positioning 
 
       // read fractional part as string to avoid precision issues like 123.000001
       val fractionalPart = string::collect {
-        readWhile { c => c.isDigit }
+        readMany { c => c.isDigit }
       }
 
       if (fractionalPart == "") {
@@ -158,7 +158,7 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], Positioning 
       Token(Double(doubleVal), pos)
     } else {
       if (checkInvalidTrailingAlpha()) {
-        val rest = string::collect { readWhile { c => c.isAlphanumeric } }
+        val rest = string::collect { readMany { c => c.isAlphanumeric } }
         do raise(LexerError(), "invalid char at " ++ pos.show ++ " in " ++ "'" ++ integerPart.show ++ rest ++ "'")
       }
       Token(Integer(integerPart), pos)
