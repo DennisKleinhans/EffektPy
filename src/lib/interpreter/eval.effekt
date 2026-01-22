@@ -20,6 +20,17 @@ def isTruthy(value: Value): Value = value match {
   case _ => VBool(false)
 }
 
+/// Converts a value to its string representation
+def stringify(value: Value): String = value match {
+  case VInt(n) => n.show
+  case VDouble(d) => d.show
+  case VBool(b) => b.show
+  case VString(s) => s
+  case VUnit() => "unit"
+  case VClosure(_, _, _) => "<function>"
+  case VBuiltin(name) => "<builtin function: " ++ name ++ ">"
+}
+
 /// evaluates an expression and returns the resulting value
 def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeError], Positioning, Inspector[Address], LoopControl } = expr match {
   case IntLiteral(n, pos) => { 
@@ -226,6 +237,18 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
     val evaluatedArgs = args.map { arg => (arg.name, evalExpr(arg.value)) }
 
     vFunc match {
+      case VBuiltin(name) => {
+        val argValues = evaluatedArgs.map { case (_, value) => value }
+        name match {
+          case "print" => {
+            val output = argValues.map { v => stringify(v) }.join(" ")
+            println(output)
+            VUnit()
+          }
+          case _ => raise(errors::RuntimeError(), "Unknown builtin function: " ++ name)
+        }
+      }
+
       case VClosure(params, body, capturedEnv) => {
         var assignments = map::emptyGeneric[String, Value]
         var positionalIndex = 0
@@ -411,7 +434,8 @@ def evalProgram(program: Program): Value / { Exception[RuntimeError], Inspector[
 def evalProgramIncremental(program: Program, initialEnv: Map[String, Address], initialStore: Map[Address, Value]): EvalState / { Exception[RuntimeError], Inspector[Address], Positioning } = {
   with handleDefaultLoopControl
   with handleStore(initialStore)
-  with handleRuntimeContext(initialEnv)
+  val newInitialEnv = getInitialEvalEnv().mapUnion(initialEnv)
+  with handleRuntimeContext(newInitialEnv)
   
   try {
     var lastValue = VUnit()
@@ -424,4 +448,16 @@ def evalProgramIncremental(program: Program, initialEnv: Map[String, Address], i
   } with ReturnControl {
     def returnValue(value) = EvalState(value, do backup(), do dump())
   }
+}
+
+/// constructs the initial evaluation environment with built-in functions
+def getInitialEvalEnv(): Map[String, Address] / Store = {
+  var env = map::emptyGeneric[String, Address]
+  val builtins = ["print"]
+
+  builtins.foreach { name => 
+    val addr = do allocate(VBuiltin(name))
+    env = env.put(name, addr)  
+  }
+  env
 }
