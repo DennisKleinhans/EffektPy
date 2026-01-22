@@ -1,5 +1,6 @@
 module src/lib/utils/helpers
 
+import map
 import src/lib/lexer/tokens
 import src/lib/parser/surfaceAst
 import src/lib/utils/effects
@@ -154,6 +155,7 @@ def show(v: Value): String = v match {
   case VString(s) => "\"" ++ s ++ "\""
   case VDouble(d) => d.show
   case VClosure(params, body, env) => "<function>"
+  case VBuiltin(name) => "<builtin function: " ++ name ++ ">"
 }
 
 /// checks if two token kinds are equal
@@ -236,4 +238,14 @@ def equal(t1: TypingType, t2: TypingType): Bool = (t1, t2) match {
 
 extern def stringToDouble(s: String): Double = jsNode "parseFloat(${s})"
 
+def mapUnion[K, V](m1: Map[K, V], m2: Map[K, V]): Map[K, V] = {
+  var res = m1
+  m2.keys().foreach { k =>
+    m2.get(k) match {
+      case Some(v) => res = res.put(k, v)
+      case None()  => ()
+    }
+  }
+  res
+}
 
