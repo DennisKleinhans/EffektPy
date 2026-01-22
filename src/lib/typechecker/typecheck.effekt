@@ -32,7 +32,11 @@ def typecheckIncremental(prog: Program, initialEnv: Map[String, TypeBinding]): M
   var equations: List[TypeEquation] = Nil()
   var counter = 0
 
-  with handleTypingContext(initialEnv)
+  // extend the initial environment with built-in functions
+  // prefers built-in types over initialEnv, because 'union' keeps the first mapping in case of duplicates
+  val newInitialEnv = getBuiltinTypeEnv().mapUnion(initialEnv)
+
+  with handleTypingContext(newInitialEnv)
   try {
     prog.foreach { stmt => checkStmt(stmt); () }
     val finalSubst = solve(equations)
@@ -171,7 +175,9 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
   case DoubleLiteral(value, pos) => { with at(pos); TDouble()}
   case Variable(name, pos) => {
     with at(pos) 
-    do lookup(name).tpe
+    // look up the variable binding and instantiate its type
+    val binding = do lookup(name)
+    instantiate(binding.tpe)
   }
 
   case AddExpr(left, right, pos) => {
@@ -386,4 +392,38 @@ def translateType(t: Option[Type]): TypingType / Typing = t match {
   case Some(DoubleType()) => TDouble()
 
   case None() => do fresh() // generate a fresh type variable
+}
+
+/// instantiate a type by replacing all negative type variables with fresh type variables
+def instantiate(t: TypingType): TypingType / Typing = {
+  // mapping from old negative type variable ids to fresh type variables
+  var mapping = map::emptyGeneric[Int, TypingType]()
+
+  def go(tp: TypingType): TypingType / Typing = tp match {
+    case TVar(id) => {
+      if (id < 0) {
+        mapping.get(id) match {
+          case Some(freshT) => freshT
+          case None() => {
+            val freshT = do fresh()
+            mapping = mapping.put(id, freshT)
+            freshT
+          }
+        }
+      } else { tp } // concrete type variable, leave as is
+    }
+    case TFun(paramTypes, retType) => {
+      TFun(paramTypes.map { p => TypingParam(go(p.tpe), p.isOptional) }, go(retType))
+    }
+    case _ => tp
+  }
+  go(t)
+}
+
+/// constructs the built-in type environment
+def getBuiltinTypeEnv(): Map[String, TypeBinding] = {
+  map::fromListGeneric[String, TypeBinding]([
+    // here TVar(-1) represents a generic type parameter which gets instantiated upon use
+    ("print", TypeBinding(TFun([TypingParam(TVar(-1), false)], TUnit()), false)),
+  ])
 }
