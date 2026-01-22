@@ -10,6 +10,7 @@ type Value {
   VClosure(params: List[Parameter], body: Block, env: Map[String, Address])
   VString(value: String)
   VDouble(value: Double)
+  VBuiltin(name: String)
 }
 
 type Address = Int
