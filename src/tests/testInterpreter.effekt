@@ -1271,6 +1271,26 @@ def main() = mainSuite("interpreter") {
 
     assertTrue(result.equal(VString("1233.5false")))
   }
+
+  test("eval 'max' builtin function for Int") {
+    val prog = [cExpr(cCall(cV("max"), [Argument(None(), cLit(1)), Argument(None(), cLit(5)), Argument(None(), cLit(3))]))]
+
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(5)))
+  }
+
+  test("eval 'max' builtin function for Double") {
+    val prog = [cExpr(cCall(cV("max"), [Argument(None(), cLit(1.1)), Argument(None(), cLit(5.5)), Argument(None(), cLit(3.3))]))]
+
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VDouble(5.5)))
+  }
 }
-
-
