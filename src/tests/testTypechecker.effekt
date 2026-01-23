@@ -1699,4 +1699,15 @@ def main() = mainSuite("typechecker") {
     // no equality check here. Trust the typechecker to handle builtins correctly as long as no errors are raised
     val result = typecheck(prog)
   }
+
+  test("typechecker handles 'str' function to convert some value into a string") {
+    val prog = [cExpr(cAdd(cCall(cV("str"), [Argument(None(), cLit(123))]), cLit("abc")))]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    
+    val result = typecheck(prog)
+  }
 }

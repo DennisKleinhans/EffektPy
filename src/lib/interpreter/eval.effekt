@@ -247,23 +247,32 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
           }
 
           case "input" => {
-            val argValues = evaluatedArgs.map { case (_, value) => value }
             if (argValues.size > 1) {
               raise(errors::RuntimeError(), "input() takes at most one argument")
             } else {
-              argValues match {
-                case Cons(promptValue, _) => {
+              argValues.headOption match {
+                case Some(promptValue) => {
                   promptValue match {
                     case VString(prompt) => do writeSingle(prompt)
                     case _ => raise(errors::RuntimeError(), "input() argument must be a string")
                   }
                 }
-                case Nil() => ()
+                case None() => ()
               }
             }
             val line = do readLine()
             VString(line)
           }
+
+          case "str" => {
+            argValues.headOption match {
+              case Some(valueToConvert) => {
+                VString(stringify(valueToConvert))
+              }
+              case None() => raise(errors::RuntimeError(), "str() takes exactly one argument")
+            }
+          }
+
           case _ => raise(errors::RuntimeError(), "Unknown builtin function: " ++ name)
         }
       }
@@ -472,7 +481,7 @@ def evalProgramIncremental(program: Program, initialEnv: Map[String, Address], i
 /// constructs the initial evaluation environment with built-in functions
 def getInitialEvalEnv(): Map[String, Address] / Store = {
   var env = map::emptyGeneric[String, Address]
-  val builtins = ["print", "input"]
+  val builtins = ["print", "input", "str"]
 
   builtins.foreach { name => 
     val addr = do allocate(VBuiltin(name))

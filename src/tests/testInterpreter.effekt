@@ -14,6 +14,7 @@ import src/lib/interpreter/values
 def main() = mainSuite("interpreter") {
 
   val mockedPos = Position(1, 1)
+  with mockReplConsole
 
   test("eval simple arithmetic") {
     val progs = [
@@ -1254,4 +1255,22 @@ def main() = mainSuite("interpreter") {
 
     assertTrue(result.equal(VBool(true)))
   }
+
+  test("eval 'str' builtin function") {
+    val prog = [
+      cExpr(cAdd(
+        cAdd(cCall(cV("str"), [Argument(None(), cLit(123))]), cCall(cV("str"), [Argument(None(), cLit(3.5))])),
+        cCall(cV("str"), [Argument(None(), cLit(false))])
+      ))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VString("1233.5false")))
+  }
 }
+
+

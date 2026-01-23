@@ -151,3 +151,15 @@ def consoleRepl[R] { program: () => R / REPLConsole }: R = {
     def writeSingle(message) = resume(js::write(c, message))
   } 
 }
+
+/// Mock handler for the REPLConsole effect that does nothing (for testing purposes)
+def mockReplConsole[R] { program: () => R / REPLConsole }: R = {
+  try {
+    val r = program()
+    return r
+  } with REPLConsole {
+    def readLine() = resume("") // always return empty input
+    def writeLine(message) = resume(())
+    def writeSingle(message) = resume(())
+  } 
+}
