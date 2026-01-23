@@ -354,6 +354,21 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
         }}
         memberType
       }
+      
+      // special case for 'max' to allow at least two numeric arguments of the same type
+      case Variable("min", _) => {
+        if (args.size < 2) {
+          raise(TypeError(), "min() expects at least 2 arguments")
+        }
+        val memberType = instantiate(TVar(-1))
+
+        args.foreach { arg => {
+          val tArg = checkExpr(arg.value)
+          assertIsNumeric(tArg, pos)
+          do equate(tArg, memberType, pos)
+        }}
+        memberType
+      }
 
       case _ => {
         val argTypes = args.map { arg => checkExpr(arg.value) }
@@ -456,6 +471,7 @@ def getBuiltinTypeEnv(): Map[String, TypeBinding] = {
     ("print", TypeBinding(TFun([TypingParam(TVar(-1), false)], TUnit()), false)),
     ("input", TypeBinding(TFun([TypingParam(TString(), true)], TString()), false)),
     ("str", TypeBinding(TFun([TypingParam(TVar(-1), false)], TString()), false)),
-    ("max", TypeBinding(TFun([TypingParam(TVar(-1), false)], TVar(-1)), false))
+    ("max", TypeBinding(TFun([TypingParam(TVar(-1), false)], TVar(-1)), false)),
+    ("min", TypeBinding(TFun([TypingParam(TVar(-1), false)], TVar(-1)), false))
   ])
 }

@@ -285,6 +285,18 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
             }
           }
 
+          case "min" => {
+            val values = evaluatedArgs.map { case (_, v) => v }
+            with on[MissingValue].default{VInt(0)}
+            values.tail.foldLeft(values.head) { (currentMin, nextValue) =>
+              (currentMin, nextValue) match {
+                case (VInt(i1), VInt(i2)) => VInt(min(i1, i2))
+                case (VDouble(d1), VDouble(d2)) => VDouble(min(d1, d2))
+                case _ => raise(errors::RuntimeError(), "min() arguments must be all of the same numeric type")
+              }
+            }
+          }
+
           case _ => raise(errors::RuntimeError(), "Unknown builtin function: " ++ name)
         }
       }
@@ -493,7 +505,7 @@ def evalProgramIncremental(program: Program, initialEnv: Map[String, Address], i
 /// constructs the initial evaluation environment with built-in functions
 def getInitialEvalEnv(): Map[String, Address] / Store = {
   var env = map::emptyGeneric[String, Address]
-  val builtins = ["print", "input", "str", "max"]
+  val builtins = ["print", "input", "str", "max", "min"]
 
   builtins.foreach { name => 
     val addr = do allocate(VBuiltin(name))
