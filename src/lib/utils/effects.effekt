@@ -43,6 +43,14 @@ interface LoopContext {
   def isInLoop(): Bool
 }
 
+/// effect for getting the current return value of a function
 interface ReturnControl {
   def returnValue(value: Value): Unit
+}
+
+/// effect for console input/output operations
+interface REPLConsole {
+  def readLine(): String
+  def writeLine(message: String): Unit
+  def writeSingle(content: String): Unit
 }

@@ -441,5 +441,6 @@ def getBuiltinTypeEnv(): Map[String, TypeBinding] = {
   map::fromListGeneric[String, TypeBinding]([
     // here TVar(-1) represents a generic type parameter which gets instantiated upon use
     ("print", TypeBinding(TFun([TypingParam(TVar(-1), false)], TUnit()), false)),
+    ("input", TypeBinding(TFun([TypingParam(TString(), true)], TString()), false))
   ])
 }

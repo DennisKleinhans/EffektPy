@@ -249,3 +249,28 @@ def mapUnion[K, V](m1: Map[K, V], m2: Map[K, V]): Map[K, V] = {
   res
 }
 
+namespace js {
+
+  extern jsNode """
+    const REPLreadline = require('node:readline');
+  """
+
+  extern type JSConsole
+
+  extern def newConsole() at io: JSConsole =
+    jsNode """REPLreadline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+      })"""
+
+  extern def close(console: JSConsole) at io: Unit =
+    jsNode "${console}.close()"
+
+  extern def readLine(console: JSConsole) at async: String =
+    jsNode "$effekt.capture(k => ${console}.once('line', k))"
+  extern def writeLine(console: JSConsole, message: String) at io: Unit =
+    jsNode "${console}.output.write(${message} + '\\n')"
+  extern def write(console: JSConsole, message: String) at io: Unit =
+    jsNode "${console}.output.write(${message})"
+}
+
