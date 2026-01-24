@@ -20,8 +20,19 @@ def isTruthy(value: Value): Value = value match {
   case _ => VBool(false)
 }
 
+/// Converts a value to its string representation
+def stringify(value: Value): String = value match {
+  case VInt(n) => n.show
+  case VDouble(d) => d.show
+  case VBool(b) => b.show
+  case VString(s) => s
+  case VUnit() => "unit"
+  case VClosure(_, _, _) => "<function>"
+  case VBuiltin(name) => "<builtin function: " ++ name ++ ">"
+}
+
 /// evaluates an expression and returns the resulting value
-def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeError], Positioning, Inspector[Address], LoopControl } = expr match {
+def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeError], Positioning, Inspector[Address], LoopControl, REPLConsole } = expr match {
   case IntLiteral(n, pos) => { 
     with at(pos)
     VInt(n) 
@@ -226,6 +237,70 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
     val evaluatedArgs = args.map { arg => (arg.name, evalExpr(arg.value)) }
 
     vFunc match {
+      case VBuiltin(name) => {
+        val argValues = evaluatedArgs.map { case (_, value) => value }
+        name match {
+          case "print" => {
+            val output = argValues.map { v => stringify(v) }.join(" ")
+            println(output)
+            VUnit()
+          }
+
+          case "input" => {
+            if (argValues.size > 1) {
+              raise(errors::RuntimeError(), "input() takes at most one argument")
+            } else {
+              argValues.headOption match {
+                case Some(promptValue) => {
+                  promptValue match {
+                    case VString(prompt) => do writeSingle(prompt)
+                    case _ => raise(errors::RuntimeError(), "input() argument must be a string")
+                  }
+                }
+                case None() => ()
+              }
+            }
+            val line = do readLine()
+            VString(line)
+          }
+
+          case "str" => {
+            argValues.headOption match {
+              case Some(valueToConvert) => {
+                VString(stringify(valueToConvert))
+              }
+              case None() => raise(errors::RuntimeError(), "str() takes exactly one argument")
+            }
+          }
+
+          case "max" => {
+            val values = evaluatedArgs.map { case (_, v) => v }
+            with on[MissingValue].default{VInt(0)}
+            values.tail.foldLeft(values.head) { (currentMax, nextValue) =>
+              (currentMax, nextValue) match {
+                case (VInt(i1), VInt(i2)) => VInt(max(i1, i2))
+                case (VDouble(d1), VDouble(d2)) => VDouble(max(d1, d2))
+                case _ => raise(errors::RuntimeError(), "max() arguments must be all of the same numeric type")
+              }
+            }
+          }
+
+          case "min" => {
+            val values = evaluatedArgs.map { case (_, v) => v }
+            with on[MissingValue].default{VInt(0)}
+            values.tail.foldLeft(values.head) { (currentMin, nextValue) =>
+              (currentMin, nextValue) match {
+                case (VInt(i1), VInt(i2)) => VInt(min(i1, i2))
+                case (VDouble(d1), VDouble(d2)) => VDouble(min(d1, d2))
+                case _ => raise(errors::RuntimeError(), "min() arguments must be all of the same numeric type")
+              }
+            }
+          }
+
+          case _ => raise(errors::RuntimeError(), "Unknown builtin function: " ++ name)
+        }
+      }
+
       case VClosure(params, body, capturedEnv) => {
         var assignments = map::emptyGeneric[String, Value]
         var positionalIndex = 0
@@ -295,7 +370,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
 }
 
 /// evaluates a statement and returns the resulting value
-def evalStmt(stmt: Stmt): Value / { Context[Address], Store, Exception[RuntimeError], Inspector[Address], Positioning, LoopControl, ReturnControl } = stmt match {
+def evalStmt(stmt: Stmt): Value / { Context[Address], Store, Exception[RuntimeError], Inspector[Address], Positioning, LoopControl, ReturnControl, REPLConsole } = stmt match {
   case ValDeclaration(name, _, value, pos) => {
     with at(pos)
     val v = evalExpr(value)
@@ -390,7 +465,7 @@ def evalStmt(stmt: Stmt): Value / { Context[Address], Store, Exception[RuntimeEr
 }
 
 /// evaluates a block of statements and returns the resulting value
-def evalBlock(block: Block): Value / { Context[Address], Store, Exception[RuntimeError], Inspector[Address], Positioning, LoopControl, ReturnControl } = {
+def evalBlock(block: Block): Value / { Context[Address], Store, Exception[RuntimeError], Inspector[Address], Positioning, LoopControl, ReturnControl, REPLConsole } = {
   var lastValue = VUnit()
   with handleNewRuntimeScope
   block.statements.foreach { stmt => lastValue = evalStmt(stmt) }
@@ -403,15 +478,16 @@ def evalBlock(block: Block): Value / { Context[Address], Store, Exception[Runtim
 }
 
 /// evaluates a program and returns the resulting value
-def evalProgram(program: Program): Value / { Exception[RuntimeError], Inspector[Address], Positioning } = {
+def evalProgram(program: Program): Value / { Exception[RuntimeError], Inspector[Address], Positioning, REPLConsole } = {
   evalProgramIncremental(program, map::emptyGeneric[String, Address](), map::emptyGeneric[Address, Value]()).value
 }
 
 /// evaluates a program incrementally, given an initial environment and store, returning the resulting EvalState
-def evalProgramIncremental(program: Program, initialEnv: Map[String, Address], initialStore: Map[Address, Value]): EvalState / { Exception[RuntimeError], Inspector[Address], Positioning } = {
+def evalProgramIncremental(program: Program, initialEnv: Map[String, Address], initialStore: Map[Address, Value]): EvalState / { Exception[RuntimeError], Inspector[Address], Positioning, REPLConsole } = {
   with handleDefaultLoopControl
   with handleStore(initialStore)
-  with handleRuntimeContext(initialEnv)
+  val newInitialEnv = getInitialEvalEnv().mapUnion(initialEnv)
+  with handleRuntimeContext(newInitialEnv)
   
   try {
     var lastValue = VUnit()
@@ -424,4 +500,16 @@ def evalProgramIncremental(program: Program, initialEnv: Map[String, Address], i
   } with ReturnControl {
     def returnValue(value) = EvalState(value, do backup(), do dump())
   }
+}
+
+/// constructs the initial evaluation environment with built-in functions
+def getInitialEvalEnv(): Map[String, Address] / Store = {
+  var env = map::emptyGeneric[String, Address]
+  val builtins = ["print", "input", "str", "max", "min"]
+
+  builtins.foreach { name => 
+    val addr = do allocate(VBuiltin(name))
+    env = env.put(name, addr)  
+  }
+  env
 }

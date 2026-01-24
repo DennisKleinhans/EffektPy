@@ -32,7 +32,11 @@ def typecheckIncremental(prog: Program, initialEnv: Map[String, TypeBinding]): M
   var equations: List[TypeEquation] = Nil()
   var counter = 0
 
-  with handleTypingContext(initialEnv)
+  // extend the initial environment with built-in functions
+  // prefers built-in types over initialEnv, because 'union' keeps the first mapping in case of duplicates
+  val newInitialEnv = getBuiltinTypeEnv().mapUnion(initialEnv)
+
+  with handleTypingContext(newInitialEnv)
   try {
     prog.foreach { stmt => checkStmt(stmt); () }
     val finalSubst = solve(equations)
@@ -171,7 +175,8 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
   case DoubleLiteral(value, pos) => { with at(pos); TDouble()}
   case Variable(name, pos) => {
     with at(pos) 
-    do lookup(name).tpe
+    val binding = do lookup(name)
+    binding.tpe
   }
 
   case AddExpr(left, right, pos) => {
@@ -322,31 +327,94 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
 
   case CallExpr(receiver, args, pos) => {
     with at(pos) 
-    val tReceiver = checkExpr(receiver)
-    val argTypes = args.map { arg => checkExpr(arg.value) }
-    val retType = do fresh()
 
-    // construct function type from argument types and return type
-    val tCall = TFun(argTypes.map { t => TypingParam(t, false) }, retType)
+    receiver match {
+      // special case for 'print' to allow any argument types and arbitrary number of arguments
+      case Variable("print", _) => {
+        args.foreach { arg => checkExpr(arg.value); () }
+        TUnit()
+      } 
 
-    do equate(tReceiver, tCall, pos)
-
-    // check for correct number of arguments
-    tReceiver match {
-      case TFun(definedParams, _) => {
-        val minArgs = definedParams.filter { p => not(p.isOptional) }.size
-        val maxArgs = definedParams.size
-
-        if (argTypes.size < minArgs) {
-          raise(TypeError(), "Too few arguments at " ++ pos.show ++ ". Expected at least " ++ minArgs.show)
+      case Variable(name, _) and name == "max" || name == "min" => {
+        if (args.size < 2) {
+          raise(TypeError(), "'" ++ name ++ "' requires at least two arguments at " ++ pos.show)
         }
-        if (argTypes.size > maxArgs) {
-          raise(TypeError(), "Too many arguments at " ++ pos.show ++ ". Expected at most " ++ maxArgs.show)
-        }
+
+        val memberType = instantiate(TGen(0)) 
+
+        args.foreach { arg => {
+          val tArg = checkExpr(arg.value)
+          assertIsNumeric(tArg, pos)
+          do equate(tArg, memberType, pos)
+        } }
+        memberType
       }
-      case _ => ()
+
+      case _ => {
+        val tReceiverRaw = checkExpr(receiver)
+        val tReceiver = instantiate(tReceiverRaw) // TGen -> TVar
+        val retType = do fresh()
+
+        def isVariadicCall(params: List[TypingParam]): Bool = {
+          params.reverse match {
+            case Cons(p, _) => p.tpe match {
+              case TVariadic(_) => true
+              case _ => false
+            }
+            case _ => false
+          }
+        }
+        
+        tReceiver match {
+          
+          // variadic function call
+          case TFun(params, retTypeDefined) and isVariadicCall(params) => {
+            
+            // helper function to check arguments against parameters
+            def checkArgs(pList: List[TypingParam], aList: List[Argument]): Unit = {
+              pList match {
+                case Nil() => if (aList.size > 0) raise(TypeError(), "Too many arguments")
+                
+                // variadic parameter
+                case Cons(param, restParams) => param.tpe match {
+                  case TVariadic(innerType) => {
+                    aList.foreach { arg => do equate(checkExpr(arg.value), innerType, pos) }
+                  }
+
+                  case _ => aList match {
+                    // no more arguments check if parameter is optional
+                    case Nil() => {
+                      if (not(param.isOptional)) raise(TypeError(), "Missing argument")
+                      checkArgs(restParams, Nil())
+                    }
+
+                    // match head argument to parameter and recurse
+                    case Cons(arg, restArgs) => {
+                      do equate(checkExpr(arg.value), param.tpe, pos)
+                      checkArgs(restParams, restArgs)
+                    }
+                  }
+                }
+              }
+            }
+
+            checkArgs(params, args)
+            do equate(retType, retTypeDefined, pos)
+          }
+
+          // non-variadic function call
+          case _ => {
+            val argTypes = args.map { arg => checkExpr(arg.value) }
+            val tCall = TFun(argTypes.map { t => TypingParam(t, false) }, retType)
+            
+            // unify the receiver type with the call type
+            do equate(tReceiver, tCall, pos)
+          }
+        }
+        
+        retType
+      }
     }
-    retType
   }
 }
 
@@ -386,4 +454,54 @@ def translateType(t: Option[Type]): TypingType / Typing = t match {
   case Some(DoubleType()) => TDouble()
 
   case None() => do fresh() // generate a fresh type variable
+}
+
+/// instantiate a type by replacing all negative type variables with fresh type variables
+def instantiate(t: TypingType): TypingType / Typing = {
+  // mapping from generic type variable ids to fresh type variables
+  var mapping = map::emptyGeneric[Int, TypingType]()
+
+  def go(tp: TypingType): TypingType / Typing = tp match {
+    // replace generic type variables with fresh type variables
+    case TGen(id) => {
+      mapping.get(id) match {
+        case Some(freshT) => freshT
+        case None() => {
+          val freshT = do fresh()
+          mapping = mapping.put(id, freshT)
+          freshT
+        }
+      }
+    }
+
+    // recursively instantiate inner type
+    case TVariadic(inner) => TVariadic(go(inner))
+
+    // recursively instantiate function parameter and return types
+    case TFun(paramTypes, retType) => {
+      TFun(paramTypes.map { p => TypingParam(go(p.tpe), p.isOptional) }, go(retType))
+    }
+    case _ => tp
+  }
+  go(t)
+}
+
+/// constructs the built-in type environment
+def getBuiltinTypeEnv(): Map[String, TypeBinding] = {
+  map::fromListGeneric[String, TypeBinding]([
+    // here TVar(-1) represents a generic type parameter which gets instantiated upon use
+    ("print", TypeBinding(TFun([TypingParam(TVariadic(TGen(0)), false)], TUnit()), false)),
+    ("input", TypeBinding(TFun([TypingParam(TString(), true)], TString()), false)),
+    ("str", TypeBinding(TFun([TypingParam(TGen(0), false)], TString()), false)),
+    ("max", TypeBinding(TFun([
+        TypingParam(TGen(0), false), // first Arg
+        TypingParam(TGen(0), false), // second Arg
+        TypingParam(TVariadic(TGen(0)), false) // variadic Args
+      ], TGen(0)), false)),
+    ("min", TypeBinding(TFun([
+        TypingParam(TGen(0), false), // first Arg
+        TypingParam(TGen(0), false), // second Arg
+        TypingParam(TVariadic(TGen(0)), false) // variadic Args
+      ], TGen(0)), false))
+  ])
 }

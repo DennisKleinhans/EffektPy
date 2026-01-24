@@ -15,37 +15,33 @@ import src/lib/typechecker/types
 
 def main() = mainSuite("typechecker") {
 
-  def typeMapsEqual(m1: Map[String, TypeBinding], m2: Map[String, TypingType]): Bool = {
-      if (m1.size() != m2.size()) {
-        false
-      } else {
-        m1.keys().all { key =>
-        m2.get(key) match  {
-          case Some(v2) => m1.get(key) match {
-            case Some(v1) => v1.tpe.equal(v2)
-            case None() => false
-          }
+  def typeMapsEqual(actual: Map[String, TypeBinding], expected: Map[String, TypingType]): Bool = {
+      
+    expected.keys().all { key =>
+      actual.get(key) match  {
+        case Some(binding) => expected.get(key) match {
+          case Some(expectedType) => binding.tpe.equal(expectedType)
           case None() => false
         }
+        case None() => false
       }
     }
   }
+  
 
-  def typeMapsEqual(m1: Map[String, TypeBinding], m2: Map[String, TypeBinding]): Bool = {
-      if (m1.size() != m2.size()) {
-        false
-      } else {
-        m1.keys().all { key =>
-        m2.get(key) match  {
-          case Some(v2) => m1.get(key) match {
-            case Some(v1) => v1.tpe.equal(v2.tpe)
-            case None() => false
-          }
+  def typeMapsEqual(actual: Map[String, TypeBinding], expected: Map[String, TypeBinding]): Bool = {
+      
+    expected.keys().all { key =>
+      actual.get(key) match  {
+        case Some(v2) => expected.get(key) match {
+          case Some(v1) => v1.tpe.equal(v2.tpe)
           case None() => false
         }
+        case None() => false
       }
     }
   }
+  
 
   test("typecheck simple variable declaration") {
     val prog = [
@@ -1690,5 +1686,28 @@ def main() = mainSuite("typechecker") {
     with mockInspector[Unit, TypeBinding]
     typecheck(prog)
     ()
+  }
+
+  test("typechecker handles generic builtin print function") {
+    val prog = [cExpr(cCall(cV("print"), [Argument(None(), cLit("Hello, world!"))]))]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+
+    // no equality check here. Trust the typechecker to handle builtins correctly as long as no errors are raised
+    val result = typecheck(prog)
+  }
+
+  test("typechecker handles 'str' function to convert some value into a string") {
+    val prog = [cExpr(cAdd(cCall(cV("str"), [Argument(None(), cLit(123))]), cLit("abc")))]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    
+    val result = typecheck(prog)
   }
 }

@@ -14,6 +14,7 @@ import src/lib/interpreter/values
 def main() = mainSuite("interpreter") {
 
   val mockedPos = Position(1, 1)
+  with mockReplConsole
 
   test("eval simple arithmetic") {
     val progs = [
@@ -1253,5 +1254,65 @@ def main() = mainSuite("interpreter") {
     val result = evalProgram(prog)
 
     assertTrue(result.equal(VBool(true)))
+  }
+
+  test("eval 'str' builtin function") {
+    val prog = [
+      cExpr(cAdd(
+        cAdd(cCall(cV("str"), [Argument(None(), cLit(123))]), cCall(cV("str"), [Argument(None(), cLit(3.5))])),
+        cCall(cV("str"), [Argument(None(), cLit(false))])
+      ))
+    ]
+
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VString("1233.5false")))
+  }
+
+  test("eval 'max' builtin function for Int") {
+    val prog = [cExpr(cCall(cV("max"), [Argument(None(), cLit(1)), Argument(None(), cLit(5)), Argument(None(), cLit(3))]))]
+
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(5)))
+  }
+
+  test("eval 'max' builtin function for Double") {
+    val prog = [cExpr(cCall(cV("max"), [Argument(None(), cLit(1.1)), Argument(None(), cLit(5.5)), Argument(None(), cLit(3.3))]))]
+
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VDouble(5.5)))
+  }
+
+  test("eval 'min' builtin function for Int") {
+    val prog = [cExpr(cCall(cV("min"), [Argument(None(), cLit(1)), Argument(None(), cLit(5)), Argument(None(), cLit(3))]))]
+
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VInt(1)))
+  }
+
+  test("eval 'min' builtin function for Double") {
+    val prog = [cExpr(cCall(cV("min"), [Argument(None(), cLit(1.1)), Argument(None(), cLit(5.5)), Argument(None(), cLit(3.3))]))]
+
+    with on[RuntimeError].panic
+    with mockGetPos
+    with mockInspector[Unit, Address]
+    val result = evalProgram(prog)
+
+    assertTrue(result.equal(VDouble(1.1)))
   }
 }

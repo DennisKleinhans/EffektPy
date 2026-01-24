@@ -22,6 +22,11 @@ def applySubstitution(t: TypingType, subst: Substitution): TypingType = t match 
       case None() => TVar(id)
     }
   }
+  
+  case TGen(id) => TGen(id)
+
+  // recursively apply substitution to inner type
+  case TVariadic(inner) => TVariadic(applySubstitution(inner, subst))
 
   case TFun(params, ret) => {
     val newParams = params.map { p => TypingParam(applySubstitution(p.tpe, subst), p.isOptional) }
@@ -38,6 +43,11 @@ def occursCheck(id: Int, t: TypingType): Bool = t match {
   case TInt() => false
   case TBool() => false
   case TUnit() => false
+  case TString() => false
+  case TDouble() => false
+  case TGen(_) => false
+  // recursively check inner type
+  case TVariadic(inner) => occursCheck(id, inner)
   case TVar(otherId) => id == otherId
 
   case TFun(params, ret) => {
@@ -45,9 +55,40 @@ def occursCheck(id: Int, t: TypingType): Bool = t match {
     val inRet = occursCheck(id, ret)
     inParams || inRet
   }
+}
 
-  case TString() => false
-  case TDouble() => false
+/// aligns two lists of typing parameters for unification, taking variadic parameters and optional parameters (defaults) into account
+def alignParameters(p1: List[TypingParam], p2: List[TypingParam], pos: Position): List[TypeEquation] / { Exception[TypeError] } = (p1, p2) match {
+  // both empty
+  case (Nil(), Nil()) => Nil()
+
+  // variadic parameter on the left
+  case (Cons(TypingParam(TVariadic(t1), _), _), rest2) =>
+    rest2.map { p => 
+      // extract inner type if variadic
+      val t2 = p.tpe match { case TVariadic(inner) => inner; case other => other }
+      TypeEquation(t1, t2, pos) 
+    }
+
+  // variadic parameter on the right
+  case (rest1, Cons(TypingParam(TVariadic(t2), _), _)) =>
+    rest1.map { p => 
+      val t1 = p.tpe match { case TVariadic(inner) => inner; case other => other }
+      TypeEquation(t1, t2, pos) 
+    }
+
+  // both non-variadic, align heads and recurse on tails
+  case (Cons(h1, t1), Cons(h2, t2)) =>
+    Cons(TypeEquation(h1.tpe, h2.tpe, pos), alignParameters(t1, t2, pos))
+
+  // one list empty, check if remaining parameters are optional
+  case (Nil(), remaining) =>
+    if (remaining.all { p => p.isOptional }) Nil()
+    else do raise(TypeError(), "Arity mismatch: Too many arguments for the given signature")
+
+  case (remaining, Nil()) =>
+    if (remaining.all { p => p.isOptional }) Nil()
+    else do raise(TypeError(), "Arity mismatch: Not enough arguments for the given signature")
 }
 
 /// unification algorithm for typing types
@@ -67,15 +108,19 @@ def unify(eqs: List[TypeEquation], subst: Substitution): Substitution / { Except
         case (TUnit(), TUnit()) => unify(rest, subst)
         case (TString(), TString()) => unify(rest, subst)
         case (TDouble(), TDouble()) => unify(rest, subst)
-        
-        case (TFun(p1, r1), TFun(p2, r2)) => {
-          // allow unification of functions with different number of parameters (by matching up to the smaller size)
-          val commonSize = if (p1.size < p2.size) p1.size else p2.size
-          val p1Common = p1.take(commonSize)
-          val p2Common = p2.take(commonSize)
 
-          val paramsEqs = p1Common.zip(p2Common).map { case (a, b) => TypeEquation(a.tpe, b.tpe, pos) }
-          val newEqs = Cons(TypeEquation(r1, r2, pos), paramsEqs.append(rest))
+        // unify the inner types of variadic types
+        case (TVariadic(inner1), TVariadic(inner2)) => {
+          val newEqs = Cons(TypeEquation(inner1, inner2, pos), rest)
+          unify(newEqs, subst)
+        }
+        
+        // unify function types by unifying their return types and aligning their parameters for unification
+        case (TFun(p1, r1), TFun(p2, r2)) => {
+          val returnEq = TypeEquation(r1, r2, pos)
+
+          val paramsEqs = alignParameters(p1, p2, pos)
+          val newEqs = Cons(returnEq, paramsEqs.append(rest))
           unify(newEqs, subst)
         }
         case _ => do raise(TypeError(), "cannot unify types " ++ lNorm.show ++ " with " ++ rNorm.show ++ " at " ++ do getPos().show)

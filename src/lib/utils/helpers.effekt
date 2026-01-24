@@ -1,5 +1,6 @@
 module src/lib/utils/helpers
 
+import map
 import src/lib/lexer/tokens
 import src/lib/parser/surfaceAst
 import src/lib/utils/effects
@@ -136,6 +137,8 @@ def show(t: TypingType): String = t match {
   case TBool() => "Bool"
   case TUnit() => "Unit"
   case TVar(id) => "TVar(" ++ id.show ++ ")"
+  case TGen(id) => "TGen(" ++ id.show ++ ")"
+  case TVariadic(inner) => "TVariadic(" ++ show(inner) ++ ")"
   case TFun(params, ret) => {
     val paramStrs = params.map { p => show(p.tpe) }
     paramStrs match {
@@ -154,6 +157,7 @@ def show(v: Value): String = v match {
   case VString(s) => "\"" ++ s ++ "\""
   case VDouble(d) => d.show
   case VClosure(params, body, env) => "<function>"
+  case VBuiltin(name) => "<builtin function: " ++ name ++ ">"
 }
 
 /// checks if two token kinds are equal
@@ -236,4 +240,39 @@ def equal(t1: TypingType, t2: TypingType): Bool = (t1, t2) match {
 
 extern def stringToDouble(s: String): Double = jsNode "parseFloat(${s})"
 
+def mapUnion[K, V](m1: Map[K, V], m2: Map[K, V]): Map[K, V] = {
+  var res = m1
+  m2.keys().foreach { k =>
+    m2.get(k) match {
+      case Some(v) => res = res.put(k, v)
+      case None()  => ()
+    }
+  }
+  res
+}
+
+namespace js {
+
+  extern jsNode """
+    const REPLreadline = require('node:readline');
+  """
+
+  extern type JSConsole
+
+  extern def newConsole() at io: JSConsole =
+    jsNode """REPLreadline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+      })"""
+
+  extern def close(console: JSConsole) at io: Unit =
+    jsNode "${console}.close()"
+
+  extern def readLine(console: JSConsole) at async: String =
+    jsNode "$effekt.capture(k => ${console}.once('line', k))"
+  extern def writeLine(console: JSConsole, message: String) at io: Unit =
+    jsNode "${console}.output.write(${message} + '\\n')"
+  extern def write(console: JSConsole, message: String) at io: Unit =
+    jsNode "${console}.output.write(${message})"
+}
 

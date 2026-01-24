@@ -15,7 +15,8 @@ def runEval(prog: Program): PipelineResult[Value]  = {
   var currentPos = Position(1, 1)
   try {
     with mockInspector[PipelineResult[Value], Address]
-    val result = evalProgram(prog)
+    with consoleRepl
+    val result = evalProgram(prog) 
     PipelineResult::Success(result)
   } with Exception[RuntimeError] {
     def raise(exception, msg) = Failure("RuntimeError: " ++ msg)
@@ -29,11 +30,11 @@ def runEval(prog: Program): PipelineResult[Value]  = {
 }
 
 /// runs the interpreter incrementally on a desugared program, given an initial environment and store, returning either a Failure with an error message or a Success with the resulting EvalState
-def runEvalIncremental(prog: Program, initialEnv: Map[String, Address], initialStore: Map[Address, Value]): PipelineResult[EvalState]  = {
+def runEvalIncremental(prog: Program, initialEnv: Map[String, Address], initialStore: Map[Address, Value]): PipelineResult[EvalState] / REPLConsole   = {
   var currentPos = Position(1, 1)
   try {
     with mockInspector[PipelineResult[EvalState], Address]
-    val newEvalState = evalProgramIncremental(prog, initialEnv, initialStore)
+    val newEvalState = evalProgramIncremental(prog, initialEnv, initialStore) 
     PipelineResult::Success(newEvalState)
   } with Exception[RuntimeError] {
     def raise(exception, msg) = Failure("RuntimeError: " ++ msg)
