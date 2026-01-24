@@ -355,7 +355,10 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
         def getExpectedType() = resume(retType)
       }
       
-      do equate(tBody, retType, pos)
+      // if the body has a final expression, ensure its type matches the declared return type
+      if (body.finalExpr.isDefined()) {
+        do equate(tBody, retType, pos)
+      } 
     }
     TFun(paramTypes, retType)
   }
