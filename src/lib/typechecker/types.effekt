@@ -16,6 +16,10 @@ type TypingType {
   TBool()
   TUnit()
   TVar(id: Int)
+  // generic type variable for polymorphic types
+  TGen(id: Int)
+  // variadic type for functions with variadic arguments
+  TVariadic(inner: TypingType)
   TFun(params: List[TypingParam], ret: TypingType)
   TString()
   TDouble()
