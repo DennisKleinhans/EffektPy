@@ -39,7 +39,7 @@ def typecheckIncremental(prog: Program, initialEnv: Map[String, TypeBinding]): M
   with handleTypingContext(newInitialEnv)
   try {
     prog.foreach { stmt => checkStmt(stmt); () }
-    val finalSubst = solve(equations)
+    val finalSubst = solve(equations.reverse())
 
     val currentEnv: Map[String, TypeBinding] = do backup()
     var updatedEnv = map::emptyGeneric[String, TypeBinding]()
@@ -73,17 +73,52 @@ def typecheckIncremental(prog: Program, initialEnv: Map[String, TypeBinding]): M
 def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning, LoopContext, ReturnContext } = stmt match {
   case ValDeclaration(name, typeAnno, value, pos) => {
     with at(pos) 
-    val tExpr = checkExpr(value)
-    do equate(tExpr, translateType(typeAnno), pos)
-    do define(name, TypeBinding(tExpr, false))
+
+    value match {
+      // handle function expressions specially to allow for recursive definitions
+      case FunExpr(_, _, _, _) => {
+        // use a placeholder type variable to allow for recursive definitions
+        val placeholder = do fresh()
+        // define the variable with the placeholder type before checking the value
+        do define(name, TypeBinding(placeholder, false))
+
+        val tExpr = checkExpr(value)
+        // equate the type of the expression with the placeholder and the annotated type
+        do equate(tExpr, placeholder, pos)
+        do equate(tExpr, translateType(typeAnno), pos)
+      }
+
+      case _ => {
+        val tExpr = checkExpr(value)
+        do equate(tExpr, translateType(typeAnno), pos)
+        do define(name, TypeBinding(tExpr, false))
+      }
+    }
     TUnit()
   }
 
   case VarDeclaration(name, typeAnno, value, pos) => {
     with at(pos) 
-    val tExpr = checkExpr(value)
-    do equate(tExpr, translateType(typeAnno), pos)
-    do define(name, TypeBinding(tExpr, true))
+    value match {
+      // handle function expressions specially to allow for recursive definitions
+      case FunExpr(_, _, _, _) => {
+        // use a placeholder type variable to allow for recursive definitions
+        val placeholder = do fresh()
+        // define the variable with the placeholder type before checking the value
+        do define(name, TypeBinding(placeholder, true))
+
+        val tExpr = checkExpr(value)
+        // equate the type of the expression with the placeholder and the annotated type
+        do equate(tExpr, placeholder, pos)
+        do equate(tExpr, translateType(typeAnno), pos)
+      }
+
+      case _ => {
+        val tExpr = checkExpr(value)
+        do equate(tExpr, translateType(typeAnno), pos)
+        do define(name, TypeBinding(tExpr, true))
+      }
+    }
     TUnit()
   }
 
@@ -351,67 +386,16 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
       }
 
       case _ => {
-        val tReceiverRaw = checkExpr(receiver)
-        val tReceiver = instantiate(tReceiverRaw) // TGen -> TVar
+        val tReceiver = instantiate(checkExpr(receiver))
         val retType = do fresh()
 
-        def isVariadicCall(params: List[TypingParam]): Bool = {
-          params.reverse match {
-            case Cons(p, _) => p.tpe match {
-              case TVariadic(_) => true
-              case _ => false
-            }
-            case _ => false
-          }
-        }
+        // Wir bauen einen "Call-Typ" aus den Argumenten
+        // Wichtig: Argumente im Aufruf sind für den Unifizierer nie "optional"
+        val argTypes = args.map { arg => TypingParam(checkExpr(arg.value), false) }
+        val tCall = TFun(argTypes, retType)
         
-        tReceiver match {
-          
-          // variadic function call
-          case TFun(params, retTypeDefined) and isVariadicCall(params) => {
-            
-            // helper function to check arguments against parameters
-            def checkArgs(pList: List[TypingParam], aList: List[Argument]): Unit = {
-              pList match {
-                case Nil() => if (aList.size > 0) raise(TypeError(), "Too many arguments")
-                
-                // variadic parameter
-                case Cons(param, restParams) => param.tpe match {
-                  case TVariadic(innerType) => {
-                    aList.foreach { arg => do equate(checkExpr(arg.value), innerType, pos) }
-                  }
-
-                  case _ => aList match {
-                    // no more arguments check if parameter is optional
-                    case Nil() => {
-                      if (not(param.isOptional)) raise(TypeError(), "Missing argument")
-                      checkArgs(restParams, Nil())
-                    }
-
-                    // match head argument to parameter and recurse
-                    case Cons(arg, restArgs) => {
-                      do equate(checkExpr(arg.value), param.tpe, pos)
-                      checkArgs(restParams, restArgs)
-                    }
-                  }
-                }
-              }
-            }
-
-            checkArgs(params, args)
-            do equate(retType, retTypeDefined, pos)
-          }
-
-          // non-variadic function call
-          case _ => {
-            val argTypes = args.map { arg => checkExpr(arg.value) }
-            val tCall = TFun(argTypes.map { t => TypingParam(t, false) }, retType)
-            
-            // unify the receiver type with the call type
-            do equate(tReceiver, tCall, pos)
-          }
-        }
-        
+        // Das Alignment passiert jetzt automatisch in unify
+        do equate(tReceiver, tCall, pos)
         retType
       }
     }

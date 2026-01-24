@@ -1710,4 +1710,29 @@ def main() = mainSuite("typechecker") {
     
     val result = typecheck(prog)
   }
+
+  test("typechecker handles recursive functions") {
+    val prog = [
+      cVal("fact", None(), cFun([Parameter("n", None(), None())], None(), Block(Nil(), Some(
+        cIf(cLtE(cV("n"), cLit(1)),
+          cLit(1),
+          cMult(cV("n"), cCall(cV("fact"), [Argument(None(), cSub(cV("n"), cLit(1)))]))
+        )
+      )))),
+      cVal("res", None(), cCall(cV("fact"), [Argument(None(), cLit(5))]))
+    ]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    with mockInspector[Unit, TypeBinding]
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("fact", TFun([TypingParam(TInt(), false)], TInt())),
+      ("res", TInt())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
+  }
 }
