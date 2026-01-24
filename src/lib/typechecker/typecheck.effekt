@@ -335,6 +335,21 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
         TUnit()
       } 
 
+      case Variable(name, _) and name == "max" || name == "min" => {
+        if (args.size < 2) {
+          raise(TypeError(), "'" ++ name ++ "' requires at least two arguments at " ++ pos.show)
+        }
+
+        val memberType = instantiate(TGen(0)) 
+
+        args.foreach { arg => {
+          val tArg = checkExpr(arg.value)
+          assertIsNumeric(tArg, pos)
+          do equate(tArg, memberType, pos)
+        } }
+        memberType
+      }
+
       case _ => {
         val tReceiverRaw = checkExpr(receiver)
         val tReceiver = instantiate(tReceiverRaw) // TGen -> TVar
@@ -372,7 +387,7 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
                       if (not(param.isOptional)) raise(TypeError(), "Missing argument")
                       checkArgs(restParams, Nil())
                     }
-                    
+
                     // match head argument to parameter and recurse
                     case Cons(arg, restArgs) => {
                       do equate(checkExpr(arg.value), param.tpe, pos)
@@ -477,7 +492,7 @@ def getBuiltinTypeEnv(): Map[String, TypeBinding] = {
     // here TVar(-1) represents a generic type parameter which gets instantiated upon use
     ("print", TypeBinding(TFun([TypingParam(TVariadic(TGen(0)), false)], TUnit()), false)),
     ("input", TypeBinding(TFun([TypingParam(TString(), true)], TString()), false)),
-    ("str", TypeBinding(TFun([TypingParam(TVar(-1), false)], TString()), false)),
+    ("str", TypeBinding(TFun([TypingParam(TGen(0), false)], TString()), false)),
     ("max", TypeBinding(TFun([
         TypingParam(TGen(0), false), // first Arg
         TypingParam(TGen(0), false), // second Arg
