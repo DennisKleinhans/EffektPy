@@ -373,15 +373,19 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
 def evalStmt(stmt: Stmt): Value / { Context[Address], Store, Exception[RuntimeError], Inspector[Address], Positioning, LoopControl, ReturnControl, REPLConsole } = stmt match {
   case ValDeclaration(name, _, value, pos) => {
     with at(pos)
+    // just lookup the predefined binding
     val v = evalExpr(value)
-    defineRecursive(name, v)
+    val addr = do lookup(name)
+    do store(addr, v)
     VUnit()
   }
 
   case VarDeclaration(name, _, value, pos) => {
     with at(pos)
+    // just lookup the predefined binding
     val v = evalExpr(value)
-    defineRecursive(name, v)
+    val addr = do lookup(name)
+    do store(addr, v)
     VUnit()
   }
 
@@ -464,8 +468,22 @@ def evalStmt(stmt: Stmt): Value / { Context[Address], Store, Exception[RuntimeEr
 
 /// evaluates a block of statements and returns the resulting value
 def evalBlock(block: Block): Value / { Context[Address], Store, Exception[RuntimeError], Inspector[Address], Positioning, LoopControl, ReturnControl, REPLConsole } = {
-  var lastValue = VUnit()
   with handleNewRuntimeScope
+  // first pass: predefine all variable declarations in the block
+  block.statements.foreach {
+    case ValDeclaration(name, _, _, _) => {
+      val addr = do allocate(VUnit())
+      do define(name, addr)
+    }
+    case VarDeclaration(name, _, _, _) => {
+      val addr = do allocate(VUnit())
+      do define(name, addr)
+    }
+    case _ => ()
+  }
+  
+  // second pass: evaluate all statements in the block
+  var lastValue = VUnit()
   block.statements.foreach { stmt => lastValue = evalStmt(stmt) }
 
   block.finalExpr match {
@@ -488,6 +506,20 @@ def evalProgramIncremental(program: Program, initialEnv: Map[String, Address], i
   with handleRuntimeContext(newInitialEnv)
   
   try {
+    // first pass: predefine all variable declarations in the whole program by allocating addresses with a placeholder value (VUnit)
+    program.foreach {
+      case ValDeclaration(name, _, _, _) => {
+        val addr = do allocate(VUnit())
+        do define(name, addr)
+      }
+      case VarDeclaration(name, _, _, _) => {
+        val addr = do allocate(VUnit())
+        do define(name, addr)
+      }
+      case _ => ()
+    }
+
+    // second pass: evaluate all statements in the program
     var lastValue = VUnit()
     program.foreach { stmt => 
       lastValue = evalStmt(stmt) 
@@ -510,29 +542,4 @@ def getInitialEvalEnv(): Map[String, Address] / Store = {
     env = env.put(name, addr)  
   }
   env
-}
-
-/// defines a variable in the current context, handling recursive function definitions
-def defineRecursive(name: String, v: Value): Address / { Context[Address], Store } = v match {
-  case VClosure(params, body, capturedEnv) => {
-    // allocate a placeholder first to allow for recursive functions
-    val addr = do allocate(VUnit())
-
-    // define the function name to the allocated address
-    do define(name, addr)
-
-    // update the closure's environment to include the new function
-    val newCEnv = capturedEnv.put(name, addr)
-    val updatedClosure = VClosure(params, body, newCEnv)
-
-    // store the updated closure at the allocated address
-    do store(addr, updatedClosure)
-    addr
-  }
-  case _ => {
-    // simple value; just allocate and define
-    val addr = do allocate(v)
-    do define(name, addr)
-    addr
-  }
 }

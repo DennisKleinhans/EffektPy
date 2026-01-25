@@ -21,25 +21,46 @@ interface ReturnContext {
   def getExpectedType(): TypingType
 }
 
-// typechecks a program and returns a mapping from variable names to their inferred types
-def typecheck(prog: Program): Map[String, TypeBinding] / { Exception[TypeError], Exception[NameError], Inspector[TypeBinding], Positioning } = {
-  typecheckIncremental(prog, map::emptyGeneric[String, TypeBinding]())
+def getSignature(value: Expr): Option[TypingType] / Typing = value match {
+  case FunExpr(params, retAnno, _, _) => {
+    val pTypes = params.map { p => TypingParam(translateType(p.tpe), p.defaultValue.isDefined()) }
+    val rType = translateType(retAnno)
+    Some(TFun(pTypes, rType))
+  }
+  case _ => None()
 }
 
-/// typechecks a program and returns a mapping from variable names to their inferred types
-/// accepts an initial environment of variable bindings to start from
-def typecheckIncremental(prog: Program, initialEnv: Map[String, TypeBinding]): Map[String, TypeBinding] / { Exception[TypeError], Exception[NameError], Inspector[TypeBinding], Positioning } = {
+def twoPassTypecheck(prog: Program): Map[String, TypeBinding] / { Exception[TypeError], Exception[NameError], Inspector[TypeBinding],Context[TypeBinding], Positioning } = {
   var equations: List[TypeEquation] = Nil()
   var counter = 0
-
-  // extend the initial environment with built-in functions
-  // prefers built-in types over initialEnv, because 'union' keeps the first mapping in case of duplicates
-  val newInitialEnv = getBuiltinTypeEnv().mapUnion(initialEnv)
-
-  with handleTypingContext(newInitialEnv)
+  
   try {
+    // first pass: predefine all variable declarations in the whole program 
+    prog.foreach { 
+      case ValDeclaration(name, typeAnno, value, _) => {
+        val sig = getSignature(value) match {
+          case Some(t) => t
+          case None() => translateType(typeAnno)
+        }
+        // predefine all val declarations as immutable
+        do define(name, TypeBinding(sig, false))
+      }
+      case VarDeclaration(name, typeAnno, value, _) => {
+        val sig = getSignature(value) match {
+          case Some(t) => t
+          case None() => translateType(typeAnno)
+        }
+        // predefine all var declarations as mutable
+        do define(name, TypeBinding(sig, true))
+      }
+      case _ => ()
+    }
+
+    // second pass: typecheck all statements
     prog.foreach { stmt => checkStmt(stmt); () }
+    println("Equations to solve: " ++ equations.size.show)
     val finalSubst = solve(equations.reverse())
+    println("Solve finished without error")
 
     val currentEnv: Map[String, TypeBinding] = do backup()
     var updatedEnv = map::emptyGeneric[String, TypeBinding]()
@@ -69,56 +90,42 @@ def typecheckIncremental(prog: Program, initialEnv: Map[String, TypeBinding]): M
   }
 }
 
+// typechecks a program and returns a mapping from variable names to their inferred types
+def typecheck(prog: Program): Map[String, TypeBinding] / { Exception[TypeError], Exception[NameError], Inspector[TypeBinding], Positioning } = {
+  with handleTypingContext(getBuiltinTypeEnv())
+  twoPassTypecheck(prog)
+}
+
+/// typechecks a program and returns a mapping from variable names to their inferred types
+/// accepts an initial environment of variable bindings to start from
+def typecheckIncremental(prog: Program, initialEnv: Map[String, TypeBinding]): Map[String, TypeBinding] / { Exception[TypeError], Exception[NameError], Inspector[TypeBinding], Positioning } = {
+  
+  // extend the initial environment with built-in functions
+  // prefers initialEnv bindings in case of name clashes results in builtins being overridden
+  val newInitialEnv = getBuiltinTypeEnv().mapUnion(initialEnv)
+
+  with handleTypingContext(initialEnv)
+  twoPassTypecheck(prog)
+  
+}
+
 /// typecheck a single statement
 def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning, LoopContext, ReturnContext } = stmt match {
   case ValDeclaration(name, typeAnno, value, pos) => {
     with at(pos) 
-
-    value match {
-      // handle function expressions specially to allow for recursive definitions
-      case FunExpr(_, _, _, _) => {
-        // use a placeholder type variable to allow for recursive definitions
-        val placeholder = do fresh()
-        // define the variable with the placeholder type before checking the value
-        do define(name, TypeBinding(placeholder, false))
-
-        val tExpr = checkExpr(value)
-        // equate the type of the expression with the placeholder and the annotated type
-        do equate(tExpr, placeholder, pos)
-        do equate(tExpr, translateType(typeAnno), pos)
-      }
-
-      case _ => {
-        val tExpr = checkExpr(value)
-        do equate(tExpr, translateType(typeAnno), pos)
-        do define(name, TypeBinding(tExpr, false))
-      }
-    }
+    // just lookup the predefined binding 
+    val binding = do lookup(name)
+    val tExpr = checkExpr(value)
+    do equate(tExpr, binding.tpe, pos)
     TUnit()
   }
 
   case VarDeclaration(name, typeAnno, value, pos) => {
     with at(pos) 
-    value match {
-      // handle function expressions specially to allow for recursive definitions
-      case FunExpr(_, _, _, _) => {
-        // use a placeholder type variable to allow for recursive definitions
-        val placeholder = do fresh()
-        // define the variable with the placeholder type before checking the value
-        do define(name, TypeBinding(placeholder, true))
-
-        val tExpr = checkExpr(value)
-        // equate the type of the expression with the placeholder and the annotated type
-        do equate(tExpr, placeholder, pos)
-        do equate(tExpr, translateType(typeAnno), pos)
-      }
-
-      case _ => {
-        val tExpr = checkExpr(value)
-        do equate(tExpr, translateType(typeAnno), pos)
-        do define(name, TypeBinding(tExpr, true))
-      }
-    }
+    // just lookup the predefined binding 
+    val binding = do lookup(name)
+    val tExpr = checkExpr(value)
+    do equate(tExpr, binding.tpe, pos)
     TUnit()
   }
 
@@ -136,8 +143,8 @@ def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspecto
     with at(pos) 
     // check the condition but don't enforce its type to be boolean yet. The truthiness analysis is done in the interpreter.
     checkExpr(cond)
-    handleNewTypingScope { checkBlock(thenBranch) }
-    handleNewTypingScope { checkBlock(elseBranch) }
+    checkBlock(thenBranch) 
+    checkBlock(elseBranch) 
   }
 
   case InspectScope() => {
@@ -195,6 +202,30 @@ def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspecto
 }
 
 def checkBlock(block: Block): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning, LoopContext, ReturnContext} = {
+
+  with handleNewTypingScope
+  // fist pass: predefine all variable declarations in the block
+  block.statements.foreach { 
+    case ValDeclaration(name, typeAnno, value, _) => {
+      val sig = getSignature(value) match {
+        case Some(t) => t
+        case None() => translateType(typeAnno)
+      }
+      // predefine all val declarations as immutable
+      do define(name, TypeBinding(sig, false))
+    }
+    case VarDeclaration(name, typeAnno, value, _) => {
+      val sig = getSignature(value) match {
+        case Some(t) => t
+        case None() => translateType(typeAnno)
+      }
+      // predefine all var declarations as mutable
+      do define(name, TypeBinding(sig, true))
+    }
+    case _ => ()
+  }
+  
+  // second pass: typecheck all statements in the block
   block.statements.foreach { stmt => checkStmt(stmt); () }
   block.finalExpr match {
     case Some(expr) => checkExpr(expr)
@@ -418,12 +449,15 @@ def checkNumeric(left: Expr, right: Expr, pos: Position): TypingType / { Typing,
 }
 
 /// assert that a type is numeric (int or double)
-def assertIsNumeric(t: TypingType, pos: Position): Unit / { Typing, Positioning, Exception[TypeError] } = t match {
+def assertIsNumeric(t: TypingType, pos: Position): Unit / { Typing, Positioning, Exception[TypeError] } = {
+  println("assertIsNumeric called with: " ++ t.show)
+  t match {
+  
   case TInt() => ()
   case TDouble() => ()
   case TVar(_) => () // defer check until unification
   case _ => raise(TypeError(), "Expected numeric type, but got " ++ t.show ++ " at " ++ pos.show)
-}
+}}
 
 /// translate an optional Type annotation into a TypingType
 def translateType(t: Option[Type]): TypingType / Typing = t match {
