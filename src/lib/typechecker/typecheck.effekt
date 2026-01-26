@@ -1,36 +1,17 @@
 module src/lib/typechecker/typecheck
 
 import map
-import src/lib/ast/coreAst
+import src/lib/shared/errors
+import src/lib/shared/commonEffects
+import src/lib/shared/helpers
+import src/lib/shared/commonHandlers
+import src/lib/shared/commonTypes
 import src/lib/typechecker/unification
-import src/lib/utils/errors
-import src/lib/utils/effects
-import src/lib/utils/helpers
-import src/lib/utils/handlers
 import src/lib/typechecker/types
-import src/lib/lexer/position
+import src/lib/typechecker/handlers
+import src/lib/typechecker/effects
+import src/lib/ast/coreAst
 
-
-type TypeConstraint {
-  MustBeNumeric(t: TypingType, pos: Position)
-  MustBeAddable(t: TypingType, pos: Position) 
-}
-
-/// effect for collecting type constraints
-interface ConstraintCollector {
-  def addConstraint(constraint: TypeConstraint): Unit
-}
-
-/// effect for generating fresh type variables and equating types
-interface Typing {
-  def fresh(): TypingType
-  def equate(t1: TypingType, t2: TypingType, pos: Position): Unit
-}
-
-/// effect for getting the expected return type in a function context
-interface ReturnContext {
-  def getExpectedType(): TypingType
-}
 
 def getSignature(value: Expr): Option[TypingType] / Typing = value match {
   case FunExpr(params, retAnno, _, _) => {

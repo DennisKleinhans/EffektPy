@@ -6,12 +6,11 @@ import src/lib/runner/runParser
 import src/lib/runner/runTypechecker
 import src/lib/runner/runInterpreter
 import src/lib/runner/result
+import src/lib/runner/handlers
+import src/lib/shared/helpers
+import src/lib/shared/commonEffects
 import src/lib/typechecker/types
 import src/lib/interpreter/values
-import src/lib/utils/helpers
-import src/lib/utils/effects
-import src/lib/utils/handlers
-
 
 
 /// Helper to count open braces to detect if a block is finished

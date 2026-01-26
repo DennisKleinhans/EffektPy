@@ -1,12 +1,14 @@
 module src/lib/parser/parser
 
+import src/lib/shared/commonEffects
+import src/lib/shared/errors
+import src/lib/shared/helpers
+import src/lib/shared/commonTypes
 import src/lib/lexer/tokens
+import src/lib/lexer/effects
 import src/lib/ast/surfaceAst
-import src/lib/utils/effects
-import src/lib/utils/errors
-import src/lib/utils/helpers
-import src/lib/lexer/position
 import src/lib/typechecker/types
+
 
 /// parsePrimary parses the smallest expression forms: literals, variables,
 /// and parenthesized expressions. It does not handle binary operators.\n

@@ -1,11 +1,12 @@
 module src/main 
 
 import args
-import src/lib/runner/runPipeline
-import src/lib/runner/runRepl
 import io/filesystem
 import io/error
-import src/lib/utils/helpers
+import src/lib/runner/runPipeline
+import src/lib/runner/runRepl
+import src/lib/shared/helpers
+
 
 def main(): Unit = {
   val arguments = js::commandLineArgs()

@@ -1,4 +1,4 @@
-module src/lib/utils/testUtils
+module src/tests/helpers/testUtils
 
 import test
 

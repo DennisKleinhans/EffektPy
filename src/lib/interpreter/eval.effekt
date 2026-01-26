@@ -1,13 +1,16 @@
 module src/lib/interpreter/eval
 
 import map
-import src/lib/ast/coreAst
-import src/lib/utils/effects
-import src/lib/utils/handlers
-import src/lib/utils/errors
-import src/lib/utils/helpers
+
+import src/lib/shared/errors
+import src/lib/shared/helpers
+import src/lib/shared/commonHandlers
+import src/lib/shared/commonEffects
+import src/lib/shared/commonTypes
 import src/lib/interpreter/values
-import src/lib/lexer/position
+import src/lib/interpreter/handlers
+import src/lib/interpreter/effects
+import src/lib/ast/coreAst
 import src/lib/runner/result
 
 

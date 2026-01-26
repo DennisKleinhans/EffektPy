@@ -1,14 +1,16 @@
 module src/lib/runner/runInterpreter
 
 import map
+
+import src/lib/shared/errors
+import src/lib/shared/commonTypes
+import src/lib/shared/commonEffects
 import src/lib/interpreter/eval
-import src/lib/ast/coreAst
-import src/lib/utils/errors
-import src/lib/runner/result
-import src/lib/utils/handlers
-import src/lib/utils/effects
 import src/lib/interpreter/values
-import src/lib/lexer/position
+import src/lib/runner/result
+import src/lib/runner/handlers
+import src/lib/ast/coreAst
+
 
 /// runs the interpreter on a desugared program, returning either a Failure with an error message or a Success with the resulting value
 def runEval(prog: Program): PipelineResult[Value]  = {

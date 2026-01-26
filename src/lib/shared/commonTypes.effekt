@@ -1,0 +1,4 @@
+module src/lib/shared/commonTypes
+
+
+record Position (line: Int, column: Int)

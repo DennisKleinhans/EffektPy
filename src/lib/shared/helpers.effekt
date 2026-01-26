@@ -1,13 +1,15 @@
-module src/lib/utils/helpers
+module src/lib/shared/helpers
 
 import map
+import src/lib/shared/commonEffects
+import src/lib/shared/errors
+import src/lib/shared/commonTypes
 import src/lib/lexer/tokens
+import src/lib/lexer/effects
 import src/lib/ast/surfaceAst
-import src/lib/utils/effects
-import src/lib/utils/errors
-import src/lib/lexer/position
 import src/lib/typechecker/types
 import src/lib/interpreter/values
+
 
 /// consume the next token and assert it has the expected kind. If not, raise a ParseError.
 def expect(expected: TokenKind): Unit / { Lexer[Token], Exception[ParseError] } = {
@@ -238,8 +240,6 @@ def equal(t1: TypingType, t2: TypingType): Bool = (t1, t2) match {
   case _ => false
 }
 
-extern def stringToDouble(s: String): Double = jsNode "parseFloat(${s})"
-
 def mapUnion[K, V](m1: Map[K, V], m2: Map[K, V]): Map[K, V] = {
   var res = m1
   m2.keys().foreach { k =>
@@ -250,29 +250,3 @@ def mapUnion[K, V](m1: Map[K, V], m2: Map[K, V]): Map[K, V] = {
   }
   res
 }
-
-namespace js {
-
-  extern jsNode """
-    const REPLreadline = require('node:readline');
-  """
-
-  extern type JSConsole
-
-  extern def newConsole() at io: JSConsole =
-    jsNode """REPLreadline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-      })"""
-
-  extern def close(console: JSConsole) at io: Unit =
-    jsNode "${console}.close()"
-
-  extern def readLine(console: JSConsole) at async: String =
-    jsNode "$effekt.capture(k => ${console}.once('line', k))"
-  extern def writeLine(console: JSConsole, message: String) at io: Unit =
-    jsNode "${console}.output.write(${message} + '\\n')"
-  extern def write(console: JSConsole, message: String) at io: Unit =
-    jsNode "${console}.output.write(${message})"
-}
-

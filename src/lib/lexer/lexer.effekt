@@ -2,11 +2,14 @@ module src/lib/lexer/lexer
 
 import scanner
 import io/filesystem
+import src/lib/shared/errors
+import src/lib/shared/helpers
+import src/lib/shared/commonTypes
+import src/lib/shared/commonEffects
+import src/lib/shared/externs
 import src/lib/lexer/tokens
-import src/lib/utils/errors
-import src/lib/utils/effects
-import src/lib/utils/helpers
-import src/lib/lexer/position
+import src/lib/lexer/effects
+
 
 /// scanner that tracks source position
 def scanWithPos[R]() { prog: => R / { Scan[Char], Positioning } }: R / Scan[Char] = {

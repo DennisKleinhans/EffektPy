@@ -1,4 +1,4 @@
-module src/lib/utils/errors
+module src/lib/shared/errors
 
 
 record ParseError()

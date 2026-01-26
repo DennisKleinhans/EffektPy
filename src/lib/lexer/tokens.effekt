@@ -1,6 +1,7 @@
 module src/lib/lexer/tokens
 
-import src/lib/lexer/position
+import src/lib/shared/commonTypes
+
 
 type TokenKind {
   // keywords

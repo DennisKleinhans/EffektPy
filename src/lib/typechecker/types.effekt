@@ -1,6 +1,8 @@
 module src/lib/typechecker/types
 
-import src/lib/lexer/position
+import map
+import src/lib/shared/commonTypes
+
 
 type Type {
   IntType()
@@ -25,6 +27,13 @@ type TypingType {
   TDouble()
 }
 
+type TypeConstraint {
+  MustBeNumeric(t: TypingType, pos: Position)
+  MustBeAddable(t: TypingType, pos: Position) 
+}
+
 record TypeEquation(left: TypingType, right: TypingType, pos: Position)
 record TypeBinding(tpe: TypingType, isMutable: Bool)
 record TypingParam(tpe: TypingType, isOptional: Bool)
+
+type Substitution = Map[Int, TypingType]

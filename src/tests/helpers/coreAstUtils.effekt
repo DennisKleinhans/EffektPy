@@ -1,8 +1,9 @@
-module src/lib/utils/coreAstUtils
+module src/tests/helpers/coreAstUtils
 
 import src/lib/ast/coreAst
-import src/lib/lexer/position
+import src/lib/shared/commonTypes
 import src/lib/typechecker/types
+
 
 val d = Position(0, 0)
 

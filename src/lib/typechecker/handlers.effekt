@@ -1,0 +1,45 @@
+module src/lib/typechecker/handlers
+
+import map
+import src/lib/shared/errors
+import src/lib/shared/commonEffects
+import src/lib/shared/commonTypes
+import src/lib/shared/helpers
+import src/lib/typechecker/types
+
+
+/// handler for TypingContext effect that manages variable bindings and their types in a mutable map
+def handleTypingContext[R](initialContext: Map[String, TypeBinding]) { prog: => R / Context[TypeBinding] }: R / { Exception[NameError], Positioning } = {
+  var context: Map[String, TypeBinding] = initialContext
+
+  try { prog() } with Context[TypeBinding] {
+    def define(name, value) = {
+      context = context.put(name, value)
+      resume(())
+    }
+
+    def lookup(name) = {
+      context.get(name) match {
+        case Some(binding) => resume(binding)
+        case None() => {
+          raise(NameError(), "Undefined variable '" ++ name ++ "' at " ++ do getPos().show)
+        }
+      }
+    }
+
+    def backup() = resume(context)
+
+    def restore(savedContext) = {
+      context = savedContext
+      resume(())
+    }
+  }
+}
+
+/// handler that creates a new typing scope for the duration of the action
+def handleNewTypingScope[R]{ action: => R / Context[TypeBinding] }: R / Context[TypeBinding] = {
+  val snapshot = do backup()
+  val result = action()
+  do restore(snapshot)
+  result
+}

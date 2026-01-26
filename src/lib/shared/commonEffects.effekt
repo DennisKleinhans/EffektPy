@@ -1,0 +1,32 @@
+module src/lib/shared/commonEffects
+
+import map
+import src/lib/shared/commonTypes
+
+
+/// effect for getting and setting the current position in the source code (line and column)
+interface Positioning {
+  def getPos(): Position
+  def setPos(p: Position): Unit
+}
+
+/// effect for managing some context mapping from names to values of type R
+interface Context[R] {
+  def lookup(name: String): R
+  def define(name: String, value: R): Unit
+  def backup(): Map[String, R]
+  def restore(context: Map[String, R]): Unit
+}
+
+
+/// effect for console input/output operations
+interface REPLConsole {
+  def readLine(): String
+  def writeLine(message: String): Unit
+  def writeSingle(content: String): Unit
+}
+
+/// effect for tracking whether we are currently inside a loop (or not)
+interface LoopContext {
+  def isInLoop(): Bool
+}

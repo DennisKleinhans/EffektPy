@@ -1,9 +1,10 @@
-module src/lib/utils/surfaceAstUtils
+module src/tests/helpers/surfaceAstUtils
 
-import src/lib/ast/surfaceAst
 import src/lib/lexer/tokens
-import src/lib/lexer/position
+import src/lib/shared/commonTypes
+import src/lib/ast/surfaceAst
 import src/lib/typechecker/types
+
 
 val d = Position(0, 0)
 

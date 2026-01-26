@@ -1,13 +1,14 @@
 module src/tests/testDesugar
 
 import test
+import src/lib/shared/errors
 import src/lib/ast/surfaceAst
 import src/lib/ast/coreAst
 import src/lib/desugar/sugar
 import src/lib/lexer/tokens
-import src/lib/utils/errors
-import src/lib/utils/coreAstUtils
-import src/lib/utils/surfaceAstUtils
+import src/tests/helpers/coreAstUtils
+import src/tests/helpers/surfaceAstUtils
+
 
 def main() = mainSuite("desugar") {
   
