@@ -162,8 +162,12 @@ def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Exceptio
     with at(pos) 
     // check the condition but don't enforce its type to be boolean yet. The truthiness analysis is done in the interpreter.
     checkExpr(cond)
-    checkBlock(thenBranch) 
-    checkBlock(elseBranch) 
+    val tThen = checkBlock(thenBranch) 
+    val tElse = checkBlock(elseBranch) 
+
+    do equate(tThen, tElse, pos)
+   
+    tThen
   }
 
   case ExprStmt(expr, pos) => {
@@ -202,7 +206,7 @@ def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Exceptio
 
   case ReturnStmt(maybeExpr, pos) => {
     with at(pos)
-    val expectedType = do getExpectedType()
+    val expectedType = do getExpectedType() 
 
     val actualType = maybeExpr match {
       case Some(expr) => checkExpr(expr)
@@ -241,11 +245,13 @@ def checkBlock(block: Block): TypingType / { Typing, Context[TypeBinding], Excep
     case _ => ()
   }
   
+  var lastStmtType: TypingType = TUnit()
+
   // second pass: typecheck all statements in the block
-  block.statements.foreach { stmt => checkStmt(stmt); () }
+  block.statements.foreach { stmt => lastStmtType = checkStmt(stmt) }
   block.finalExpr match {
     case Some(expr) => checkExpr(expr)
-    case None() => TUnit()
+    case None() => lastStmtType
   }
 }
 
@@ -391,10 +397,8 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
         def getExpectedType() = resume(retType)
       }
       
-      // if the body has a final expression, ensure its type matches the declared return type
-      if (body.finalExpr.isDefined()) {
-        do equate(tBody, retType, pos)
-      } 
+      do equate(tBody, retType, pos)
+      
     }
     TFun(paramTypes, retType)
   }
