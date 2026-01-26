@@ -1,0 +1,18 @@
+def isEven(n) {
+    if (n == 0) {
+        true
+    } else {
+        isOdd(n - 1)
+    }
+}
+
+def isOdd(n) {
+    if (n == 0) {
+        false
+    } else {
+        isEven(n - 1)
+    }
+}
+
+print("Is 42 even?", isEven(42))
+print("Is 7 odd?", isOdd(7))

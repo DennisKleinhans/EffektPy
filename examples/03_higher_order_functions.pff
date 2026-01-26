@@ -1,0 +1,14 @@
+def applyTwice(f, x) {
+    f(f(x))
+}
+
+def square(n) {
+    n * n
+}
+
+def addTen(n) {
+    n + 10
+}
+
+print("Square twice 3:", applyTwice(square, 3))
+print("Add ten twice 5:", applyTwice(addTen, 5))

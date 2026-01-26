@@ -1,0 +1,16 @@
+def createCounter(start, step) {
+    var count = start
+    
+    def next() {
+        count += step
+        count
+    }
+    
+    next
+}
+
+val counter = createCounter(0, 5)
+
+print("First call:", counter()) 
+print("Second call:", counter())
+print("Third call:", counter())

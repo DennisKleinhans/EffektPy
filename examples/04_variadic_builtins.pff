@@ -1,0 +1,11 @@
+val a = 12
+val b = 45
+val c = 7
+val d = 33
+
+val biggest = max(a, b, c, d)
+val smallest = min(a, b, c, d)
+
+print("Numbers:", str(a), str(b), str(c), str(d))
+print("The maximum value is:", biggest)
+print("The minimum value is:", smallest) 
