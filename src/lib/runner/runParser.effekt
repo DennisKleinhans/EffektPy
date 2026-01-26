@@ -10,9 +10,9 @@ import src/lib/lexer/position
 import src/lib/runner/result
 import src/lib/utils/errors
 import src/lib/parser/parser
-import src/lib/parser/surfaceAst
+import src/lib/ast/surfaceAst
+import src/lib/ast/coreAst
 import src/lib/desugar/sugar
-import src/lib/desugar/coreAst
 import src/lib/utils/effects
 
 /// runs the parsing and desugaring stages of the pipeline

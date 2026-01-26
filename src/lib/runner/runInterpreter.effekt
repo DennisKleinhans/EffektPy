@@ -2,7 +2,7 @@ module src/lib/runner/runInterpreter
 
 import map
 import src/lib/interpreter/eval
-import src/lib/desugar/coreAst
+import src/lib/ast/coreAst
 import src/lib/utils/errors
 import src/lib/runner/result
 import src/lib/utils/handlers

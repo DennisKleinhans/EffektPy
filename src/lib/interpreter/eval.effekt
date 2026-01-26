@@ -1,7 +1,7 @@
 module src/lib/interpreter/eval
 
 import map
-import src/lib/desugar/coreAst
+import src/lib/ast/coreAst
 import src/lib/utils/effects
 import src/lib/utils/handlers
 import src/lib/utils/errors

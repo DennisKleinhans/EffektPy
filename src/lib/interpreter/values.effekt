@@ -1,7 +1,7 @@
 module src/lib/interpreter/values
 
 import map
-import src/lib/desugar/coreAst
+import src/lib/ast/coreAst
 
 type Value {
   VInt(value: Int)

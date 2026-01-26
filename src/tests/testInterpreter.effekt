@@ -2,7 +2,7 @@ module src/tests/testInterpreter
 
 import test
 import src/lib/interpreter/eval
-import src/lib/desugar/coreAst
+import src/lib/ast/coreAst
 import src/lib/utils/testUtils
 import src/lib/utils/handlers
 import src/lib/utils/errors

@@ -5,7 +5,7 @@ import scanner
 import src/lib/lexer/lexer
 import src/lib/lexer/tokens
 import src/lib/parser/parser
-import src/lib/parser/surfaceAst
+import src/lib/ast/surfaceAst
 import src/lib/desugar/sugar
 import src/lib/utils/testUtils
 import src/lib/utils/errors

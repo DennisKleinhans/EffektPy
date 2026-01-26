@@ -1,7 +1,7 @@
 module src/lib/typechecker/typecheck
 
 import map
-import src/lib/desugar/coreAst
+import src/lib/ast/coreAst
 import src/lib/typechecker/unification
 import src/lib/utils/errors
 import src/lib/utils/effects

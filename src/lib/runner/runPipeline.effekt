@@ -7,7 +7,7 @@ import src/lib/runner/runParser
 import src/lib/runner/runTypechecker
 import src/lib/runner/runInterpreter
 import src/lib/interpreter/values
-import src/lib/desugar/coreAst
+import src/lib/ast/coreAst
 
 /// runs the backend: typechecking and interpretation
 def runBackend(ast: Program): Value = {

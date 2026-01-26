@@ -1,6 +1,6 @@
 module src/lib/utils/surfaceTestUtils
 
-import src/lib/parser/surfaceAst
+import src/lib/ast/surfaceAst
 import src/lib/lexer/tokens
 import src/lib/lexer/position
 import src/lib/typechecker/types

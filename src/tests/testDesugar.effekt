@@ -1,9 +1,9 @@
 module src/tests/testDesugar
 
 import test
-import src/lib/parser/surfaceAst
+import src/lib/ast/surfaceAst
+import src/lib/ast/coreAst
 import src/lib/desugar/sugar
-import src/lib/desugar/coreAst
 import src/lib/lexer/tokens
 import src/lib/utils/errors
 import src/lib/utils/coreTestUtils

@@ -1,6 +1,6 @@
 module src/lib/utils/coreTestUtils
 
-import src/lib/desugar/coreAst
+import src/lib/ast/coreAst
 import src/lib/lexer/position
 import src/lib/typechecker/types
 

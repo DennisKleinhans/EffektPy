@@ -1,7 +1,7 @@
 module src/lib/parser/parser
 
 import src/lib/lexer/tokens
-import src/lib/parser/surfaceAst
+import src/lib/ast/surfaceAst
 import src/lib/utils/effects
 import src/lib/utils/errors
 import src/lib/utils/helpers

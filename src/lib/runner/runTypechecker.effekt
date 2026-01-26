@@ -2,7 +2,7 @@ module src/lib/runner/runTypechecker
 
 import map
 import src/lib/typechecker/typecheck
-import src/lib/desugar/coreAst
+import src/lib/ast/coreAst
 import src/lib/runner/result
 import src/lib/utils/handlers
 import src/lib/utils/errors
