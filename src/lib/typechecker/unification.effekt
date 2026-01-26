@@ -76,11 +76,11 @@ def alignParameters(p1: List[TypingParam], p2: List[TypingParam], pos: Position)
   // definition has parameter(s) left, call has none left check if remaining definition parameters are optional
   case (remainingDef, Nil()) =>
     if (remainingDef.all { p => p.isOptional || isVariadic(p.tpe) }) Nil()
-    else do raise(TypeError(), "Arity mismatch: Not enough arguments for the given signature")
+    else raise(TypeError(), "Arity mismatch: Not enough arguments for the given signature")
 
   // call has parameter(s) left, definition has none left -> error
   case (Nil(), _) =>
-    do raise(TypeError(), "Arity mismatch: Too many arguments for the given signature")
+    raise(TypeError(), "Arity mismatch: Too many arguments for the given signature")
 }
 
 /// unification algorithm for typing types
@@ -115,7 +115,7 @@ def unify(eqs: List[TypeEquation], subst: Substitution): Substitution / { Except
           val newEqs = Cons(returnEq, paramsEqs.append(rest))
           unify(newEqs, subst)
         }
-        case _ => do raise(TypeError(), "cannot unify types " ++ lNorm.show ++ " with " ++ rNorm.show ++ " at " ++ do getPos().show)
+        case _ => raise(TypeError(), "cannot unify types " ++ lNorm.show ++ " with " ++ rNorm.show ++ " at " ++ do getPos().show)
       }
     }
   }
@@ -124,7 +124,7 @@ def unify(eqs: List[TypeEquation], subst: Substitution): Substitution / { Except
 /// helper function to bind a type variable to a typing type during unification
 def bind(id: Int, t: TypingType, rest: List[TypeEquation], subst: Substitution): Substitution / { Exception[TypeError], Positioning } = {
   if (occursCheck(id, t)) {
-    do raise(TypeError(), "occurs check failed for variable " ++ id.show ++ " at " ++ do getPos().show)
+    raise(TypeError(), "occurs check failed for variable " ++ id.show ++ " at " ++ do getPos().show)
   } else {
     val single = map::singletonGeneric(id, t)
     val newSubst: Substitution = subst.put(id, t)
