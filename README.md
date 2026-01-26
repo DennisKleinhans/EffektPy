@@ -80,11 +80,9 @@ def add(a, b) {
 }
 
 // Default arguments
-def add(a, b = 42) {
-    a + b
+def greet(name = "World") {
+    print("Hello, " + name)
 }
-
-add(8) // Returns 50
 ```
 
 EffektPy handles complex recursion patterns, including **mutual recursion** (functions calling each other) and **nested recursion**, without needing forward declarations.
@@ -99,6 +97,35 @@ def isOdd(n) {
 
 print(isEven(4)) // true
 ```
+
+### Functional Programming & Lambdas
+
+EffektPy treats functions as first-class citizens, meaning they can be passed as arguments, returned from functions, and assigned to variables.
+
+#### Anonymous Functions (Lambdas)
+
+You can define functions without a name using the `lambda` keyword. These are ideal for use with Higher-Order Functions (HOFs).
+```scala
+// Passing a lambda directly to a HOF
+def applyOp(a, b, op) { op(a, b) }
+
+val result = applyOp(5, 5, lambda(x, y) { x * y }) // 25
+```
+
+#### Closures & Lexical Scoping
+
+Lambdas capture their surrounding environment. This allows for powerful patterns like factory functions.
+```scala
+def makeMultiplier(factor) {
+    // The inner function 'remembers' factor
+    lambda(n) { n * factor }
+}
+
+val double = makeMultiplier(2)
+print(double(10)) // 20
+```
+
+#### Type Inference for HOFs
 
 EffektPy's type inference is powerful enough to handle most Higher-Order Functions (HOFs) automatically.
 ```scala
