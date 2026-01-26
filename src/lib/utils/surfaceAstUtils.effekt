@@ -1,4 +1,4 @@
-module src/lib/utils/surfaceTestUtils
+module src/lib/utils/surfaceAstUtils
 
 import src/lib/ast/surfaceAst
 import src/lib/lexer/tokens

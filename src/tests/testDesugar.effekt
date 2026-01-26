@@ -6,8 +6,8 @@ import src/lib/ast/coreAst
 import src/lib/desugar/sugar
 import src/lib/lexer/tokens
 import src/lib/utils/errors
-import src/lib/utils/coreTestUtils
-import src/lib/utils/surfaceTestUtils
+import src/lib/utils/coreAstUtils
+import src/lib/utils/surfaceAstUtils
 
 def main() = mainSuite("desugar") {
   

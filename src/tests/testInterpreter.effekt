@@ -6,7 +6,7 @@ import src/lib/ast/coreAst
 import src/lib/utils/testUtils
 import src/lib/utils/handlers
 import src/lib/utils/errors
-import src/lib/utils/coreTestUtils
+import src/lib/utils/coreAstUtils
 import src/lib/utils/helpers
 import src/lib/lexer/position
 import src/lib/interpreter/values

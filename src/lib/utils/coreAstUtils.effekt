@@ -1,4 +1,4 @@
-module src/lib/utils/coreTestUtils
+module src/lib/utils/coreAstUtils
 
 import src/lib/ast/coreAst
 import src/lib/lexer/position
