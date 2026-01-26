@@ -41,7 +41,7 @@ def getSignature(value: Expr): Option[TypingType] / Typing = value match {
   case _ => None()
 }
 
-def twoPassTypecheck(prog: Program): Map[String, TypeBinding] / { Exception[TypeError], Exception[NameError], Inspector[TypeBinding],Context[TypeBinding], Positioning } = {
+def twoPassTypecheck(prog: Program): Map[String, TypeBinding] / { Exception[TypeError], Exception[NameError], Context[TypeBinding], Positioning } = {
   var equations: List[TypeEquation] = Nil()
   var constraints: List[TypeConstraint] = Nil()
   var counter = 0
@@ -125,14 +125,14 @@ def twoPassTypecheck(prog: Program): Map[String, TypeBinding] / { Exception[Type
 }
 
 // typechecks a program and returns a mapping from variable names to their inferred types
-def typecheck(prog: Program): Map[String, TypeBinding] / { Exception[TypeError], Exception[NameError], Inspector[TypeBinding], Positioning } = {
+def typecheck(prog: Program): Map[String, TypeBinding] / { Exception[TypeError], Exception[NameError], Positioning } = {
   with handleTypingContext(getBuiltinTypeEnv())
   twoPassTypecheck(prog)
 }
 
 /// typechecks a program and returns a mapping from variable names to their inferred types
 /// accepts an initial environment of variable bindings to start from
-def typecheckIncremental(prog: Program, initialEnv: Map[String, TypeBinding]): Map[String, TypeBinding] / { Exception[TypeError], Exception[NameError], Inspector[TypeBinding], Positioning } = {
+def typecheckIncremental(prog: Program, initialEnv: Map[String, TypeBinding]): Map[String, TypeBinding] / { Exception[TypeError], Exception[NameError], Positioning } = {
   
   // extend the initial environment with built-in functions
   // prefers initialEnv bindings in case of name clashes results in builtins being overridden
@@ -144,7 +144,7 @@ def typecheckIncremental(prog: Program, initialEnv: Map[String, TypeBinding]): M
 }
 
 /// typecheck a single statement
-def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning, LoopContext, ReturnContext, ConstraintCollector } = stmt match {
+def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Exception[TypeError], Positioning, LoopContext, ReturnContext, ConstraintCollector } = stmt match {
   case ValDeclaration(name, typeAnno, value, pos) => {
     with at(pos) 
     // just lookup the predefined binding 
@@ -179,12 +179,6 @@ def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspecto
     checkExpr(cond)
     checkBlock(thenBranch) 
     checkBlock(elseBranch) 
-  }
-
-  case InspectScope() => {
-    val currentContext = do backup()
-    do inspect(currentContext)
-    TUnit()
   }
 
   case ExprStmt(expr, pos) => {
@@ -235,7 +229,7 @@ def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspecto
   }
 }
 
-def checkBlock(block: Block): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning, LoopContext, ReturnContext, ConstraintCollector } = {
+def checkBlock(block: Block): TypingType / { Typing, Context[TypeBinding], Exception[TypeError], Positioning, LoopContext, ReturnContext, ConstraintCollector } = {
 
   with handleNewTypingScope
   // fist pass: predefine all variable declarations in the block
@@ -268,7 +262,7 @@ def checkBlock(block: Block): TypingType / { Typing, Context[TypeBinding], Inspe
 }
 
 /// Typecheck an expression and return its inferred type
-def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Positioning, Exception[TypeError], Inspector[TypeBinding], LoopContext, ConstraintCollector } = expr match {
+def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Positioning, Exception[TypeError], LoopContext, ConstraintCollector } = expr match {
   case IntLiteral(value, pos) => { with at(pos); TInt()}
   case BoolLiteral(value, pos) => { with at(pos); TBool()}
   case StringLiteral(value, pos) => { with at(pos); TString()}
@@ -459,7 +453,7 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
 }
 
 /// check that both sides are numeric types and return the resulting type
-def checkNumeric(left: Expr, right: Expr, pos: Position): TypingType / { Typing, Context[TypeBinding], Positioning, Exception[TypeError], Inspector[TypeBinding], LoopContext, ConstraintCollector } = {
+def checkNumeric(left: Expr, right: Expr, pos: Position): TypingType / { Typing, Context[TypeBinding], Positioning, Exception[TypeError], LoopContext, ConstraintCollector } = {
   val tLeft = checkExpr(left)
   val tRight = checkExpr(right)
 

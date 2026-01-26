@@ -41,8 +41,6 @@ type Stmt {
   BreakStmt(pos: Position)
   ContinueStmt(pos: Position)
   ReturnStmt(value: Option[Expr], pos: Position)
-  // for debugging purposes
-  InspectScope()
 }
 
 type Program = List[Stmt]

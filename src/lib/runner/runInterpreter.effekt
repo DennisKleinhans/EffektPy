@@ -14,7 +14,6 @@ import src/lib/lexer/position
 def runEval(prog: Program): PipelineResult[Value]  = {
   var currentPos = Position(1, 1)
   try {
-    with mockInspector[PipelineResult[Value], Address]
     with consoleRepl
     val result = evalProgram(prog) 
     PipelineResult::Success(result)
@@ -33,7 +32,6 @@ def runEval(prog: Program): PipelineResult[Value]  = {
 def runEvalIncremental(prog: Program, initialEnv: Map[String, Address], initialStore: Map[Address, Value]): PipelineResult[EvalState] / REPLConsole   = {
   var currentPos = Position(1, 1)
   try {
-    with mockInspector[PipelineResult[EvalState], Address]
     val newEvalState = evalProgramIncremental(prog, initialEnv, initialStore) 
     PipelineResult::Success(newEvalState)
   } with Exception[RuntimeError] {
