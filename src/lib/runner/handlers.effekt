@@ -4,7 +4,7 @@ import src/lib/shared/commonEffects
 import src/lib/shared/externs
 
 
-/// Handler for the console effect, using the Console available in js. Supports a additional writeSingle method for REPL prompts.
+/// Handler for the console effect, using the Console available in js. Supports an additional writeSingle method for REPL prompts.
 def consoleRepl[R] { program: () => R / REPLConsole }: R = {
   val c = js::newConsole()
   try {

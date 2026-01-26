@@ -81,7 +81,6 @@ def extractType(input: String): Type / Exception[ParseError] = {
   }
 }
 
-
 /// pretty prints a position
 def show(pos: Position): String = "line: " ++ pos.line.show ++ " column: " ++ pos.column.show
 
@@ -152,6 +151,7 @@ def show(t: TypingType): String = t match {
   case TDouble() => "Double"
 }
 
+/// pretty prints a value
 def show(v: Value): String = v match {
   case VInt(n) => n.show
   case VBool(b) => b.show
@@ -240,6 +240,7 @@ def equal(t1: TypingType, t2: TypingType): Bool = (t1, t2) match {
   case _ => false
 }
 
+/// merges two maps, with entries from the second map overwriting entries from the first in case of key conflicts
 def mapUnion[K, V](m1: Map[K, V], m2: Map[K, V]): Map[K, V] = {
   var res = m1
   m2.keys().foreach { k =>

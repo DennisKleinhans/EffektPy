@@ -135,6 +135,7 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], Positioning 
     }
   }
 
+  // reads a decimal number (integer part only)
   def readNumberToken(pos: Position): Token / { Scan[Char], stop } = {
     val integerPart = try { readDecimal() } with fail { raise(LexerError(), "invalid number at " ++ pos.show) }
     val next = try { do Scan::peek() } with stop { ' ' }
@@ -325,11 +326,11 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], Positioning 
 
 /// lexer that provides token-level lookahead 
 def lexer[R]() { program: => R / Lexer[Token] }: R / { Scan[Char], Positioning, Exception[LexerError] } = {
-  // buffer for the last token read
+  // buffer for the last two tokens read
   var firstToken: Option[Token] = None()
   var secondToken : Option[Token] = None()
 
-  
+  // fetches the next token from the input stream
   def fetchNext(): Token / { Scan[Char], Positioning, Exception[LexerError] } = {
     try {
       nextToken()

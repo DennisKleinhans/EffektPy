@@ -44,13 +44,11 @@ def runParsing(input: String) : PipelineResult[Program] = {
 /// runs the parsing stage of the pipeline on a file: lexing, parsing, and desugaring.
 def runParsingFile(path: String) : PipelineResult[Program] / Exception[IOError] = {
   try {
-    // HIER ist der einzige Unterschied: Wir lesen direkt aus der Datei
     with readFileUTF8(path) 
     with returning::scanner[Char, PipelineResult[Program]]
     with scanWithPos
     with lexer
     parseAndDesugar()
-    
   } with Exception[LexerError] { 
       def raise(exception, msg) = Failure("LexerError: " ++ msg)
   } with Exception[ParseError] {

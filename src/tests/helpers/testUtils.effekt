@@ -2,6 +2,7 @@ module src/tests/helpers/testUtils
 
 import test
 
+
 def assertNotThrown[E](ex: on[E]){ body: => Unit / Exception[E] }: Unit / Assertion =
   ex.default { do assert(false, "Unexpected Exception") } {body}
 

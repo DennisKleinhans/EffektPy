@@ -118,7 +118,6 @@ def unify(eqs: List[TypeEquation], subst: Substitution): Substitution / { Except
         case _ => do raise(TypeError(), "cannot unify types " ++ lNorm.show ++ " with " ++ rNorm.show ++ " at " ++ do getPos().show)
       }
     }
-    
   }
 }
   

@@ -14,7 +14,7 @@ import src/lib/ast/coreAst
 import src/lib/runner/result
 
 
-/// Determines the truthiness of a value (python-like semantics)
+/// determines the truthiness of a value (python-like semantics)
 def isTruthy(value: Value): Value = value match {
   case VBool(b) => VBool(b)
   case VInt(n) => VBool(n != 0)
@@ -23,7 +23,7 @@ def isTruthy(value: Value): Value = value match {
   case _ => VBool(false)
 }
 
-/// Converts a value to its string representation
+/// converts a value to its string representation
 def stringify(value: Value): String = value match {
   case VInt(n) => n.show
   case VDouble(d) => d.show
@@ -240,6 +240,7 @@ def evalExpr(expr: Expr): Value / { Context[Address], Store, Exception[RuntimeEr
     val evaluatedArgs = args.map { arg => (arg.name, evalExpr(arg.value)) }
 
     vFunc match {
+      // special casing for built-in functions
       case VBuiltin(name) => {
         val argValues = evaluatedArgs.map { case (_, value) => value }
         name match {

@@ -51,7 +51,6 @@ def readInputBlock(): String / REPLConsole = {
 
     val trimmed = line.trim()
 
-    
     if (isEmpty && trimmed == "") {
       reading = false
     } else {
@@ -67,6 +66,7 @@ def readInputBlock(): String / REPLConsole = {
       }
     }
   }
+
   // flush the buffer or return the stored command e.g. ':exit'
   if (result == "") {
     do flush()
@@ -114,7 +114,7 @@ def startRepl() = {
                   if (evalState.value is VUnit()) {
                     ()
                   } else {
-                    do writeLine("Result: " ++ evalState.value.show)
+                    do writeLine(evalState.value.show)
                   }
                   
                 }

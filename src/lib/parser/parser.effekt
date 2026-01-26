@@ -65,6 +65,8 @@ def parsePrimaryRaw(): Expr / { Lexer[Token], Positioning, Exception[ParseError]
   }
 }
 
+/// parsePrimary handles function call expressions by parsing a primary expression
+/// and then checking for an opening parenthesis to indicate a function call.
 def parsePrimary(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
   val left = parsePrimaryRaw()
 
@@ -147,7 +149,7 @@ def parseOr(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
 /// This function uses a common pattern: parse the higher-precedence operand
 /// (parsePrimary) then loop (via local go()) to consume any * or / that follow.\n
 /// That loop builds left-associative binary trees:
-///   a * b * c  -> MultExpr(MultExpr(a,b), c)
+///   a * b * c -> MultExpr(MultExpr(a,b), c)
 def parseMultiplicative(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
   
   def go(left: Expr): Expr / { Lexer[Token], Positioning } = {

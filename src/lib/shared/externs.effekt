@@ -9,21 +9,29 @@ namespace js {
 
   extern type JSConsole
 
+  /// creates a new JSConsole using Node.js readline interface
   extern def newConsole() at io: JSConsole =
     jsNode """REPLreadline.createInterface({
         input: process.stdin,
         output: process.stdout,
       })"""
 
+  /// closes the given JSConsole
   extern def close(console: JSConsole) at io: Unit =
     jsNode "${console}.close()"
 
+  /// reads a line from the given JSConsole
   extern def readLine(console: JSConsole) at async: String =
     jsNode "$effekt.capture(k => ${console}.once('line', k))"
+
+  /// writes a line to the given JSConsole
   extern def writeLine(console: JSConsole, message: String) at io: Unit =
     jsNode "${console}.output.write(${message} + '\\n')"
+  
+  /// writes a single message to the given JSConsole without a newline
   extern def write(console: JSConsole, message: String) at io: Unit =
     jsNode "${console}.output.write(${message})"
 }
 
+/// converts a string to a double using JavaScript's parseFloat
 extern def stringToDouble(s: String): Double = jsNode "parseFloat(${s})"
