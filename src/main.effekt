@@ -25,7 +25,6 @@ def main(): Unit = {
       // read and execute the file
       try {
         val res = runFilePipeline(filename)
-        println(res.show)
       } with Exception[IOError] {
         def raise(exception, msg) = {
           println("IOError: " ++ msg)
