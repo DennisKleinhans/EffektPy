@@ -57,38 +57,32 @@ def occursCheck(id: Int, t: TypingType): Bool = t match {
   }
 }
 
+def isVariadic(t: TypingType): Bool = t match {
+  case TVariadic(_) => true
+  case _ => false
+}
+
 /// aligns two lists of typing parameters for unification, taking variadic parameters and optional parameters (defaults) into account
 def alignParameters(p1: List[TypingParam], p2: List[TypingParam], pos: Position): List[TypeEquation] / { Exception[TypeError] } = (p1, p2) match {
   // both empty
   case (Nil(), Nil()) => Nil()
 
-  // variadic parameter on the left
-  case (Cons(TypingParam(TVariadic(t1), _), _), rest2) =>
-    rest2.map { p => 
-      // extract inner type if variadic
-      val t2 = p.tpe match { case TVariadic(inner) => inner; case other => other }
-      TypeEquation(t1, t2, pos) 
-    }
+  // variadic at the end -> check rest against inner type
+  case (Cons(TypingParam(TVariadic(inner), _), _), restArgs) =>
+    restArgs.map { a => TypeEquation(inner, a.tpe, pos) }
 
-  // variadic parameter on the right
-  case (rest1, Cons(TypingParam(TVariadic(t2), _), _)) =>
-    rest1.map { p => 
-      val t1 = p.tpe match { case TVariadic(inner) => inner; case other => other }
-      TypeEquation(t1, t2, pos) 
-    }
+  // both parameter lists have at least one element -> align heads and recurse on tails
+  case (Cons(p, prest), Cons(a, arest)) =>
+    Cons(TypeEquation(p.tpe, a.tpe, pos), alignParameters(prest, arest, pos))
 
-  // both non-variadic, align heads and recurse on tails
-  case (Cons(h1, t1), Cons(h2, t2)) =>
-    Cons(TypeEquation(h1.tpe, h2.tpe, pos), alignParameters(t1, t2, pos))
-
-  // one list empty, check if remaining parameters are optional
-  case (Nil(), remaining) =>
-    if (remaining.all { p => p.isOptional }) Nil()
-    else do raise(TypeError(), "Arity mismatch: Too many arguments for the given signature")
-
-  case (remaining, Nil()) =>
-    if (remaining.all { p => p.isOptional }) Nil()
+  // definition has parameter(s) left, call has none left check if remaining definition parameters are optional
+  case (remainingDef, Nil()) =>
+    if (remainingDef.all { p => p.isOptional || isVariadic(p.tpe) }) Nil()
     else do raise(TypeError(), "Arity mismatch: Not enough arguments for the given signature")
+
+  // call has parameter(s) left, definition has none left -> error
+  case (Nil(), _) =>
+    do raise(TypeError(), "Arity mismatch: Too many arguments for the given signature")
 }
 
 /// unification algorithm for typing types

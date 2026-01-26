@@ -40,8 +40,7 @@ def main() = mainSuite("interpreter") {
       with on[RuntimeError].panic
       with on[OutOfBounds].panic
       with mockGetPos 
-      with mockInspector[Unit, Address]
-
+      
       val result = evalProgram(progs.get(iter))
       assertTrue(result.equal(expected.get(iter)))
       iter = iter + 1
@@ -65,8 +64,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-
+    
     val result1 = evalProgram([prog1])
     assertTrue(result1.equal(VBool(true)))
 
@@ -88,8 +86,7 @@ def main() = mainSuite("interpreter") {
       with on[RuntimeError].panic
       with on [OutOfBounds].panic
       with mockGetPos 
-      with mockInspector[Unit, Address]
-
+      
       val result = evalProgram(progs.get(iter))
       assertTrue(result.equal(expected.get(iter)))
       iter = iter + 1
@@ -115,8 +112,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-
+    
     val result1 = evalProgram([prog1])
     assertTrue(result1.equal(VInt(10)))
 
@@ -141,8 +137,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-
+    
     val result = evalProgram([prog])
     assertTrue(result.equal(VInt(42)))
   }
@@ -156,8 +151,7 @@ def main() = mainSuite("interpreter") {
     )
 
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    with assertThrows[RuntimeError]
+        with assertThrows[RuntimeError]
     evalProgram([prog])
     ()
   }
@@ -179,8 +173,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-
+    
     val result = evalProgram(prog)
     assertTrue(result.equal(VInt(10)))
   }
@@ -200,8 +193,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-
+    
     val result = evalProgram([prog])
     assertTrue(result.equal(VInt(2)))
   }
@@ -231,8 +223,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-
+    
     val result = evalProgram(prog)
     assertTrue(result.equal(VInt(20)))
   }
@@ -260,8 +251,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-
+    
     val result = evalProgram(prog)
     assertTrue(result.equal(VInt(50)))
   }
@@ -280,8 +270,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-
+    
     val result = evalProgram(prog)
     assertTrue(result.equal(VInt(5)))
   }
@@ -300,8 +289,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-
+    
     val result = evalProgram(prog)
     assertTrue(result.equal(VInt(0)))
   }
@@ -327,8 +315,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(2)))
   }
@@ -356,8 +343,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(4)))
   }
@@ -370,8 +356,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(42)))
   }
@@ -388,8 +373,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(30)))
   }
@@ -406,8 +390,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(20)))
   }
@@ -424,8 +407,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(16)))
   }
@@ -443,8 +425,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(42)))
   }
@@ -462,8 +443,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(15)))
   }
@@ -486,8 +466,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(30)))
   }
@@ -510,8 +489,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(35)))
   }
@@ -533,8 +511,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(15)))
   }
@@ -558,8 +535,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(3)))
   }
@@ -578,8 +554,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(175)))
   }
@@ -600,8 +575,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(40)))
   }
@@ -628,8 +602,7 @@ def main() = mainSuite("interpreter") {
 
   //   with on[RuntimeError].panic
   //   with mockGetPos 
-  //   with mockInspector[Unit, Address]
-  //   val result = evalProgram(prog)
+  //     //   val result = evalProgram(prog)
 
   //   assertTrue(result.equal(VInt(15)))
   // }
@@ -646,8 +619,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(42)))
   }
@@ -664,8 +636,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(30)))
   }
@@ -682,8 +653,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(15)))
   }
@@ -710,8 +680,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(6)))
   }
@@ -727,8 +696,7 @@ def main() = mainSuite("interpreter") {
     ]
 
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    with assertThrows[RuntimeError]
+        with assertThrows[RuntimeError]
     evalProgram(prog)
     ()
   }
@@ -744,8 +712,7 @@ def main() = mainSuite("interpreter") {
     ]
 
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    with assertThrows[RuntimeError]
+        with assertThrows[RuntimeError]
     evalProgram(prog)
     ()
   }
@@ -757,8 +724,7 @@ def main() = mainSuite("interpreter") {
     ]
 
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    with assertThrows[RuntimeError]
+        with assertThrows[RuntimeError]
     evalProgram(prog)
     ()
   }
@@ -774,8 +740,7 @@ def main() = mainSuite("interpreter") {
     ]
 
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    with assertThrows[RuntimeError]
+        with assertThrows[RuntimeError]
     evalProgram(prog)
     ()
   }
@@ -797,8 +762,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(100)))
   }
@@ -817,8 +781,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(1)))
   }
@@ -842,8 +805,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(25)))
   }
@@ -864,8 +826,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(30)))
   }
@@ -889,8 +850,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(3)))
   }
@@ -909,8 +869,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(1000)))
   }
@@ -929,8 +888,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(50)))
   }
@@ -951,8 +909,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(300)))
   }
@@ -969,8 +926,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(30)))
   }
@@ -987,8 +943,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(30)))
   }
@@ -1005,8 +960,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos 
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(125)))
   }
@@ -1016,8 +970,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VString("hello")))
   }
@@ -1027,8 +980,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VString("helloworld")))
   }
@@ -1038,8 +990,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VBool(true)))
   }
@@ -1049,8 +1000,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VDouble(3.14)))
   }
@@ -1075,8 +1025,7 @@ def main() = mainSuite("interpreter") {
       with on[RuntimeError].panic
       with on[OutOfBounds].panic
       with mockGetPos
-      with mockInspector[Unit, Address]
-
+      
       val result = evalProgram(progs.get(iter))
       assertTrue(result.equal(expected.get(iter)))
       iter = iter + 1
@@ -1088,8 +1037,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(10)))
   }
@@ -1099,8 +1047,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(20)))
   }
@@ -1118,8 +1065,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(3)))
   }
@@ -1129,8 +1075,7 @@ def main() = mainSuite("interpreter") {
     
     with on[RuntimeError].panic
     with mockGetPos
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VBool(true)))
   }
@@ -1140,8 +1085,7 @@ def main() = mainSuite("interpreter") {
     
     with on[RuntimeError].panic
     with mockGetPos
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VBool(true)))
   }
@@ -1151,8 +1095,7 @@ def main() = mainSuite("interpreter") {
     
     with on[RuntimeError].panic
     with mockGetPos
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VBool(false)))
   }
@@ -1162,8 +1105,7 @@ def main() = mainSuite("interpreter") {
     
     with on[RuntimeError].panic
     with mockGetPos
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VBool(true)))
   }
@@ -1173,8 +1115,7 @@ def main() = mainSuite("interpreter") {
     
     with on[RuntimeError].panic
     with mockGetPos
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VBool(true)))
   }
@@ -1184,8 +1125,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VBool(true)))
   }
@@ -1195,8 +1135,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VBool(false)))
   }
@@ -1206,8 +1145,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VBool(true)))
   }
@@ -1217,8 +1155,7 @@ def main() = mainSuite("interpreter") {
     
     with on[RuntimeError].panic
     with mockGetPos
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
   
     assertTrue(result.equal(VBool(true)))
   }
@@ -1228,8 +1165,7 @@ def main() = mainSuite("interpreter") {
     
     with on[RuntimeError].panic
     with mockGetPos
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VBool(true)))
   }
@@ -1239,8 +1175,7 @@ def main() = mainSuite("interpreter") {
     
     with on[RuntimeError].panic
     with mockGetPos
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VBool(false)))
   }
@@ -1250,8 +1185,7 @@ def main() = mainSuite("interpreter") {
     
     with on[RuntimeError].panic
     with mockGetPos
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VBool(true)))
   }
@@ -1266,8 +1200,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VString("1233.5false")))
   }
@@ -1277,8 +1210,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(5)))
   }
@@ -1288,8 +1220,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VDouble(5.5)))
   }
@@ -1299,8 +1230,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VInt(1)))
   }
@@ -1310,8 +1240,7 @@ def main() = mainSuite("interpreter") {
 
     with on[RuntimeError].panic
     with mockGetPos
-    with mockInspector[Unit, Address]
-    val result = evalProgram(prog)
+        val result = evalProgram(prog)
 
     assertTrue(result.equal(VDouble(1.1)))
   }

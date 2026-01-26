@@ -14,7 +14,6 @@ import src/lib/typechecker/types
 def runTypecheck(prog: Program): PipelineResult[Unit]  = {
   var currentPos = Position(1,1)
   try {
-    with mockInspector[PipelineResult[Unit], TypeBinding]
     typecheck(prog)
     PipelineResult::Success(())
   } with Exception[TypeError] {
@@ -33,7 +32,6 @@ def runTypecheck(prog: Program): PipelineResult[Unit]  = {
 def runTypecheckIncremental(prog: Program, initialEnv: Map[String, TypeBinding]): PipelineResult[Map[String, TypeBinding]]  = {
   var currentPos = Position(1,1)
   try {
-    with mockInspector[PipelineResult[Map[String, TypeBinding]], TypeBinding]
     val newEnv = typecheckIncremental(prog, initialEnv)
     PipelineResult::Success(newEnv)
   } with Exception[TypeError] {

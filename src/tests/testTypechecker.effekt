@@ -55,7 +55,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with on[TypeError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
     val resultWithAnnotation = typecheck(progWithAnnotation)
 
@@ -75,7 +75,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -88,7 +88,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with on[TypeError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
 
     val expected = map::fromListGeneric[String, TypingType]([
@@ -106,7 +106,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -120,7 +120,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -140,7 +140,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with on[TypeError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
 
     val expected = map::fromListGeneric[String, TypingType]([
@@ -167,7 +167,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -183,7 +183,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with on[TypeError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
 
     val expected = map::fromListGeneric[String, TypingType]([
@@ -204,7 +204,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with assertThrows[NameError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -219,7 +219,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with on[TypeError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
 
     val expected = map::fromListGeneric[String, TypingType]([
@@ -238,7 +238,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -253,7 +253,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with on[TypeError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
 
     val expected = map::fromListGeneric[String, TypingType]([
@@ -275,7 +275,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -292,7 +292,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with on[TypeError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
 
     val expected = map::fromListGeneric[String, TypingType]([
@@ -316,7 +316,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -338,7 +338,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -360,7 +360,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with on[TypeError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -381,7 +381,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with assertThrows[NameError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -393,36 +393,24 @@ def main() = mainSuite("typechecker") {
         Block([
           cVal("x", None(), cLit(true)),
           cVal("y", None(), cV("x")),
-          InspectScope()
         ], None()), 
         Block(Nil(), None())),
       cVal("z", None(), cV("x"))
     ]
 
-    val expectedInnerContext = map::fromListGeneric[String, TypeBinding]([
-      ("x", TypeBinding(TBool(), false)),
-      ("y", TypeBinding(TBool(), false))
-    ])
-    
-    val expectedOuterContext = map::fromListGeneric[String, TypingType]([
+    val expected = map::fromListGeneric[String, TypingType]([
       ("x", TInt()),
       ("z", TInt())
     ])
 
-    var innerContext: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
-    var outerContext: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
 
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    try { outerContext = typecheck(prog) } with Inspector[TypeBinding] {
-      def inspect(context) = {
-        innerContext = context
-        resume(())
-      }
-    }
-    assertTrue(typeMapsEqual(innerContext, expectedInnerContext))
-    assertTrue(typeMapsEqual(outerContext, expectedOuterContext))
+    
+
+    val result = typecheck(prog)
+    assertTrue(typeMapsEqual(result, expected))
   }
 
   test("typechecker infers types correctly in complex program") {
@@ -463,7 +451,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with on[TypeError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
 
     val expected = map::fromListGeneric[String, TypingType]([
@@ -486,11 +474,9 @@ def main() = mainSuite("typechecker") {
           cIf(cLit(false),
             Block([
               cVal("y", None(), cV("x")),
-              InspectScope()
             ], None()),
             Block([
               cVal("y", None(), cLit(10)),
-              InspectScope()
             ], None())
           )
         ], None()),
@@ -499,45 +485,18 @@ def main() = mainSuite("typechecker") {
       cVal("z", None(), cV("x"))
     ]
 
-    var innerContext1: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
-    var innerContext2: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
-    var outerContext: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
-    var inspectCount = 0
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
     
-    try { outerContext = typecheck(prog) } with Inspector[TypeBinding] {
-      
-      def inspect(context) = {
-        if (inspectCount == 0) {
-          innerContext1 = context
-        } else if (inspectCount == 1) {
-          innerContext2 = context
-        }
-        inspectCount = inspectCount + 1
-        resume(())
-      }
-    }
 
-    val expectedInnerContext1 = map::fromListGeneric[String, TypeBinding]([
-      ("x", TypeBinding(TBool(), false)),
-      ("y", TypeBinding(TBool(), false))
-    ])
-
-    val expectedInnerContext2 = map::fromListGeneric[String, TypeBinding]([
-      ("x", TypeBinding(TBool(), false)),
-      ("y", TypeBinding(TInt(), false))
-    ])
-
-    val expectedOuterContext = map::fromListGeneric[String, TypingType]([
+    val expected = map::fromListGeneric[String, TypingType]([
       ("x", TInt()),
       ("z", TInt())
     ])
 
-    assertTrue(typeMapsEqual(innerContext1, expectedInnerContext1))
-    assertTrue(typeMapsEqual(innerContext2, expectedInnerContext2))
-    assertTrue(typeMapsEqual(outerContext, expectedOuterContext))
+    val result = typecheck(prog)
+    assertTrue(typeMapsEqual(result, expected))
   }
 
   test("typecheck while statement") {
@@ -553,7 +512,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
 
     val expected = map::fromListGeneric[String, TypingType]([
@@ -576,7 +535,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
   }
 
@@ -590,52 +549,25 @@ def main() = mainSuite("typechecker") {
             Block([
               cVal("x", None(), cLit(10)),
               cVal("y", None(), cV("x")),
-              InspectScope()
             ], None())
           ),
-          InspectScope()
         ], None())
       ),
       cVal("z", None(), cAdd(cV("x"), cLit(1)))
     ]
 
-    var innerContext1: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
-    var innerContext2: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
-    var outerContext: Map[String, TypeBinding] = map::emptyGeneric[String, TypeBinding]()
-    var inspectCount = 0
 
-    with on[TypeError].panic
-    with on[NameError].panic
-    with mockGetPos
-    try { outerContext = typecheck(prog) } with Inspector[TypeBinding] {
-      def inspect(context) = {
-        if (inspectCount == 0) {
-          innerContext1 = context
-        } else if (inspectCount == 1) {
-          innerContext2 = context
-        }
-        inspectCount = inspectCount + 1
-        resume(())
-      }
-    }
-
-    val expectedInnerContext1 = map::fromListGeneric[String, TypeBinding]([
-      ("x", TypeBinding(TInt(), false)),
-      ("y", TypeBinding(TInt(), false))
-    ])
-
-    val expectedInnerContext2 = map::fromListGeneric[String, TypeBinding]([
-      ("x", TypeBinding(TBool(), false))
-    ])
-
-    val expectedOuterContext = map::fromListGeneric[String, TypingType]([
+     val expected = map::fromListGeneric[String, TypingType]([
       ("x", TInt()),
       ("z", TInt())
     ])
 
-    assertTrue(typeMapsEqual(innerContext1, expectedInnerContext1))
-    assertTrue(typeMapsEqual(innerContext2, expectedInnerContext2))
-    assertTrue(typeMapsEqual(outerContext, expectedOuterContext))
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+  
+    val result = typecheck(prog)
+    assertTrue(typeMapsEqual(result, expected))
   }
 
   test("typechecker throws on break outside loop") {
@@ -655,7 +587,7 @@ def main() = mainSuite("typechecker") {
     with assertThrows[TypeError]
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+
     val result = typecheck(prog)
     ()
   }
@@ -677,7 +609,7 @@ def main() = mainSuite("typechecker") {
     with assertThrows[TypeError]
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
     ()
   }
@@ -691,7 +623,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
@@ -711,7 +643,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
@@ -731,7 +663,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
@@ -751,7 +683,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
@@ -770,7 +702,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -784,7 +716,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -798,7 +730,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -812,7 +744,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -827,7 +759,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
@@ -849,7 +781,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -866,7 +798,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
@@ -886,7 +818,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
     
     val expected =  map::fromListGeneric[String, TypingType]([
@@ -905,7 +837,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with assertThrows[NameError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -920,7 +852,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
@@ -941,7 +873,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -963,7 +895,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
@@ -984,7 +916,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1006,7 +938,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1030,7 +962,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1053,7 +985,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1073,7 +1005,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -1087,7 +1019,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1106,7 +1038,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1124,7 +1056,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -1137,7 +1069,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1158,7 +1090,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1180,7 +1112,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1199,7 +1131,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -1213,7 +1145,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -1227,7 +1159,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
     
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1247,7 +1179,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with on[TypeError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
 
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1267,7 +1199,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with on[TypeError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
 
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1288,7 +1220,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -1303,7 +1235,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -1318,7 +1250,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -1333,7 +1265,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with on[TypeError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
 
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1355,7 +1287,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with on[TypeError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
 
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1376,7 +1308,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -1390,7 +1322,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
 
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1410,7 +1342,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -1424,7 +1356,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with on[TypeError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
 
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1444,7 +1376,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with on[TypeError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
 
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1466,7 +1398,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with on[TypeError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
 
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1488,7 +1420,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with on[TypeError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
 
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1510,7 +1442,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with on[TypeError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
 
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1535,7 +1467,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with on[TypeError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
 
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1559,7 +1491,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with on[TypeError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -1573,7 +1505,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
 
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1593,7 +1525,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -1608,7 +1540,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with on[TypeError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
 
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1627,7 +1559,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with assertThrows[TypeError]
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -1642,7 +1574,7 @@ def main() = mainSuite("typechecker") {
     with on[NameError].panic
     with on[TypeError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
 
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1667,7 +1599,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     val result = typecheck(prog)
 
     val expected = map::fromListGeneric[String, TypingType]([
@@ -1683,7 +1615,7 @@ def main() = mainSuite("typechecker") {
     with assertThrows[TypeError]
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     typecheck(prog)
     ()
   }
@@ -1694,7 +1626,7 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
 
     // no equality check here. Trust the typechecker to handle builtins correctly as long as no errors are raised
     val result = typecheck(prog)
@@ -1706,8 +1638,33 @@ def main() = mainSuite("typechecker") {
     with on[TypeError].panic
     with on[NameError].panic
     with mockGetPos
-    with mockInspector[Unit, TypeBinding]
+    
     
     val result = typecheck(prog)
+  }
+
+  test("typechecker handles recursive functions") {
+    val prog = [
+      cVal("fact", None(), cFun([Parameter("n", None(), None())], None(), Block(Nil(), Some(
+        cIf(cLtE(cV("n"), cLit(1)),
+          cLit(1),
+          cMult(cV("n"), cCall(cV("fact"), [Argument(None(), cSub(cV("n"), cLit(1)))]))
+        )
+      )))),
+      cVal("res", None(), cCall(cV("fact"), [Argument(None(), cLit(5))]))
+    ]
+
+    with on[TypeError].panic
+    with on[NameError].panic
+    with mockGetPos
+    
+    val result = typecheck(prog)
+
+    val expected = map::fromListGeneric[String, TypingType]([
+      ("fact", TFun([TypingParam(TInt(), false)], TInt())),
+      ("res", TInt())
+    ])
+
+    assertTrue(typeMapsEqual(result, expected))
   }
 }
