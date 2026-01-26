@@ -1,12 +1,12 @@
-module src/lib/utils/surfaceTestUtils
+module src/tests/helpers/surfaceAstUtils
 
-import src/lib/parser/surfaceAst
 import src/lib/lexer/tokens
-import src/lib/lexer/position
+import src/lib/shared/commonTypes
+import src/lib/ast/surfaceAst
 import src/lib/typechecker/types
 
-val d = Position(0, 0)
 
+val d = Position(0, 0)
 
 def sLit(n: Int) = IntLiteral(n, d)
 def sLit(b: Bool) = BoolLiteral(b, d)

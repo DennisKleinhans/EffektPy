@@ -1,37 +1,19 @@
 module src/lib/typechecker/typecheck
 
 import map
-import src/lib/desugar/coreAst
+import src/lib/shared/errors
+import src/lib/shared/commonEffects
+import src/lib/shared/helpers
+import src/lib/shared/commonHandlers
+import src/lib/shared/commonTypes
 import src/lib/typechecker/unification
-import src/lib/utils/errors
-import src/lib/utils/effects
-import src/lib/utils/helpers
-import src/lib/utils/handlers
 import src/lib/typechecker/types
-import src/lib/lexer/position
+import src/lib/typechecker/handlers
+import src/lib/typechecker/effects
+import src/lib/ast/coreAst
 
 
-type TypeConstraint {
-  MustBeNumeric(t: TypingType, pos: Position)
-  MustBeAddable(t: TypingType, pos: Position) 
-}
-
-/// effect for collecting type constraints
-interface ConstraintCollector {
-  def addConstraint(constraint: TypeConstraint): Unit
-}
-
-/// effect for generating fresh type variables and equating types
-interface Typing {
-  def fresh(): TypingType
-  def equate(t1: TypingType, t2: TypingType, pos: Position): Unit
-}
-
-/// effect for getting the expected return type in a function context
-interface ReturnContext {
-  def getExpectedType(): TypingType
-}
-
+/// retrieves the function signature from a function expression if available
 def getSignature(value: Expr): Option[TypingType] / Typing = value match {
   case FunExpr(params, retAnno, _, _) => {
     val pTypes = params.map { p => TypingParam(translateType(p.tpe), p.defaultValue.isDefined()) }
@@ -41,6 +23,9 @@ def getSignature(value: Expr): Option[TypingType] / Typing = value match {
   case _ => None()
 }
 
+/// typechecks a program in two passes and returns a mapping from variable names to their inferred types
+/// first pass: predefine all variable declarations
+/// second pass: typecheck all statements and expressions
 def twoPassTypecheck(prog: Program): Map[String, TypeBinding] / { Exception[TypeError], Exception[NameError], Context[TypeBinding], Positioning } = {
   var equations: List[TypeEquation] = Nil()
   var constraints: List[TypeConstraint] = Nil()
@@ -71,9 +56,10 @@ def twoPassTypecheck(prog: Program): Map[String, TypeBinding] / { Exception[Type
     // second pass: typecheck all statements
     prog.foreach { stmt => checkStmt(stmt); () }
     
-
+    // solve the collected type equations
     val finalSubst = solve(equations.reverse())
 
+    // validate all collected constraints
     constraints.foreach { 
       case MustBeNumeric(t, pos) => {
         val concrete = applySubstitution(t, finalSubst)
@@ -138,9 +124,8 @@ def typecheckIncremental(prog: Program, initialEnv: Map[String, TypeBinding]): M
   // prefers initialEnv bindings in case of name clashes results in builtins being overridden
   val newInitialEnv = getBuiltinTypeEnv().mapUnion(initialEnv)
 
-  with handleTypingContext(initialEnv)
+  with handleTypingContext(newInitialEnv)
   twoPassTypecheck(prog)
-  
 }
 
 /// typecheck a single statement
@@ -229,9 +214,10 @@ def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Exceptio
   }
 }
 
+/// Typecheck a block and return the inferred type of its final expression (or TUnit if none)
 def checkBlock(block: Block): TypingType / { Typing, Context[TypeBinding], Exception[TypeError], Positioning, LoopContext, ReturnContext, ConstraintCollector } = {
-
   with handleNewTypingScope
+
   // fist pass: predefine all variable declarations in the block
   block.statements.foreach { 
     case ValDeclaration(name, typeAnno, value, _) => {
@@ -242,6 +228,7 @@ def checkBlock(block: Block): TypingType / { Typing, Context[TypeBinding], Excep
       // predefine all val declarations as immutable
       do define(name, TypeBinding(sig, false))
     }
+
     case VarDeclaration(name, typeAnno, value, _) => {
       val sig = getSignature(value) match {
         case Some(t) => t
@@ -250,6 +237,7 @@ def checkBlock(block: Block): TypingType / { Typing, Context[TypeBinding], Excep
       // predefine all var declarations as mutable
       do define(name, TypeBinding(sig, true))
     }
+
     case _ => ()
   }
   
@@ -263,10 +251,11 @@ def checkBlock(block: Block): TypingType / { Typing, Context[TypeBinding], Excep
 
 /// Typecheck an expression and return its inferred type
 def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Positioning, Exception[TypeError], LoopContext, ConstraintCollector } = expr match {
-  case IntLiteral(value, pos) => { with at(pos); TInt()}
-  case BoolLiteral(value, pos) => { with at(pos); TBool()}
-  case StringLiteral(value, pos) => { with at(pos); TString()}
-  case DoubleLiteral(value, pos) => { with at(pos); TDouble()}
+  case IntLiteral(value, pos) => { with at(pos); TInt() }
+  case BoolLiteral(value, pos) => { with at(pos); TBool() }
+  case StringLiteral(value, pos) => { with at(pos); TString() }
+  case DoubleLiteral(value, pos) => { with at(pos); TDouble() }
+
   case Variable(name, pos) => {
     with at(pos) 
     val binding = do lookup(name)
@@ -420,6 +409,7 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
         TUnit()
       } 
 
+      // special case for 'max' and 'min' to ensure all arguments are numeric and of the same type
       case Variable(name, _) and name == "max" || name == "min" => {
         if (args.size < 2) {
           raise(TypeError(), "'" ++ name ++ "' requires at least two arguments at " ++ pos.show)
@@ -428,10 +418,11 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
         val memberType = instantiate(TGen(0)) 
 
         args.foreach { arg => {
-          val tArg = checkExpr(arg.value)
-          assertIsNumeric(tArg, pos)
-          do equate(tArg, memberType, pos)
-        } }
+            val tArg = checkExpr(arg.value)
+            assertIsNumeric(tArg, pos)
+            do equate(tArg, memberType, pos)
+          } 
+        }
         memberType
       }
 
@@ -439,12 +430,11 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
         val tReceiver = instantiate(checkExpr(receiver))
         val retType = do fresh()
 
-        // Wir bauen einen "Call-Typ" aus den Argumenten
-        // Wichtig: Argumente im Aufruf sind für den Unifizierer nie "optional"
+        // construct the expected function type based on the argument types
         val argTypes = args.map { arg => TypingParam(checkExpr(arg.value), false) }
         val tCall = TFun(argTypes, retType)
         
-        // Das Alignment passiert jetzt automatisch in unify
+        // equate the receiver type with the constructed function type
         do equate(tReceiver, tCall, pos)
         retType
       }
@@ -472,6 +462,7 @@ def assertIsNumeric(t: TypingType, pos: Position): Unit / { Typing, Positioning,
   case _ => raise(TypeError(), "Expected numeric type, but got " ++ t.show ++ " at " ++ pos.show)
 }
 
+/// validate that a type is numeric (int or double)
 def validateIsNumeric(t: TypingType, pos: Position): Unit / { Exception[TypeError], Positioning } = t match {
   case TInt() => ()
   case TDouble() => ()
@@ -496,7 +487,7 @@ def translateType(t: Option[Type]): TypingType / Typing = t match {
   case None() => do fresh() // generate a fresh type variable
 }
 
-/// instantiate a type by replacing all negative type variables with fresh type variables
+/// instantiate a type by replacing all generic type variables with fresh type variables
 def instantiate(t: TypingType): TypingType / Typing = {
   // mapping from generic type variable ids to fresh type variables
   var mapping = map::emptyGeneric[Int, TypingType]()

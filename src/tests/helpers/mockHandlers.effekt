@@ -1,0 +1,25 @@
+module src/tests/helpers/mockHandlers
+ 
+import src/lib/shared/commonEffects
+import src/lib/shared/commonTypes
+
+
+/// mock handler for the REPLConsole effect that does nothing (for testing purposes)
+def mockReplConsole[R] { program: () => R / REPLConsole }: R = {
+  try {
+    val r = program()
+    return r
+  } with REPLConsole {
+    def readLine() = resume("") // always return empty input
+    def writeLine(message) = resume(())
+    def writeSingle(message) = resume(())
+  } 
+}
+
+/// mock handler for the Positioning effect that always returns a fixed position (line 0, column 0)
+def mockGetPos[R] { prog: => R / Positioning } = {
+  try { prog() } with Positioning {
+    def getPos() = resume(Position(0, 0)) // always return line 0, column 0
+    def setPos(p) = resume(())
+  }
+}

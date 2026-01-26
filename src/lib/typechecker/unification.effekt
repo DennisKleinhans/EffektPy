@@ -1,15 +1,13 @@
 module src/lib/typechecker/unification
 
 import map
-import src/lib/utils/errors
-import src/lib/utils/effects
-import src/lib/utils/helpers
-import src/lib/utils/handlers
+import src/lib/shared/errors
+import src/lib/shared/commonEffects
+import src/lib/shared/helpers
+import src/lib/shared/commonHandlers
+import src/lib/shared/commonTypes
 import src/lib/typechecker/types
-import src/lib/lexer/position
 
-
-type Substitution = Map[Int, TypingType]
 
 /// applies a substitution to a typing type
 def applySubstitution(t: TypingType, subst: Substitution): TypingType = t match {
@@ -120,7 +118,6 @@ def unify(eqs: List[TypeEquation], subst: Substitution): Substitution / { Except
         case _ => do raise(TypeError(), "cannot unify types " ++ lNorm.show ++ " with " ++ rNorm.show ++ " at " ++ do getPos().show)
       }
     }
-    
   }
 }
   

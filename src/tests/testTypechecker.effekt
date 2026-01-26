@@ -2,16 +2,18 @@ module src/tests/testTypechecker
 
 import test
 import map
-import src/lib/desugar/coreAst
+import src/lib/shared/errors
+import src/lib/shared/commonEffects
+import src/lib/shared/commonHandlers
+import src/lib/shared/helpers
 import src/lib/typechecker/typecheck
 import src/lib/typechecker/unification
-import src/lib/utils/errors
-import src/lib/utils/effects
-import src/lib/utils/handlers
-import src/lib/utils/helpers
-import src/lib/utils/testUtils
-import src/lib/utils/coreTestUtils
 import src/lib/typechecker/types
+import src/lib/ast/coreAst
+import src/tests/helpers/coreAstUtils
+import src/tests/helpers/mockHandlers
+import src/tests/helpers/testUtils
+
 
 def main() = mainSuite("typechecker") {
 

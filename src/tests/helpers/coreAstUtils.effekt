@@ -1,8 +1,9 @@
-module src/lib/utils/coreTestUtils
+module src/tests/helpers/coreAstUtils
 
-import src/lib/desugar/coreAst
-import src/lib/lexer/position
+import src/lib/ast/coreAst
+import src/lib/shared/commonTypes
 import src/lib/typechecker/types
+
 
 val d = Position(0, 0)
 
@@ -11,19 +12,23 @@ def cLit(b: Bool) = BoolLiteral(b, d)
 def cLit(s: String) = StringLiteral(s, d)
 def cLit(n: Double) = DoubleLiteral(n, d)
 def cV(n: String) = Variable(n, d)
+
 def cAdd(l: Expr, r: Expr) = AddExpr(l, r, d)
 def cSub(l: Expr, r: Expr) = SubExpr(l, r, d)
 def cMult(l: Expr, r: Expr) = MultExpr(l, r, d)
 def cDiv(l: Expr, r: Expr) = DivExpr(l, r, d)
+
 def cAnd(l: Expr, r: Expr) = AndExpr(l, r, d)
 def cOr(l: Expr, r: Expr) = OrExpr(l, r, d)
 def cNot(e: Expr) = NotExpr(e, d)
+
 def cEq(l: Expr, r: Expr) = Eq(l, r, d)
 def cNeq(l: Expr, r: Expr) = Neq(l, r, d)
 def cLt(l: Expr, r: Expr) = Lt(l, r, d)
 def cGt(l: Expr, r: Expr) = Gt(l, r, d)
 def cLtE(l: Expr, r: Expr) = LtE(l, r, d)
 def cGtE(l: Expr, r: Expr) = GtE(l, r, d)
+
 def cIf(c: Expr, t: Expr, e: Expr) = IfExpr(c, t, e, d)
 def cFun(p: List[Parameter], rt: Option[Type], b: Block) = FunExpr(p, rt, b, d)
 def cCall(r: Expr, a: List[Argument]) = CallExpr(r, a, d)

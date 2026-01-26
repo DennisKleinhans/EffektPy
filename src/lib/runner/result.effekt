@@ -3,6 +3,7 @@ module src/lib/runner/result
 import map
 import src/lib/interpreter/values
 
+
 type PipelineResult[T] {
   Success(data: T)
   Failure(msg: String)

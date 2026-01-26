@@ -1,0 +1,9 @@
+module src/lib/lexer/effects
+
+
+/// effect for lexing tokens from the input source code stream 
+interface Lexer[R] {
+  def peek(): R
+  def peek2(): R
+  def next(): R
+}

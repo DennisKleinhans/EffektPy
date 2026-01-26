@@ -1,0 +1,80 @@
+module src/lib/interpreter/handlers
+
+import map
+import src/lib/shared/errors
+import src/lib/shared/commonEffects
+import src/lib/shared/helpers
+import src/lib/shared/commonTypes
+import src/lib/interpreter/values
+import src/lib/interpreter/effects
+
+
+/// handler for RuntimeContext effect that manages variable bindings and memory store in mutable maps
+def handleRuntimeContext[R](initEnv: Map[String, Address]) { prog: => R / { Context[Address] } }: R / {Exception[RuntimeError], Positioning } = {
+  var context: Map[String, Address] = initEnv
+
+  try { prog() } with Context[Address] {
+    def define(name, addr) = {
+      context = context.put(name, addr)
+      resume(())
+    }
+
+    def lookup(name) = {
+      context.get(name) match {
+        case Some(addr) => resume(addr)
+        case None() => do raise(errors::RuntimeError(), "Undefined variable '" ++ name ++ "' at " ++ do getPos().show)
+      }
+    }
+
+    def backup() = resume(context)
+
+    def restore(savedContext) = {
+      context = savedContext
+      resume(())
+    }
+  } 
+}
+
+/// handler that creates a new runtime scope for the duration of the action
+def handleNewRuntimeScope[R]{ action: => R / Context[Address] }: R / Context[Address] = {
+  val snapshot = do backup()
+  val result = action()
+  do restore(snapshot)
+  result
+}
+
+/// handler for Store effect that manages memory allocation, loading, and storing values
+def handleStore[R](initialData: Map[Address, Value]) { prog: => R / Store }: R / Exception[RuntimeError] = {
+  var store: Map[Address, Value] = initialData
+  var nextAddress: Address = initialData.size
+
+  try { prog() } with Store {
+    def allocate(value) = {
+      val addr = nextAddress
+      store = store.put(addr, value)
+      nextAddress = nextAddress + 1
+      resume(addr)
+    }
+
+    def load(addr) = store.get(addr) match {
+      case Some(value) => resume(value)
+      case None() => do raise(errors::RuntimeError(), "Invalid memory access at address " ++ addr.show)
+    }
+
+    def store(addr, value) = {
+      store = store.put(addr, value)
+      resume(())
+    }
+
+    def dump() = resume(store)
+  }
+} 
+
+/// Handler for LoopControl effect that raises an error when break/continue is used outside a loop.
+/// This should never happen, because the typesystem avoids the usage of break/continue outside loops.
+def handleDefaultLoopControl[R] { action: => R / LoopControl}: R / Exception[RuntimeError] = {
+  try { action() } with LoopControl {
+    def breakLoop() = raise(errors::RuntimeError(), "break statement not within a loop")
+    def continueLoop() = raise(errors::RuntimeError(), "continue statement not within a loop")
+  }
+} 

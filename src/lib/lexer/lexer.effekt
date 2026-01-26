@@ -2,11 +2,14 @@ module src/lib/lexer/lexer
 
 import scanner
 import io/filesystem
+import src/lib/shared/errors
+import src/lib/shared/helpers
+import src/lib/shared/commonTypes
+import src/lib/shared/commonEffects
+import src/lib/shared/externs
 import src/lib/lexer/tokens
-import src/lib/utils/errors
-import src/lib/utils/effects
-import src/lib/utils/helpers
-import src/lib/lexer/position
+import src/lib/lexer/effects
+
 
 /// scanner that tracks source position
 def scanWithPos[R]() { prog: => R / { Scan[Char], Positioning } }: R / Scan[Char] = {
@@ -132,6 +135,7 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], Positioning 
     }
   }
 
+  // reads a decimal number (integer part only)
   def readNumberToken(pos: Position): Token / { Scan[Char], stop } = {
     val integerPart = try { readDecimal() } with fail { raise(LexerError(), "invalid number at " ++ pos.show) }
     val next = try { do Scan::peek() } with stop { ' ' }
@@ -322,11 +326,11 @@ def nextToken(): Token / { Scan[Char], stop, Exception[LexerError], Positioning 
 
 /// lexer that provides token-level lookahead 
 def lexer[R]() { program: => R / Lexer[Token] }: R / { Scan[Char], Positioning, Exception[LexerError] } = {
-  // buffer for the last token read
+  // buffer for the last two tokens read
   var firstToken: Option[Token] = None()
   var secondToken : Option[Token] = None()
 
-  
+  // fetches the next token from the input stream
   def fetchNext(): Token / { Scan[Char], Positioning, Exception[LexerError] } = {
     try {
       nextToken()

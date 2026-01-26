@@ -1,7 +1,8 @@
-module src/desugar/coreAst
+module src/ast/coreAst
 
-import src/lib/lexer/position
+import src/lib/shared/commonTypes
 import src/lib/typechecker/types
+
 
 type Expr {
   // literals

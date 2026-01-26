@@ -4,16 +4,18 @@ import scanner
 import exception
 import io/error
 import io/filesystem
+import src/lib/shared/commonTypes
+import src/lib/shared/errors
+import src/lib/shared/commonEffects
 import src/lib/lexer/lexer
 import src/lib/lexer/tokens
-import src/lib/lexer/position
-import src/lib/runner/result
-import src/lib/utils/errors
+import src/lib/lexer/effects
+import src/lib/ast/surfaceAst
+import src/lib/ast/coreAst
 import src/lib/parser/parser
-import src/lib/parser/surfaceAst
 import src/lib/desugar/sugar
-import src/lib/desugar/coreAst
-import src/lib/utils/effects
+import src/lib/runner/result
+
 
 /// runs the parsing and desugaring stages of the pipeline
 def parseAndDesugar(): PipelineResult[Program] / { Lexer[Token], Exception[ParseError], Exception[DesugarError], Positioning } = {
@@ -42,13 +44,11 @@ def runParsing(input: String) : PipelineResult[Program] = {
 /// runs the parsing stage of the pipeline on a file: lexing, parsing, and desugaring.
 def runParsingFile(path: String) : PipelineResult[Program] / Exception[IOError] = {
   try {
-    // HIER ist der einzige Unterschied: Wir lesen direkt aus der Datei
     with readFileUTF8(path) 
     with returning::scanner[Char, PipelineResult[Program]]
     with scanWithPos
     with lexer
     parseAndDesugar()
-    
   } with Exception[LexerError] { 
       def raise(exception, msg) = Failure("LexerError: " ++ msg)
   } with Exception[ParseError] {

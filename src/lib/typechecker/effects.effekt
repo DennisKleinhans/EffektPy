@@ -1,0 +1,21 @@
+module src/lib/typechecker/effects
+
+import src/lib/typechecker/types
+import src/lib/shared/commonTypes
+
+
+/// effect for collecting type constraints
+interface ConstraintCollector {
+  def addConstraint(constraint: TypeConstraint): Unit
+}
+
+/// effect for generating fresh type variables and equating types
+interface Typing {
+  def fresh(): TypingType
+  def equate(t1: TypingType, t2: TypingType, pos: Position): Unit
+}
+
+/// effect for getting the expected return type in a function context
+interface ReturnContext {
+  def getExpectedType(): TypingType
+}

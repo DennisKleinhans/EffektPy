@@ -1,12 +1,14 @@
 module src/lib/parser/parser
 
+import src/lib/shared/commonEffects
+import src/lib/shared/errors
+import src/lib/shared/helpers
+import src/lib/shared/commonTypes
 import src/lib/lexer/tokens
-import src/lib/parser/surfaceAst
-import src/lib/utils/effects
-import src/lib/utils/errors
-import src/lib/utils/helpers
-import src/lib/lexer/position
+import src/lib/lexer/effects
+import src/lib/ast/surfaceAst
 import src/lib/typechecker/types
+
 
 /// parsePrimary parses the smallest expression forms: literals, variables,
 /// and parenthesized expressions. It does not handle binary operators.\n
@@ -63,6 +65,8 @@ def parsePrimaryRaw(): Expr / { Lexer[Token], Positioning, Exception[ParseError]
   }
 }
 
+/// parsePrimary handles function call expressions by parsing a primary expression
+/// and then checking for an opening parenthesis to indicate a function call.
 def parsePrimary(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
   val left = parsePrimaryRaw()
 
@@ -145,7 +149,7 @@ def parseOr(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
 /// This function uses a common pattern: parse the higher-precedence operand
 /// (parsePrimary) then loop (via local go()) to consume any * or / that follow.\n
 /// That loop builds left-associative binary trees:
-///   a * b * c  -> MultExpr(MultExpr(a,b), c)
+///   a * b * c -> MultExpr(MultExpr(a,b), c)
 def parseMultiplicative(): Expr / { Lexer[Token], Positioning, Exception[ParseError] } = {
   
   def go(left: Expr): Expr / { Lexer[Token], Positioning } = {

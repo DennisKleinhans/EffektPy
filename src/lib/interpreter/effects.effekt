@@ -1,0 +1,24 @@
+module src/lib/interpreter/effects
+
+import map
+import src/lib/interpreter/values
+
+
+/// effect for managing a simple store mapping addresses to values
+interface Store {
+  def allocate(value: Value): Address
+  def load(addr: Address): Value
+  def store(addr: Address, value: Value): Unit
+  def dump(): Map[Address, Value]
+}
+
+/// effect for controlling loop execution (break/continue)
+interface LoopControl {
+  def breakLoop(): Unit
+  def continueLoop(): Unit
+}
+
+/// effect for getting the current return value of a function
+interface ReturnControl {
+  def returnValue(value: Value): Unit
+}

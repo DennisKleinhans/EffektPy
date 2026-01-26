@@ -2,17 +2,19 @@ module src/tests/testParser
 
 import test
 import scanner
+import src/lib/shared/errors
+import src/lib/shared/commonEffects
+import src/lib/shared/commonHandlers
 import src/lib/lexer/lexer
 import src/lib/lexer/tokens
 import src/lib/parser/parser
-import src/lib/parser/surfaceAst
+import src/lib/ast/surfaceAst
 import src/lib/desugar/sugar
-import src/lib/utils/testUtils
-import src/lib/utils/errors
-import src/lib/utils/effects
-import src/lib/utils/surfaceTestUtils
-import src/lib/utils/handlers
 import src/lib/typechecker/types
+import src/tests/helpers/mockHandlers
+import src/tests/helpers/surfaceAstUtils
+import src/tests/helpers/testUtils
+
 
 def main() = mainSuite("parser") {
 
