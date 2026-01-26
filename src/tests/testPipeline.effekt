@@ -646,4 +646,278 @@ def main() = mainSuite("pipeline") {
     assertTrue(result.equal(VInt(6)))
   }
 
+  test("mutal recursion") {
+    val result = runPipeline("""
+      def isEven(n) {
+        if n == 0 then true else isOdd(n - 1)
+      }
+
+      def isOdd(n) {
+        if n == 0 then false else isEven(n - 1)
+      }
+
+      isEven(10)
+    """)
+    assertTrue(result.equal(VBool(true)))
+  }
+
+  test("nested mutal recursion") {
+    val result = runPipeline("""
+      def outer(n) {
+        def isEven(n) {
+          if n == 0 then true else isOdd(n - 1)
+        }
+
+        def isOdd(n) {
+          if n == 0 then false else isEven(n - 1)
+        }
+
+        isOdd(n)
+      }
+
+      outer(7)
+    """)
+    assertTrue(result.equal(VBool(true)))
+  }
+
+  test("simple recursive factorial") {
+    val result = runPipeline("""
+      def factorial(n) {
+        if n <= 1 then 1 else n * factorial(n - 1)
+      }
+      factorial(5)
+    """)
+    assertTrue(result.equal(VInt(120)))
+  }
+
+  test("recursive fibonacci") {
+    val result = runPipeline("""
+      def fib(n) {
+        if n <= 1 then n else fib(n - 1) + fib(n - 2)
+      }
+      fib(8)
+    """)
+    assertTrue(result.equal(VInt(21)))
+  }
+
+  test("tail-recursive sum with accumulator") {
+    val result = runPipeline("""
+      def sumTo(n, acc = 0) {
+        if n <= 0 then acc else sumTo(n - 1, acc + n)
+      }
+      sumTo(10)
+    """)
+    assertTrue(result.equal(VInt(55)))
+  }
+
+  test("recursive power function") {
+    val result = runPipeline("""
+      def power(base, exp) {
+        if exp == 0 then 1 else base * power(base, exp - 1)
+      }
+      power(2, 10)
+    """)
+    assertTrue(result.equal(VInt(1024)))
+  }
+
+  test("recursive GCD (greatest common divisor)") {
+    val result = runPipeline("""
+      def gcd(a, b) {
+        if b == 0 then a else gcd(b, a - (a / b) * b)
+      }
+      gcd(48, 18)
+    """)
+    assertTrue(result.equal(VInt(6)))
+  }
+
+  test("recursive list sum simulation with counter") {
+    val result = runPipeline("""
+      def sumRange(start, end) {
+        if start > end then 0 else start + sumRange(start + 1, end)
+      }
+      sumRange(1, 100)
+    """)
+    assertTrue(result.equal(VInt(5050)))
+  }
+
+  test("recursion with lambda") {
+    val result = runPipeline("""
+      def applyN(f, n, x) {
+        if n <= 0 then x else applyN(f, n - 1, f(x))
+      }
+      val double = lambda(x) { x * 2 }
+      applyN(double, 4, 3)
+    """)
+    assertTrue(result.equal(VInt(48)))
+  }
+
+  test("recursion with mutable state") {
+    val result = runPipeline("""
+      var globalSum = 0
+      
+      def addToGlobal(n) {
+        if (n > 0) {
+          globalSum = globalSum + n
+          addToGlobal(n - 1)
+        }
+      }
+      
+      addToGlobal(10)
+      globalSum
+    """)
+    assertTrue(result.equal(VInt(55)))
+  }
+
+  test("nested recursion with different functions") {
+    val result = runPipeline("""
+      def outer(n) {
+        def inner(m) {
+          if m <= 0 then 1 else m * inner(m - 1)
+        }
+        if n <= 0 then 0 else inner(n) + outer(n - 1)
+      }
+      outer(4)
+    """)
+    assertTrue(result.equal(VInt(33)))
+  }
+
+  test("recursion with complex conditionals and loops") {
+    val result = runPipeline("""
+      def compute(n) {
+        if (n <= 1) {
+          n
+        } else {
+          var sum = 0
+          var i = 0
+          while (i < 2) {
+            sum = sum + compute(n - i - 1)
+            i += 1
+          }
+          sum
+        }
+      }
+      compute(7)
+    """)
+    assertTrue(result.equal(VInt(13)))
+  }
+
+  test("higher-order recursion with function parameter") {
+    val result = runPipeline("""
+      def repeat(f, n, x) {
+        if n <= 0 then x else repeat(f, n - 1, f(x))
+      }
+      
+      def addThree(x) { x + 3 }
+      
+      repeat(addThree, 5, 10)
+    """)
+    assertTrue(result.equal(VInt(25)))
+  }
+
+  test("recursive function returning lambda") {
+    val result = runPipeline("""
+      def makeCounter(n) {
+        if n <= 0 then
+          lambda(x) { x }
+        else
+          lambda(x) { makeCounter(n - 1)(x + 1) }
+      }
+      
+      makeCounter(5)(0)
+    """)
+    assertTrue(result.equal(VInt(5)))
+  }
+
+  test("recursion with string concatenation") {
+    val result = runPipeline("""
+      def repeat(str, n) {
+        if n <= 0 then "" else str + repeat(str, n - 1)
+      }
+      repeat("ab", 4)
+    """)
+    assertTrue(result.equal(VString("abababab")))
+  }
+
+  test("complex program with nested recursion and all features") {
+    val result = runPipeline("""
+      def complexCalc(n) {
+        var result = 0
+        
+        def factorial(x) {
+          if x <= 1 then 1 else x * factorial(x - 1)
+        }
+        
+        def sumDigits(num, acc = 0) {
+          if num <= 0 then acc else sumDigits(num / 10, acc + (num - (num / 10) * 10))
+        }
+        
+        var i = 1
+        while (i <= n) {
+          val fact = factorial(i)
+          val digitSum = sumDigits(fact)
+          
+          if (digitSum > 5) {
+            result = result + digitSum
+          } else {
+            result = result + fact
+          }
+          
+          i += 1
+        }
+        
+        result
+      }
+      
+      complexCalc(5)
+    """)
+    assertTrue(result.equal(VInt(135)))
+  }
+
+  test("recursion with break in loop inside recursive function") {
+    val result = runPipeline("""
+      def process(n) {
+        if (n <= 0){
+          0
+        } else {
+          var sum = 0
+          var i = 0
+          while (i < 10) {
+            if (i == n) {
+              break
+            }
+            sum += i
+            i += 1
+          }
+          sum + process(n - 1)
+        }
+      }
+      process(5)
+    """)
+    assertTrue(result.equal(VInt(20)))
+  }
+
+  test("recursion with continue in loop") {
+    val result = runPipeline("""
+      def sumOddUpTo(n) {
+        if (n <= 0) {
+          0
+        } else {
+          var sum = 0
+          var i = 0
+          while (i <= n) {
+            if (i - (i / 2) * 2 == 0) {
+              i += 1
+              continue
+            }
+            sum += i
+            i += 1
+          }
+          sum
+        }
+      }
+      sumOddUpTo(10)
+    """)
+    assertTrue(result.equal(VInt(25)))
+  }
+
 }

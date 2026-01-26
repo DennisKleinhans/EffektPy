@@ -10,6 +10,17 @@ import src/lib/utils/handlers
 import src/lib/typechecker/types
 import src/lib/lexer/position
 
+
+type TypeConstraint {
+  MustBeNumeric(t: TypingType, pos: Position)
+  MustBeAddable(t: TypingType, pos: Position) 
+}
+
+/// effect for collecting type constraints
+interface ConstraintCollector {
+  def addConstraint(constraint: TypeConstraint): Unit
+}
+
 /// effect for generating fresh type variables and equating types
 interface Typing {
   def fresh(): TypingType
@@ -32,6 +43,7 @@ def getSignature(value: Expr): Option[TypingType] / Typing = value match {
 
 def twoPassTypecheck(prog: Program): Map[String, TypeBinding] / { Exception[TypeError], Exception[NameError], Inspector[TypeBinding],Context[TypeBinding], Positioning } = {
   var equations: List[TypeEquation] = Nil()
+  var constraints: List[TypeConstraint] = Nil()
   var counter = 0
   
   try {
@@ -58,9 +70,26 @@ def twoPassTypecheck(prog: Program): Map[String, TypeBinding] / { Exception[Type
 
     // second pass: typecheck all statements
     prog.foreach { stmt => checkStmt(stmt); () }
-    println("Equations to solve: " ++ equations.size.show)
+    
+
     val finalSubst = solve(equations.reverse())
-    println("Solve finished without error")
+
+    constraints.foreach { 
+      case MustBeNumeric(t, pos) => {
+        val concrete = applySubstitution(t, finalSubst)
+        validateIsNumeric(concrete, pos)
+      }
+
+      case MustBeAddable(t, pos) => {
+        val concrete = applySubstitution(t, finalSubst)
+        concrete match {
+          case TInt() => ()
+          case TString() => ()
+          case TDouble() => ()
+          case _ => raise(TypeError(), "Addition requires String, Int, or Double, but got " ++ concrete.show ++ " at " ++ pos.show)
+        }
+      }
+    }
 
     val currentEnv: Map[String, TypeBinding] = do backup()
     var updatedEnv = map::emptyGeneric[String, TypeBinding]()
@@ -81,6 +110,11 @@ def twoPassTypecheck(prog: Program): Map[String, TypeBinding] / { Exception[Type
 
     def equate(t1: TypingType, t2: TypingType, pos) = {
       equations = Cons(TypeEquation(t1, t2, pos), equations)
+      resume(())
+    }
+  } with ConstraintCollector {
+    def addConstraint(constraint: TypeConstraint) = {
+      constraints = Cons(constraint, constraints)
       resume(())
     }
   } with LoopContext {
@@ -110,7 +144,7 @@ def typecheckIncremental(prog: Program, initialEnv: Map[String, TypeBinding]): M
 }
 
 /// typecheck a single statement
-def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning, LoopContext, ReturnContext } = stmt match {
+def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning, LoopContext, ReturnContext, ConstraintCollector } = stmt match {
   case ValDeclaration(name, typeAnno, value, pos) => {
     with at(pos) 
     // just lookup the predefined binding 
@@ -201,7 +235,7 @@ def checkStmt(stmt: Stmt): TypingType / { Typing, Context[TypeBinding], Inspecto
   }
 }
 
-def checkBlock(block: Block): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning, LoopContext, ReturnContext} = {
+def checkBlock(block: Block): TypingType / { Typing, Context[TypeBinding], Inspector[TypeBinding], Exception[TypeError], Positioning, LoopContext, ReturnContext, ConstraintCollector } = {
 
   with handleNewTypingScope
   // fist pass: predefine all variable declarations in the block
@@ -234,7 +268,7 @@ def checkBlock(block: Block): TypingType / { Typing, Context[TypeBinding], Inspe
 }
 
 /// Typecheck an expression and return its inferred type
-def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Positioning, Exception[TypeError], Inspector[TypeBinding], LoopContext } = expr match {
+def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Positioning, Exception[TypeError], Inspector[TypeBinding], LoopContext, ConstraintCollector } = expr match {
   case IntLiteral(value, pos) => { with at(pos); TInt()}
   case BoolLiteral(value, pos) => { with at(pos); TBool()}
   case StringLiteral(value, pos) => { with at(pos); TString()}
@@ -250,23 +284,11 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
     val tLeft = checkExpr(left)
     val tRight = checkExpr(right)
 
-    (tLeft, tRight) match {
-      case (TString(), _) => {
-        do equate(tLeft, TString(), pos)
-        do equate(tRight, TString(), pos)
-        TString()
-      }
-      case (_, TString()) => {
-        do equate(tRight, TString(), pos)
-        do equate(tLeft, TString(), pos)
-        TString()
-      }
-      case _ => {
-        checkNumeric(left, right, pos)
-      }
-    }
+    do equate(tLeft, tRight, pos)
+    do addConstraint(MustBeAddable(tLeft, pos))
+    tLeft
   }
-
+  
   case SubExpr(left, right, pos) => {
     with at(pos) 
     checkNumeric(left, right, pos)
@@ -437,7 +459,7 @@ def checkExpr(expr: Expr): TypingType / { Typing, Context[TypeBinding], Position
 }
 
 /// check that both sides are numeric types and return the resulting type
-def checkNumeric(left: Expr, right: Expr, pos: Position): TypingType / { Typing, Context[TypeBinding], Positioning, Exception[TypeError], Inspector[TypeBinding], LoopContext } = {
+def checkNumeric(left: Expr, right: Expr, pos: Position): TypingType / { Typing, Context[TypeBinding], Positioning, Exception[TypeError], Inspector[TypeBinding], LoopContext, ConstraintCollector } = {
   val tLeft = checkExpr(left)
   val tRight = checkExpr(right)
 
@@ -449,15 +471,18 @@ def checkNumeric(left: Expr, right: Expr, pos: Position): TypingType / { Typing,
 }
 
 /// assert that a type is numeric (int or double)
-def assertIsNumeric(t: TypingType, pos: Position): Unit / { Typing, Positioning, Exception[TypeError] } = {
-  println("assertIsNumeric called with: " ++ t.show)
-  t match {
-  
+def assertIsNumeric(t: TypingType, pos: Position): Unit / { Typing, Positioning, Exception[TypeError], ConstraintCollector } = t match {
   case TInt() => ()
   case TDouble() => ()
-  case TVar(_) => () // defer check until unification
+  case TVar(_) => do addConstraint(MustBeNumeric(t, pos)) // add a constraint to be checked later
   case _ => raise(TypeError(), "Expected numeric type, but got " ++ t.show ++ " at " ++ pos.show)
-}}
+}
+
+def validateIsNumeric(t: TypingType, pos: Position): Unit / { Exception[TypeError], Positioning } = t match {
+  case TInt() => ()
+  case TDouble() => ()
+  case _ => raise(TypeError(), "Expected numeric type, but got " ++ t.show ++ " at " ++ pos.show)
+}
 
 /// translate an optional Type annotation into a TypingType
 def translateType(t: Option[Type]): TypingType / Typing = t match {
