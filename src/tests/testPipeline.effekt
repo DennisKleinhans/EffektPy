@@ -35,7 +35,10 @@ def main() = mainSuite("pipeline") {
   }
 
   test("nested if expression"){
-    val result = runPipeline("val x = if 10 < 20 then (if 5 > 3 then 2 else 3) else 4\nx")
+    val result = runPipeline(
+      """val x = if 10 < 20 then (if 5 > 3 then 2 else 3) else 4
+      x
+      """)
     assertTrue(result.equal(VInt(2)))
   }
 
@@ -43,7 +46,6 @@ def main() = mainSuite("pipeline") {
     val result = runPipeline("""
       if (10 < 5) {
         val x = 2
-        x
       }
     """)
     assertTrue(result.equal(VUnit()))
@@ -64,15 +66,15 @@ def main() = mainSuite("pipeline") {
 
   test("nested if statements") {
     val result = runPipeline("""
+      var x = 0
       if (10 < 20) {
         if (true) {
-          val x = 2
-          x
+          x = 2
         }
       } else {
-        val x = 5
-        x
+        x = 5
       }
+      x
     """)
     assertTrue(result.equal(VInt(2)))
   }
